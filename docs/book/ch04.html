@@ -86,6 +86,10 @@
 k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 \]</p>
 <p>기하학적 의미가 중요하다. \(\mathbf{a} + \mathbf{b}\)는 "\(\mathbf{a}\)만큼 이동한 뒤 이어서 \(\mathbf{b}\)만큼 이동"한 결과와 같다(평행사변형 법칙). 스칼라 곱 \(k\,\mathbf{a}\)는 방향은 그대로 두고 크기만 \(k\)배 하는 것이며, \(k\)가 음수면 방향이 반대가 된다. 뺄셈 \(\mathbf{a} - \mathbf{b}\)는 \(\mathbf{a} + (-1)\mathbf{b}\)이다.</p>
+<p>그림 4.1은 평행사변형 법칙을 보여 준다. \(\mathbf{a}\)의 끝에서 \(\mathbf{b}\)만큼(또는 \(\mathbf{b}\)의 끝에서 \(\mathbf{a}\)만큼) 이동하면 두 경로가 같은 점에 도달하며, 원점에서 그 점으로 향하는 대각선이 곧 \(\mathbf{a} + \mathbf{b}\)이다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch04/ch04_fig04.svg" alt="figure">
+<p><figcaption>그림 4.1: 벡터 덧셈의 평행사변형 법칙. 두 벡터를 두 변으로 하는 평행사변형의 대각선이 합 벡터가 된다.</figcaption></figure></p>
 <h3>벡터의 크기와 정규화</h3>
 <p>벡터 \(\mathbf{a}\)의 <strong class="term-ko">크기</strong><sup class="term">magnitude</sup>(길이)는 피타고라스 정리의 3차원 확장으로 구한다.
 \[
@@ -98,7 +102,10 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 <p>GLSL의 <code>normalize()</code>, <code>length()</code> 함수가 바로 이 계산이다. 앞으로 "방향 벡터"라고 하면 정규화된 단위 벡터를 뜻한다고 약속하자.</p>
 <div class="box caution"><span class="chip">주의</span><p>크기가 0인 벡터 \((0,0,0)\)은 정규화할 수 없다(0으로 나누기). 두 점이 같은 위치일 때 그 차를 정규화하는 코드는 NaN을 만들어 화면이 통째로 사라지는 버그로 이어지곤 한다. 방향 벡터를 계산할 때는 두 점이 겹칠 가능성을 항상 염두에 두자.</p></div>
 <h3>WebGL의 좌표계는 오른손 좌표계</h3>
-<p>세 축의 방향을 정하는 방식에는 두 가지 관례가 있다. 오른손을 펴서 엄지를 \(x\)축(+), 검지를 \(y\)축(+)에 맞추었을 때 중지가 가리키는 방향이 \(z\)축(+)이면 <strong class="term-ko">오른손 좌표계</strong><sup class="term">right-handed coordinate system</sup>, 왼손으로 같은 일을 하면 왼손 좌표계이다. WebGL을 포함한 OpenGL 계열은 관례적으로 <strong>오른손 좌표계</strong>를 사용한다. 화면 오른쪽이 \(+x\), 위쪽이 \(+y\)일 때, \(+z\)는 <strong>화면에서 나와 우리 눈을 향하는 방향</strong>이다. 즉 물체가 카메라에서 멀어질수록 \(z\) 값은 작아진다(음수가 된다). 6장에서 카메라와 투영을 다룰 때 이 관례가 전면에 등장한다.</p>
+<p>세 축의 방향을 정하는 방식에는 두 가지 관례가 있다. 오른손을 펴서 엄지를 \(x\)축(+), 검지를 \(y\)축(+)에 맞추었을 때 중지가 가리키는 방향이 \(z\)축(+)이면 <strong class="term-ko">오른손 좌표계</strong><sup class="term">right-handed coordinate system</sup>, 왼손으로 같은 일을 하면 왼손 좌표계이다. WebGL을 포함한 OpenGL 계열은 관례적으로 <strong>오른손 좌표계</strong>를 사용한다. 화면 오른쪽이 \(+x\), 위쪽이 \(+y\)일 때, \(+z\)는 <strong>화면에서 나와 우리 눈을 향하는 방향</strong>이다(그림 4.2). 즉 물체가 카메라에서 멀어질수록 \(z\) 값은 작아진다(음수가 된다). 6장에서 카메라와 투영을 다룰 때 이 관례가 전면에 등장한다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch04/ch04_fig03.svg" alt="figure">
+<p><figcaption>그림 4.2: WebGL의 오른손 좌표계. \(+x\)는 오른쪽, \(+y\)는 위, \(+z\)는 화면에서 나와 관찰자를 향한다.</figcaption></figure></p>
 <div class="box keypoint"><span class="chip">요점</span><p>점은 위치, 벡터는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터이며, 방향만 필요한 벡터는 <strong>정규화</strong>하여 단위 벡터로 만들어 쓴다. WebGL은 \(+z\)가 화면 밖(관찰자 쪽)을 향하는 <strong>오른손 좌표계</strong>를 관례로 한다.</p></div>
 <h2 id="sec2">4.2 내적과 외적</h2>
 <p>벡터 두 개를 결합하는 곱셈에는 두 종류가 있다. 결과가 수 하나인 <strong>내적</strong>과, 결과가 새로운 벡터인 <strong>외적</strong>이다. 이 두 연산은 그래픽스 수학의 양대 기둥이므로 계산법과 기하학적 의미를 모두 확실히 익혀 두자.</p>
@@ -111,7 +118,10 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 \[
 \mathbf{a} \cdot \mathbf{b} = \lVert \mathbf{a} \rVert \, \lVert \mathbf{b} \rVert \cos\theta
 \]</p>
-<p>즉 내적은 "두 벡터가 얼마나 같은 방향을 향하는가"를 재는 척도이다. 두 벡터가 모두 단위 벡터라면 내적은 곧 \(\cos\theta\)이다. 부호만으로도 유용한 판정이 가능하다.</p>
+<p>즉 내적은 "두 벡터가 얼마나 같은 방향을 향하는가"를 재는 척도이다. 두 벡터가 모두 단위 벡터라면 내적은 곧 \(\cos\theta\)이다. 그림 4.3처럼 \(\mathbf{b}\)를 \(\mathbf{a}\) 방향으로 내려 그은 그림자(정사영)의 길이가 \(\lVert\mathbf{b}\rVert\cos\theta\)이며, 내적은 여기에 \(\lVert\mathbf{a}\rVert\)를 곱한 값으로 이해할 수 있다. 부호만으로도 유용한 판정이 가능하다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch04/ch04_fig02.svg" alt="figure">
+<p><figcaption>그림 4.3: 내적과 사잇각. \(\mathbf{b}\)를 \(\mathbf{a}\)에 정사영한 길이가 \(\lVert\mathbf{b}\rVert\cos\theta\)이다.</figcaption></figure></p>
 <ul>
 <li>\(\mathbf{a} \cdot \mathbf{b} > 0\)  —  두 벡터의 사잇각이 예각 (대체로 같은 방향)</li>
 <li>\(\mathbf{a} \cdot \mathbf{b} = 0\)  —  두 벡터가 서로 <strong>수직</strong></li>
@@ -130,10 +140,13 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 <li>방향은 <strong class="term-ko">오른손 법칙</strong><sup class="term">right-hand rule</sup>을 따른다: 오른손 네 손가락을 \(\mathbf{a}\)에서 \(\mathbf{b}\)로 감아쥘 때 엄지가 가리키는 쪽이다. 따라서 \(\mathbf{b} \times \mathbf{a} = -(\mathbf{a} \times \mathbf{b})\)로, 순서를 바꾸면 방향이 반대가 된다.</li>
 <li>크기는 \(\lVert \mathbf{a} \times \mathbf{b} \rVert = \lVert \mathbf{a} \rVert \lVert \mathbf{b} \rVert \sin\theta\)로, 두 벡터가 만드는 평행사변형의 넓이와 같다. 두 벡터가 평행이면 외적은 영벡터이다.</li>
 </ul>
-<p>그래픽스에서 외적의 대표 용도는 <strong>법선 벡터 계산</strong>이다. 삼각형의 세 정점 \(A\), \(B\), \(C\)가 있을 때, 두 변 벡터의 외적을 정규화하면 삼각형 면에 수직인 <strong class="term-ko">법선</strong><sup class="term">normal</sup>을 얻는다.
+<p>그래픽스에서 외적의 대표 용도는 <strong>법선 벡터 계산</strong>이다. 삼각형의 세 정점 \(A\), \(B\), \(C\)가 있을 때, 두 변 벡터의 외적을 정규화하면 삼각형 면에 수직인 <strong class="term-ko">법선</strong><sup class="term">normal</sup>을 얻는다(그림 4.4).
 \[
 \mathbf{n} = \frac{(B - A) \times (C - A)}{\lVert (B - A) \times (C - A) \rVert}
 \]</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch04/ch04_fig01.svg" alt="figure">
+<p><figcaption>그림 4.4: 외적과 오른손 법칙. 두 변 벡터 \(\mathbf{a}\), \(\mathbf{b}\)에 모두 수직인 \(\mathbf{a}\times\mathbf{b}\)가 삼각형 면의 법선 \(\mathbf{n}\)이 된다.</figcaption></figure></p>
 <p>정점 순서 \(A \to B \to C\)가 반시계 방향일 때 법선은 관찰자 쪽(면의 앞면)을 향한다. WebGL이 삼각형의 앞면을 반시계 방향 정점 순서로 판정하는 것도 이 관례와 맞물려 있다.</p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">내적과 외적, 언제 무엇을 쓰나</span><p>목적이 <strong>수치</strong>(각도, 밝기, 닮은 정도)라면 내적, 목적이 <strong>수직 방향</strong>(법선, 회전축)이라면 외적이다. 앞으로 등장하는 공식이 낯설게 느껴질 때 이 기준으로 돌아오면 대부분 풀린다. GLSL과 glMatrix 모두 <code>dot</code>, <code>cross</code>라는 이름으로 두 연산을 제공한다.</p></div>
 <h2 id="sec3">4.3 행렬과 행렬 곱</h2>
@@ -323,8 +336,8 @@ gl.uniform4f(uColorLoc, 1.0, 1.0, 0.3, 1.0);
 gl.drawArrays(gl.LINES, 4, 2);</code></pre><div class="listing-caption">코드 4.4: 벡터 덧셈의 평행사변형 법칙</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch04/ch04_img01.png" alt="figure">
-<p><figcaption>그림 4.1: 실습 4-3 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 4.1과 같이 원점에서 뻗어 나가는 세 벡터가 그려진다. 노란 선분(\(\mathbf{a}+\mathbf{b}\))이 빨강과 초록 선분이 만드는 평행사변형의 대각선이 되는 것을 확인하자. <code>drawArrays</code>의 둘째 인자 <code>first</code>를 이용해 한 버퍼의 서로 다른 구간을 그린 점도 눈여겨보자.</p></div></p>
+<p><figcaption>그림 4.5: 실습 4-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 4.5과 같이 원점에서 뻗어 나가는 세 벡터가 그려진다. 노란 선분(\(\mathbf{a}+\mathbf{b}\))이 빨강과 초록 선분이 만드는 평행사변형의 대각선이 되는 것을 확인하자. <code>drawArrays</code>의 둘째 인자 <code>first</code>를 이용해 한 버퍼의 서로 다른 구간을 그린 점도 눈여겨보자.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">4장 요약</summary><div class="sum-body"><ul>
 <li><strong>점</strong>은 위치, <strong>벡터</strong>는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터가 된다.</li>
 <li>벡터의 덧셈·뺄셈·스칼라 곱은 성분별로 계산한다. 크기는 \(\lVert\mathbf{a}\rVert = \sqrt{a_x^2 + a_y^2 + a_z^2}\)이고, 벡터를 크기로 나누어 크기 1로 만드는 것이 <strong>정규화</strong>이다. 방향만 나타내는 벡터(법선, 빛 방향)는 항상 단위 벡터로 쓴다.</li>

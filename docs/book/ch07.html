@@ -135,6 +135,10 @@ glMaterialfv(GL_FRONT, GL_SHININESS, [120]);</code></pre>
 \[
 I_d = \cos\theta = \mathbf{n} \cdot \mathbf{l}
 \]</p>
+<p>그림 7.1은 같은 크기의 표면이 빛을 받는 각도에 따라 밝기가 어떻게 달라지는지 보여 준다. 위에서 평행하게 쏟아지는 빛을 법선이 정면으로 받을 때(\(\theta=0\)) 표면은 가장 밝고, 표면이 비스듬해질수록 같은 빛이 더 넓은 면적에 퍼져 밝기가 \(\cos\theta\)에 비례해 줄어든다. 빛과 나란해지면 거의 어두워진다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch07/ch07_fig02.svg" alt="figure">
+<p><figcaption>그림 7.1: 빛을 받는 각도에 따른 밝기 변화(램버트 코사인 법칙). 법선 \(\mathbf{n}\)과 빛 방향 \(\mathbf{l}\)의 각 \(\theta\)가 벌어질수록 \(\mathbf{n}\cdot\mathbf{l}=\cos\theta\)가 작아져 표면이 어두워진다.</figcaption></figure></p>
 <h3>왜 max로 감싸는가</h3>
 <p>한 가지 손질이 필요하다. 표면이 빛을 등지면 사잇각이 \(90^\circ\)를 넘어 내적이 <strong>음수</strong>가 된다. 그러나 빛을 등진 면이 "음의 밝기"를 가질 수는 없다. 물리적으로 이런 면은 그 광원의 빛을 전혀 받지 못하므로 밝기가 0이어야 한다. 그래서 내적을 0으로 바닥을 깔아 준다.
 \[
@@ -281,6 +285,10 @@ gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코
 \[
 I_s = \max(\mathbf{r} \cdot \mathbf{v},\ 0)^{\alpha}
 \]</p>
+<p>그림 7.2은 표면 한 점에서 이 네 벡터가 이루는 관계를 보여 준다. 빛 방향 \(\mathbf{l}\)이 법선 \(\mathbf{n}\)에 대해 거울처럼 반사된 방향이 \(\mathbf{r}\)이며, 이때 입사각과 반사각이 같다(\(\theta_i = \theta_r\)). 반사 방향 \(\mathbf{r}\)가 시선 \(\mathbf{v}\)에 가까울수록 반사된 빛이 눈으로 곧장 들어와 하이라이트가 밝게 맺힌다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch07/ch07_fig03.svg" alt="figure">
+<p><figcaption>그림 7.2: 퐁 반사 모델의 네 벡터. 법선 \(\mathbf{n}\), 빛 방향 \(\mathbf{l}\), 반사 벡터 \(\mathbf{r}\), 시선 벡터 \(\mathbf{v}\)이며 입사각과 반사각이 같다. 정반사 밝기는 \(\mathbf{r}\)와 \(\mathbf{v}\)가 가까운 정도로 정해진다.</figcaption></figure></p>
 <h3>반질거림 지수  —  하이라이트의 날카로움</h3>
 <p>지수 \(\alpha\)는 <strong class="term-ko">반질거림</strong><sup class="term">shininess</sup>을 조절한다. 내적 \(\mathbf{r} \cdot \mathbf{v}\)는 \(0 \sim 1\) 사이의 값인데, 여기에 큰 지수를 씌우면 1에 아주 가까운 값만 살아남고 나머지는 급격히 0으로 눌린다. 따라서 \(\alpha\)가 클수록 하이라이트가 <strong>작고 날카롭게</strong> 맺혀 금속이나 유리처럼 보이고, \(\alpha\)가 작을수록 하이라이트가 <strong>크고 부드럽게</strong> 퍼져 플라스틱이나 젖은 나무처럼 보인다. 흔히 \(\alpha\)는 8에서 256 사이의 값을 쓴다.</p>
 <h3>퐁 모델의 합성 공식</h3>
@@ -442,7 +450,10 @@ gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코
 <h3>보간의 대상이 다르다</h3>
 <p>두 방식의 핵심 차이는 3장에서 배운 보간이 <strong>무엇에 적용되는가</strong>에 있다. 래스터화 단계는 정점 셰이더가 내보낸 <code>out</code> 변수를 삼각형 내부의 프래그먼트마다 보간해 준다. 구로우 셰이딩은 정점에서 계산된 <strong>색</strong>을 보간하고, 퐁 셰이딩은 정점의 <strong>법선</strong>을 보간한 뒤 그 보간된 법선으로 프래그먼트에서 조명을 계산한다.</p>
 <div class="table-wrap"><div class="table-caption">표 7.2: 구로우 셰이딩과 퐁 셰이딩의 비교</div><table><tr><th></th><th>구로우 셰이딩</th><th>퐁 셰이딩</th></tr><tr><td>조명 계산 위치</td><td>정점 셰이더</td><td>프래그먼트 셰이더</td></tr><tr><td>보간되는 값</td><td>정점의 색(밝기)</td><td>정점의 법선</td></tr><tr><td>계산 횟수</td><td>정점 수만큼</td><td>픽셀 수만큼</td></tr><tr><td>속도</td><td>빠름</td><td>느림</td></tr><tr><td>하이라이트 품질</td><td>메시가 성기면 깨짐</td><td>매끄러움</td></tr></table></div>
-<p>이 차이가 도드라지는 곳이 바로 정반사 하이라이트이다. 하이라이트는 표면의 좁은 영역에 맺히는데, 구로우 셰이딩에서 하필 그 지점이 정점과 정점 사이에 떨어지면 어느 정점도 하이라이트를 "보지 못한다". 정점에서 계산한 밝기를 보간할 뿐이므로, 삼각형 한가운데 있어야 할 밝은 반점이 통째로 사라지거나 별 모양으로 뭉개진다. 메시가 성길수록 이 결함이 심하다. 퐁 셰이딩은 픽셀마다 법선을 되살려 조명을 계산하므로, 성긴 메시에서도 하이라이트가 제자리에 둥글게 맺힌다. 오늘날 GPU는 충분히 빨라 대부분의 실시간 렌더링이 퐁 셰이딩을 기본으로 쓴다. 이 장의 모든 예제가 퐁 셰이딩인 이유이다.</p>
+<p>이 차이가 도드라지는 곳이 바로 정반사 하이라이트이다. 그림 7.3이 두 방식의 차이를 나타낸다. 하이라이트는 표면의 좁은 영역에 맺히는데, 구로우 셰이딩에서 하필 그 지점이 정점과 정점 사이에 떨어지면 어느 정점도 하이라이트를 "보지 못한다". 정점에서 계산한 밝기를 보간할 뿐이므로, 삼각형 한가운데 있어야 할 밝은 반점이 통째로 사라지거나 별 모양으로 뭉개진다. 메시가 성길수록 이 결함이 심하다. 퐁 셰이딩은 정점의 법선을 프래그먼트마다 보간해 조명을 다시 계산하므로, 성긴 메시에서도 하이라이트가 제자리에 둥글게 맺힌다. 오늘날 GPU는 충분히 빨라 대부분의 실시간 렌더링이 퐁 셰이딩을 기본으로 쓴다. 이 장의 모든 예제가 퐁 셰이딩인 이유이다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch07/ch07_fig01.svg" alt="figure">
+<p><figcaption>그림 7.3: 구로우 셰이딩과 퐁 셰이딩의 차이. 구로우는 정점에서 계산한 색을 삼각형 내부로 보간해, 정점 사이에 맺혀야 할 하이라이트를 놓칠 수 있다. 퐁은 정점의 법선을 보간한 뒤 프래그먼트마다 조명을 계산해 하이라이트를 제자리에 맺는다.</figcaption></figure></p>
 <h3>위도-경도 분할로 구 만들기</h3>
 <p>퐁 셰이딩의 진가는 매끈한 곡면에서 드러난다. 곡면의 대표인 <strong>구</strong>를 정점과 법선으로 만들어 보자. 지구본의 위선과 경선을 떠올리면 된다. 북극에서 남극까지의 <strong class="term-ko">위도</strong><sup class="term">latitude</sup> 각과 한 바퀴 도는 <strong class="term-ko">경도</strong><sup class="term">longitude</sup> 각을 잘게 나누어 격자점을 찍고, 이웃한 격자점 넷을 삼각형 둘로 잇는다. 구의 한 점에서 법선은 중심에서 그 점으로 향하는 방향과 정확히 같으므로, 반지름 \(r\)인 구에서는 <strong>위치를 \(r\)로 나눈 것이 곧 법선</strong>이다. 법선을 따로 계산할 필요 없이 위치에서 바로 얻는다.</p>
 <pre class="line-numbers"><code class="language-javascript">// 위도-경도 분할로 구의 정점과 법선 생성
@@ -717,8 +728,8 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코드 7.4: 빛 방향을 바꾼 정육면체 조명</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch07/ch07_img01.png" alt="figure">
-<p><figcaption>그림 7.1: 실습 7-1 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 7.1과 같은 결과가 나타난다. 빛 방향의 부호를 이리저리 바꾸며 실행해 보면, 밝아지는 면이 광원을 향한 쪽으로 옮겨 다니는 것을 볼 수 있다. 확산 반사의 밝기가 오직 법선과 빛 방향의 내적으로 정해진다는 사실을 눈으로 확인하는 실습이다.</p>
+<p><figcaption>그림 7.4: 실습 7-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 7.4과 같은 결과가 나타난다. 빛 방향의 부호를 이리저리 바꾸며 실행해 보면, 밝아지는 면이 광원을 향한 쪽으로 옮겨 다니는 것을 볼 수 있다. 확산 반사의 밝기가 오직 법선과 빛 방향의 내적으로 정해진다는 사실을 눈으로 확인하는 실습이다.</p>
 <p><strong>실습 7-2</strong>  반질거림 지수가 하이라이트에 미치는 영향을 나란히 비교해 보자. 코드 7.3(퐁 셰이딩 구)을 고쳐, 같은 구를 좌우로 나란히 두 번 그리되 왼쪽은 <code>uShininess = 8</code>, 오른쪽은 <code>uShininess = 128</code>로 그린다. (힌트: <code>uModel</code>을 <code>mat4.fromTranslation</code>으로 좌우로 옮기고, <code>uShininess</code>만 바꾸어 <code>drawArrays</code>를 두 번 호출한다. 두 구가 화면에 들어오도록 카메라를 뒤로 물린다.)</p>
 <p><strong>해답</strong>  코드 7.3의 카메라를 뒤로 물리고, 그리기 부분을 <code>uModel</code>과 <code>uShininess</code>를 바꿔 두 번 호출하도록 고친다. 아래는 그대로 실행할 수 있는 전체 프로그램이다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -859,8 +870,8 @@ gl.uniform1f(uShinLoc, 128.0);
 gl.drawArrays(gl.TRIANGLES, 0, vertexCount);</code></pre><div class="listing-caption">코드 7.5: 반질거림이 다른 두 구</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch07/ch07_img02.png" alt="figure">
-<p><figcaption>그림 7.2: 실습 7-2 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 7.2와 같은 결과가 나타난다. 왼쪽 구는 하이라이트가 크고 뭉툭하게 퍼져 젖은 플라스틱처럼 보이고, 오른쪽 구는 작고 또렷한 점으로 맺혀 광택 나는 금속처럼 보인다. 같은 형상과 같은 재질색이라도 반질거림 지수 하나로 물성이 달라진다.</p>
+<p><figcaption>그림 7.5: 실습 7-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 7.5와 같은 결과가 나타난다. 왼쪽 구는 하이라이트가 크고 뭉툭하게 퍼져 젖은 플라스틱처럼 보이고, 오른쪽 구는 작고 또렷한 점으로 맺혀 광택 나는 금속처럼 보인다. 같은 형상과 같은 재질색이라도 반질거림 지수 하나로 물성이 달라진다.</p>
 <p><strong>실습 7-3</strong>  이 장의 예제는 모두 방향광을 썼다. 이번에는 <strong class="term-ko">점광원</strong><sup class="term">point light</sup>으로 바꾸어 보자. 방향광은 모든 표면에서 빛 방향이 같지만, 점광원은 정해진 위치에 있어 표면점마다 광원을 향하는 방향이 다르다. 코드 7.1의 셰이더를 고쳐, 고정된 <code>uLightDir</code> 대신 점광원 위치 <code>uLightPos</code>에서 빛 방향을 프래그먼트마다 계산한다.</p>
 <p><strong>해답</strong>  정점 셰이더가 월드 위치를 넘기도록 하고(코드 7.2 방식), 프래그먼트 셰이더에서 빛 방향을 표면점마다 구한다.</p>
 <pre class="line-numbers"><code class="language-glsl">// 정점 셰이더: 월드 위치를 함께 넘긴다
@@ -999,8 +1010,8 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코드 7.6: 점광원으로 조명</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch07/ch07_img03.png" alt="figure">
-<p><figcaption>그림 7.3: 실습 7-3 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 7.3과 같은 결과가 나타난다. 점광원을 물체 가까이 두면, 방향광일 때보다 광원을 마주한 부분과 먼 부분의 밝기 차이가 뚜렷해진다. 실제 장면에서는 점광원까지의 거리에 따라 빛이 약해지는 <strong class="term-ko">감쇠</strong><sup class="term">attenuation</sup>까지 더하면 더 사실적이지만, 여기서는 방향 계산이 표면점마다 달라진다는 핵심만 확인하면 충분하다.</p></div></p>
+<p><figcaption>그림 7.6: 실습 7-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 7.6과 같은 결과가 나타난다. 점광원을 물체 가까이 두면, 방향광일 때보다 광원을 마주한 부분과 먼 부분의 밝기 차이가 뚜렷해진다. 실제 장면에서는 점광원까지의 거리에 따라 빛이 약해지는 <strong class="term-ko">감쇠</strong><sup class="term">attenuation</sup>까지 더하면 더 사실적이지만, 여기서는 방향 계산이 표면점마다 달라진다는 핵심만 확인하면 충분하다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">7장 요약</summary><div class="sum-body"><ul>
 <li>물체의 색은 <strong>광원 \(\times\) 재질 \(\times\) 표면 방향</strong>의 상호작용으로 결정된다. 빛이 없으면 색도 없다.</li>
 <li><strong>법선</strong>은 표면에 수직인 단위 벡터로, 표면이 향하는 방향을 나타내며 조명 계산의 주인공이다. 법선을 정점 속성으로 셰이더에 전달한다.</li>

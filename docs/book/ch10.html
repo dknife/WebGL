@@ -81,6 +81,10 @@ requestAnimationFrame(frame);        // 첫 프레임 예약 — 루프 시동</
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">왜 setInterval이 아닌가</span><p>자바스크립트에는 일정 간격으로 함수를 반복 실행하는 <code>setInterval(fn, ms)</code>도 있다. 옛 웹 애니메이션은 실제로 <code>setInterval(render, 16)</code>처럼 작성했지만, 지금은 애니메이션에 쓰지 않는 것이 정석이다. 첫째, 타이머는 모니터의 화면 갱신과 <strong>동기화되지 않는다</strong>. 16ms 타이머와 16.7ms 주사율이 어긋나며 프레임을 건너뛰거나 두 번 그리는 낭비가 생기고, 움직임이 미세하게 떨린다. <code>requestAnimationFrame</code>은 브라우저가 화면 갱신 직전이라는 최적의 순간에 정확히 한 번 불러 주므로 이런 문제가 없다. 둘째, 사용자가 다른 탭을 보고 있을 때 <code>setInterval</code>은 계속 실행되어 배터리를 낭비하지만, <code>requestAnimationFrame</code>은 <strong>보이지 않는 탭에서는 호출이 중단</strong>되어 자원을 아낀다.</p></div>
 <h3>갱신과 그리기  —  루프의 두 단계</h3>
 <p>프레임마다 하는 일은 성격이 다른 두 단계로 나누어 생각하는 것이 좋다. 물체의 위치나 각도 같은 <strong>상태를 바꾸는 갱신</strong>(update) 단계와, 그 상태대로 화면을 <strong>다시 그리는</strong>(draw) 단계이다. 2장에서 첫 삼각형 프로그램을 준비 단계인 <code>init()</code>과 그리기 단계인 <code>render()</code>로 나누어 두었던 것을 기억하는가? 애니메이션 프로그램은 그 구조가 자연스럽게 확장된 것이다. <code>init()</code>은 그대로 한 번 실행되고, 한 번 호출하고 말았던 <code>render()</code> 자리에 "갱신 → 그리기 → 다음 프레임 예약"을 반복하는 프레임 루프가 들어선다.</p>
+<p>그림 10.1은 이 프레임 루프를 도식으로 나타낸 것이다. 갱신 → 그리기 → <code>requestAnimationFrame</code>이 매 프레임 하나의 고리를 이루며 끊임없이 순환하고, 그 고리를 시동하고 이어 가는 것이 마지막 단계의 재예약이다. 뒤 절에서 다룰 마우스나 키보드 같은 입력 이벤트는 이 고리 바깥에서 상태 변수만 바꾸어 놓고, 실제 화면 갱신은 언제나 루프가 전담한다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch10/ch10_fig01.svg" alt="figure">
+<p><figcaption>그림 10.1: 애니메이션 루프  —  갱신·그리기·재예약의 순환</figcaption></figure></p>
 <pre class="line-numbers"><code class="language-javascript">init();                              // 준비: 셰이더, 버퍼 (한 번만)
 function frame() {
     update();                        // 1) 상태 갱신
@@ -450,6 +454,10 @@ canvas.addEventListener('mousemove', (e) =&gt; {
 \mathbf{e} = R \,(\cos p \sin y,\ \ \sin p,\ \ \cos p \cos y)
 \]
 <p>식이 어떻게 나왔는지 뜯어 보자. 먼저 피치가 카메라의 높이를 정한다. 구면의 반지름이 \(R\)이므로 높이는 \(R \sin p\)이고, 이때 카메라를 위에서 내려다본 위치는 원점에서 \(R \cos p\)만큼 떨어져 있다. 이 수평 거리 \(R\cos p\)를 요 각도에 따라 \(x\)와 \(z\) 성분으로 나누면(\(\sin y\), \(\cos y\)) 위의 식이 된다. \(y = 0\), \(p = 0\)이면 \(\mathbf{e} = (0, 0, R)\), 즉 \(+z\)축 위에서 정면을 바라보는 기본 위치이다. 요가 커지면 카메라가 옆으로 돌고, 피치가 커지면 위로 떠오른다.</p>
+<p>그림 10.2은 이 구조를 한눈에 보여 준다. 마우스 드래그의 이동량이 감도를 거쳐 요·피치 각에 누적되고, 두 각이 반지름 \(R\)인 구면 위의 카메라 위치 <code>eye</code>를 정하며, 그 카메라는 늘 중심 물체를 바라본다. 요는 구면을 수평으로 도는 각, 피치는 위아래로 오르내리는 각임을 그림의 두 호에서 확인할 수 있다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch10/ch10_fig02.svg" alt="figure">
+<p><figcaption>그림 10.2: 트랙볼 카메라  —  드래그로 누적한 요·피치가 구면 위 카메라 위치를 정한다</figcaption></figure></p>
 <p>카메라 위치가 정해지면 뷰 행렬은 6장의 <code>lookAt</code> 한 줄이다. 결국 트랙볼 카메라의 상태는 <code>yaw</code>, <code>pitch</code>, <code>radius</code> 세 숫자뿐이고, 우리가 할 일은 마우스 입력으로 이 세 값을 바꾸는 것이 전부이다.</p>
 <ul>
 <li><strong>드래그</strong>  —  이동량 <code>dx</code>, <code>dy</code>에 감도(픽셀당 라디안)를 곱해 <code>yaw</code>, <code>pitch</code>에 누적한다.</li>
@@ -726,8 +734,8 @@ function render(time) {
 requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.5: 슬라이더로 회전 속도 조절</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch10/ch10_img01.png" alt="figure">
-<p><figcaption>그림 10.1: 실습 10-1 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 10.1과 같은 결과가 나타난다. 슬라이더를 오른쪽으로 밀수록 정육면체가 빨리 돈다. 각도를 <code>time * speed</code>로 계산하지 않은 이유를 생각해 보자. 그렇게 하면 슬라이더로 속도를 바꾸는 순간 이미 흐른 시간 전체에 새 속도가 곱해져 정육면체가 갑자기 튄다. 델타 타임으로 <em>조금씩</em> 누적해야 속도를 바꾸어도 현재 각도에서 자연스럽게 이어진다.</p>
+<p><figcaption>그림 10.3: 실습 10-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.3과 같은 결과가 나타난다. 슬라이더를 오른쪽으로 밀수록 정육면체가 빨리 돈다. 각도를 <code>time * speed</code>로 계산하지 않은 이유를 생각해 보자. 그렇게 하면 슬라이더로 속도를 바꾸는 순간 이미 흐른 시간 전체에 새 속도가 곱해져 정육면체가 갑자기 튄다. 델타 타임으로 <em>조금씩</em> 누적해야 속도를 바꾸어도 현재 각도에서 자연스럽게 이어진다.</p>
 <p><strong>실습 10-2</strong>  스페이스바로 애니메이션을 <strong>일시정지</strong>했다가 다시 재생하는 기능을 실습 10-1에 더해 보자. (힌트: <code>keydown</code>에서 <code>e.key === ' '</code>이면 정지 상태 플래그를 뒤집는다. 정지 중에는 각도를 누적하지 않는다.)</p>
 <p><strong>해답</strong>  창(<code>window</code>)의 <code>keydown</code>으로 스페이스바를 받아 정지 플래그를 뒤집고, 정지 중에는 각도 누적만 건너뛴다. 준비 과정은 실습 10-1과 같고 슬라이더 대신 키 입력이 붙는다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -848,8 +856,8 @@ function render(time) {
 requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.6: 스페이스바로 회전 일시정지</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch10/ch10_img02.png" alt="figure">
-<p><figcaption>그림 10.2: 실습 10-2 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 10.2와 같은 결과가 나타난다. 두 가지 함정에 주의하자. 첫째, <strong>정지 중에도</strong> <code>prevTime</code>은 매 프레임 갱신해야 한다. 정지 동안 <code>prevTime</code>을 멈춰 두면, 재생하는 순간 <code>dt</code>가 정지했던 시간만큼 커져 정육면체가 그만큼 확 돌아 버린다. 둘째, 그리기(<code>draw</code>)는 정지 중에도 계속한다. 갱신만 멈추면 화면은 정지 직전 각도로 고정되어 "멈춰 선 정육면체"가 보인다. (웹 에디션에서는 실행 창의 캔버스를 클릭해 포커스를 준 뒤 스페이스바를 눌러 보자.)</p>
+<p><figcaption>그림 10.4: 실습 10-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.4와 같은 결과가 나타난다. 두 가지 함정에 주의하자. 첫째, <strong>정지 중에도</strong> <code>prevTime</code>은 매 프레임 갱신해야 한다. 정지 동안 <code>prevTime</code>을 멈춰 두면, 재생하는 순간 <code>dt</code>가 정지했던 시간만큼 커져 정육면체가 그만큼 확 돌아 버린다. 둘째, 그리기(<code>draw</code>)는 정지 중에도 계속한다. 갱신만 멈추면 화면은 정지 직전 각도로 고정되어 "멈춰 선 정육면체"가 보인다. (웹 에디션에서는 실행 창의 캔버스를 클릭해 포커스를 준 뒤 스페이스바를 눌러 보자.)</p>
 <p><strong>실습 10-3</strong>  5장의 계층 모델링과 이 장의 시간을 결합해, 태양 주위를 도는 행성 애니메이션을 만들어 보자. 가운데 노란 큰 정육면체(태양)를 두고, 작은 파란 정육면체(행성)가 그 둘레를 공전하게 한다. 행성의 모델 행렬은 "공전각 회전 → 궤도 반지름만큼 이동 → 축소"의 합성이다.</p>
 <p><strong>해답</strong>  코드 10.2의 정육면체 버퍼를 그대로 쓰되, 색은 꼭짓점 색 대신 <code>uColor</code> uniform으로 넘긴다(셰이더는 3장 참고). 물체마다 모델 행렬과 색을 새로 지정해 두 번 그린다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -963,8 +971,8 @@ function render(time) {
 requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.7: 공전하는 행성 애니메이션</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch10/ch10_img03.png" alt="figure">
-<p><figcaption>그림 10.3: 실습 10-3 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 10.3과 같은 결과가 나타난다. 행성의 모델 행렬 \(M = R_y(\theta)\, T(1.5, 0, 0)\, S(0.25)\)는 5장에서 배운 변환 합성 그대로이다. 시간에 따라 \(\theta\)만 커지므로 행성이 태양 둘레를 돈다. 여기에 행성 자체의 자전(\(M\) 안에 또 하나의 회전)이나 위성을 붙이면 5장 실습의 태양계가 살아 움직이는 장면이 된다.</p></div></p>
+<p><figcaption>그림 10.5: 실습 10-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.5과 같은 결과가 나타난다. 행성의 모델 행렬 \(M = R_y(\theta)\, T(1.5, 0, 0)\, S(0.25)\)는 5장에서 배운 변환 합성 그대로이다. 시간에 따라 \(\theta\)만 커지므로 행성이 태양 둘레를 돈다. 여기에 행성 자체의 자전(\(M\) 안에 또 하나의 회전)이나 위성을 붙이면 5장 실습의 태양계가 살아 움직이는 장면이 된다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">10장 요약</summary><div class="sum-body"><ul>
 <li>애니메이션은 <strong>매 프레임 장면을 조금 바꾸어 다시 그리는 것</strong>이다. 화면에 표시되는 한 장이 <strong>프레임</strong>, 모니터가 1초에 화면을 갱신하는 횟수가 <strong>주사율</strong>이다.</li>
 <li><code>requestAnimationFrame(frame)</code>은 다음 화면 갱신 때 <code>frame</code>을 한 번 실행하는 일회성 예약이다. <code>frame</code> 안에서 자신을 다시 예약하는 재귀 패턴으로 애니메이션 루프를 만든다.</li>

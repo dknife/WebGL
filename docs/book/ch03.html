@@ -101,8 +101,10 @@ vec3 h = a * 0.5;      // (0.5, 1.0, 1.5) — 스칼라 배</code></pre>
 <h3>정밀도 선언</h3>
 <p>2장의 프래그먼트 셰이더 둘째 줄에 있던 <code>precision mediump float;</code>는 float 계산의 <strong class="term-ko">정밀도</strong><sup class="term">precision</sup>를 지정하는 선언이다. GLSL ES에서는 프래그먼트 셰이더에 float의 기본 정밀도가 정해져 있지 않으므로, <strong>이 선언이 없으면 컴파일 오류가 난다</strong>. <code>mediump</code>(중간 정밀도)는 색 계산에 충분하며 모바일 GPU에서도 빠르게 동작하므로, 이 책에서는 프래그먼트 셰이더에 항상 이 선언을 넣는다. 정점 셰이더는 기본 정밀도가 <code>highp</code>로 정해져 있어 생략할 수 있다.</p>
 <h2 id="sec2">3.2 셰이더의 입력과 출력</h2>
-<p>셰이더 프로그래밍의 핵심은 데이터가 어디서 들어와 어디로 나가는지를 파악하는 것이다. 파이프라인을 따라 데이터가 흐르는 경로를 정리해 보자.</p>
-<div class="center"><div class="table-wrap"><table><tr><th>버퍼(정점 데이터)</th></tr><tr><td>\(\downarrow\)  <code>in</code> (정점 속성)</td></tr><tr><td><strong>정점 셰이더</strong></td></tr><tr><td>\(\downarrow\)  <code>out</code> 변수 + <code>gl_Position</code></td></tr><tr><td>래스터화 (보간)</td></tr><tr><td>\(\downarrow\)  <code>in</code> 변수</td></tr><tr><td><strong>프래그먼트 셰이더</strong></td></tr><tr><td>\(\downarrow\)  <code>out</code> 변수 (색)</td></tr><tr><td>화면 버퍼</td></tr></table></div></div>
+<p>셰이더 프로그래밍의 핵심은 데이터가 어디서 들어와 어디로 나가는지를 파악하는 것이다. 그림 3.1은 파이프라인을 따라 데이터가 흐르는 경로를 나타낸 것이다. 버퍼의 정점 데이터가 <code>in</code> 변수로 정점 셰이더에 들어오고, 정점 셰이더는 <code>gl_Position</code>과 <code>out</code> 변수를 내보낸다. 그 <code>out</code> 값은 래스터화 단계에서 보간된 뒤 프래그먼트 셰이더의 <code>in</code>으로 전달되며, 프래그먼트 셰이더의 <code>out</code>이 최종 색이 되어 화면에 남는다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch03/ch03_fig02.svg" alt="figure">
+<p><figcaption>그림 3.1: 셰이더 데이터 흐름  —  버퍼에서 화면까지 <code>in</code>/<code>out</code> 변수가 흐르는 경로</figcaption></figure></p>
 <h3>정점 셰이더의 입출력</h3>
 <p>정점 셰이더의 <code>in</code> 변수는 2장에서 배운 <strong>정점 속성</strong>이다. 버퍼에 담아 둔 데이터가 <code>layout(location = \(n\))</code> 번호에 따라 정점 하나 분량씩 잘려 들어온다. 출력은 두 갈래이다. 하나는 반드시 기록해야 하는 내장 변수 <code>gl_Position</code>(정점의 최종 위치)이고, 다른 하나는 프로그래머가 자유롭게 선언하는 <code>out</code> 변수들로, 다음 단계로 넘기고 싶은 값(색, 텍스처 좌표 등)을 담는다.</p>
 <pre class="line-numbers"><code class="language-glsl">#version 300 es
@@ -269,7 +271,10 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코�
 <p>실행하면 세 꼭짓점이 각각 빨강·초록·파랑이고, 내부는 세 색이 부드럽게 섞인 그라데이션 삼각형이 나타난다. 그래픽스 입문자라면 누구나 한 번은 그려 보는 유명한 "RGB 삼각형"이다.</p>
 <h3>래스터화가 값을 섞는다  —  보간</h3>
 <p>우리는 색을 3개만 제공했는데 삼각형 내부의 수만 개 프래그먼트가 모두 다른 색을 갖게 되었다. 이 일은 정점 셰이더와 프래그먼트 셰이더 사이의 <strong>래스터화</strong> 단계에서 일어난다. 래스터화는 프래그먼트를 만들어 낼 때, 그 프래그먼트가 삼각형의 세 꼭짓점으로부터 얼마나 떨어져 있는지를 계산하고, 그 <strong>거리 비율에 따라 세 꼭짓점의 <code>out</code> 값을 가중 평균</strong>하여 프래그먼트 셰이더의 <code>in</code> 값으로 넣어 준다. 이것이 <strong class="term-ko">보간</strong><sup class="term">interpolation</sup>이다.</p>
-<p>꼭짓점에 가까운 프래그먼트일수록 그 꼭짓점의 값을 많이 물려받는다. 빨강 꼭짓점 바로 옆은 거의 빨강이고, 삼각형의 무게중심은 세 색이 \(\frac{1}{3}\)씩 섞인 회색빛이 된다. 예를 들어 빨강 \((1,0,0)\) 꼭짓점과 파랑 \((0,0,1)\) 꼭짓점을 잇는 변의 중점에서는 두 값이 반씩 섞인 \((0.5, 0, 0.5)\), 즉 보라색이 나타난다.</p>
+<p>꼭짓점에 가까운 프래그먼트일수록 그 꼭짓점의 값을 많이 물려받는다. 빨강 꼭짓점 바로 옆은 거의 빨강이고, 삼각형의 무게중심은 세 색이 \(\frac{1}{3}\)씩 섞인 회색빛이 된다. 예를 들어 빨강 \((1,0,0)\) 꼭짓점과 파랑 \((0,0,1)\) 꼭짓점을 잇는 변의 중점에서는 두 값이 반씩 섞인 \((0.5, 0, 0.5)\), 즉 보라색이 나타난다. 그림 3.2은 이 RGB 삼각형에서 세 꼭짓점 색이 내부로 퍼지며 섞이는 모습을, 변의 중점과 무게중심의 색과 함께 보여 준다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch03/ch03_fig01.svg" alt="figure">
+<p><figcaption>그림 3.2: 정점 색의 보간  —  세 꼭짓점(빨강·초록·파랑)의 색이 삼각형 내부에서 가중 평균으로 섞인다</figcaption></figure></p>
 <p>보간은 색에만 일어나는 특별한 일이 아니다. 정점 셰이더가 <code>out</code>으로 내보내는 <strong>모든 값</strong>이 같은 방식으로 보간된다. 7장에서는 법선 벡터를 보간하여 매끄러운 조명을 만들고, 8장에서는 텍스처 좌표를 보간하여 이미지를 면에 입힌다. 세 꼭짓점의 정보만으로 면 전체를 채우는 이 메커니즘이 실시간 그래픽스 효율의 핵심 원리이다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p>정점 셰이더의 <code>out</code> 값은 래스터화 단계에서 <strong>프래그먼트의 위치에 따라 가중 평균(보간)</strong>되어 프래그먼트 셰이더의 <code>in</code>으로 전달된다. 정점에만 값을 주면 면 전체가 부드럽게 채워지는 이 원리는 색뿐 아니라 법선, 텍스처 좌표 등 모든 정점 데이터에 적용된다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 3-1</strong>  실습 2-2의 사각형(<code>TRIANGLE_STRIP</code>, 정점 4개)에 정점 색 속성을 추가하여, 네 모서리가 각각 빨강·초록·파랑·노랑인 그라데이션 사각형을 그려 보자.</p>
@@ -340,10 +345,10 @@ gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
 gl.clearColor(0.1, 0.15, 0.25, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT);
 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 3.3: 네 모서리 색이 보간되는 사각형</div></div>
-<p>실행하면 그림 3.1과 같이 네 모서리 색이 안쪽으로 부드럽게 섞인 사각형이 나타난다.</p>
+<p>실행하면 그림 3.3과 같이 네 모서리 색이 안쪽으로 부드럽게 섞인 사각형이 나타난다.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch03/ch03_img01.png" alt="figure">
-<p><figcaption>그림 3.1: 실습 3-1 실행 결과</figcaption></figure></p>
+<p><figcaption>그림 3.3: 실습 3-1 실행 결과</figcaption></figure></p>
 <p><strong>실습 3-2</strong>  옛 데스크톱 그래픽스 강의에서는 슬라이더 위젯 3개로 도형의 RGB 색을 조절하는 예제를 만들곤 했다. 같은 프로그램을 웹으로 만들어 보자. 슬라이더(<code>&lt;input type="range"&gt;</code>) 3개를 만들고, 슬라이더를 움직일 때마다 <code>uColor</code> uniform을 갱신하여 삼각형을 다시 그린다.</p>
 <p><strong>해답</strong>  코드 3.1에 RGB 슬라이더를 더한 완성 프로그램이다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -420,8 +425,8 @@ function render() {
 render();</code></pre><div class="listing-caption">코드 3.4: 슬라이더로 RGB 색 조절</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch03/ch03_img02.png" alt="figure">
-<p><figcaption>그림 3.2: 실습 3-2 실행 결과 (슬라이더 초깃값 상태)</figcaption></figure></p>
-<p>처음 화면은 초깃값 색인 그림 3.2의 진분홍 삼각형이며, 슬라이더를 움직이는 즉시 삼각형 색이 바뀐다. "값이 바뀌면 uniform을 갱신하고 다시 그린다"라는 이 패턴은 10장에서 배울 상호작용 프로그램의 기본 골격이다.</p>
+<p><figcaption>그림 3.4: 실습 3-2 실행 결과 (슬라이더 초깃값 상태)</figcaption></figure></p>
+<p>처음 화면은 초깃값 색인 그림 3.4의 진분홍 삼각형이며, 슬라이더를 움직이는 즉시 삼각형 색이 바뀐다. "값이 바뀌면 uniform을 갱신하고 다시 그린다"라는 이 패턴은 10장에서 배울 상호작용 프로그램의 기본 골격이다.</p>
 <p><strong>실습 3-3</strong>  프래그먼트 셰이더에는 지금 처리 중인 프래그먼트의 화면 픽셀 좌표를 담은 내장 변수 <code>gl_FragCoord</code>가 있다. 정점 색 없이 이 좌표만으로, 화면 왼쪽에서 오른쪽으로 갈수록 검정에서 주황으로 변하는 그라데이션 삼각형을 만들어 보자. (힌트: 캔버스 폭이 600픽셀이라면 <code>gl_FragCoord.x / 600.0</code>은 \(0 \sim 1\) 범위가 된다.)</p>
 <p><strong>해답</strong>  코드 3.1에서 프래그먼트 셰이더만 바꾼 완성 프로그램이다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -477,8 +482,8 @@ gl.clear(gl.COLOR_BUFFER_BIT);
 gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코드 3.5: 프래그먼트 좌표로 계산한 그라데이션 삼각형</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch03/ch03_img03.png" alt="figure">
-<p><figcaption>그림 3.3: 실습 3-3 실행 결과</figcaption></figure></p>
-<p>그림 3.3처럼 삼각형은 왼쪽 끝이 검정, 오른쪽 끝이 주황으로 이어지는 그라데이션을 띤다. 정점 데이터는 그대로인데 색이 프래그먼트의 위치로부터 <strong>계산</strong>되었다. 프래그먼트 셰이더 안에서 색을 만들어 내는 이 발상이 조명(7장)과 각종 특수 효과의 출발점이다.</p></div></p>
+<p><figcaption>그림 3.5: 실습 3-3 실행 결과</figcaption></figure></p>
+<p>그림 3.5처럼 삼각형은 왼쪽 끝이 검정, 오른쪽 끝이 주황으로 이어지는 그라데이션을 띤다. 정점 데이터는 그대로인데 색이 프래그먼트의 위치로부터 <strong>계산</strong>되었다. 프래그먼트 셰이더 안에서 색을 만들어 내는 이 발상이 조명(7장)과 각종 특수 효과의 출발점이다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">3장 요약</summary><div class="sum-body"><ul>
 <li>셰이더의 <code>main()</code>은 <strong>처리 대상 하나마다 한 번씩</strong>, GPU의 수천 개 코어에서 <strong>병렬로</strong> 실행된다. 정점 셰이더는 정점마다, 프래그먼트 셰이더는 프래그먼트마다 실행된다.</li>
 <li>GLSL의 기본 자료형은 벡터(<code>vec2</code>\(\sim\)<code>vec4</code>)와 행렬(<code>mat2</code>\(\sim\)<code>mat4</code>)이다. 성분은 <code>.xyzw</code> 또는 <code>.rgba</code>로 접근하며, 여러 성분을 골라 조합하는 <strong>스위즐링</strong>(<code>p.xy</code>, <code>c.bgr</code>)이 가능하다.</li>

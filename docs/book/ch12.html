@@ -82,6 +82,10 @@
 <li><strong>카메라</strong>(<code>THREE.PerspectiveCamera</code>)  —  장면을 바라보는 시점이다. 6장에서 만든 뷰 행렬과 투영 행렬이 이 객체 안에 들어 있다.</li>
 <li><strong>렌더러</strong>(<code>THREE.WebGLRenderer</code>)  —  장면을 카메라의 시점에서 그려 캔버스에 출력한다. 내부에서 WebGL 컨텍스트를 얻고, 셰이더를 컴파일하고, 버퍼를 채우고, 그리기 명령을 내리는  —  우리가 손으로 하던  —  모든 일을 담당한다.</li>
 </ul>
+<p>그림 12.1은 이 세 객체가 어떻게 맞물리는지 보여 준다. 렌더러가 한가운데에서 장면(그릴 것)과 카메라(시점)를 입력으로 받아, 그 결과를 캔버스에 픽셀로 출력하는 구조이다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch12/ch12_fig02.svg" alt="figure">
+<p><figcaption>그림 12.1: Three.js의 세 구성 요소. 렌더러가 장면을 카메라 시점에서 그려 캔버스에 출력하며, 이 흐름 전체를 <code>render(scene, camera)</code> 한 번의 호출이 가동한다.</figcaption></figure></p>
 <p>세 객체가 만나는 지점이 렌더러의 <code>render()</code> 메서드이다. "이 장면을 이 카메라로 찍어라"라는 한 줄의 명령이 파이프라인 전체를 가동시킨다.</p>
 <pre class="line-numbers"><code class="language-javascript">renderer.render(scene, camera);    // 장면을 카메라 시점에서 그린다</code></pre>
 <h3>첫 예제: 회전하는 정육면체</h3>
@@ -150,7 +154,10 @@ M_{\text{world}} = M_{\text{부모의 부모}} \cdot M_{\text{부모}} \cdot M_{
 <li><code>earthOrbit</code> (태양 자리의 보이지 않는 회전축)  —  지구 메시, 그리고 <code>moonOrbit</code> 그룹</li>
 <li><code>moonOrbit</code> (지구 자리의 회전축)  —  달 메시</li>
 </ul>
-<p><code>earthOrbit</code>을 회전시키면 반지름 4만큼 떨어져 매달린 지구가 태양 주위를 돌고(공전), <code>moonOrbit</code>도 지구와 같은 자리에 매달려 있으므로 함께 돈다. 다시 <code>moonOrbit</code>을 회전시키면 달이 지구 주위를 돈다. 두 회전이 자동으로 합성되어 달은 "지구를 따라 태양을 돌면서 동시에 지구 주위를 도는" 복합 운동을 하게 된다.</p>
+<p>그림 12.2은 이 계층을 트리로 나타낸 것이다. 장면을 뿌리로 하여 메시와 그룹이 부모-자식으로 매달려 있고, 부모의 변환이 자식에게 곱해져 내려간다. <code>earthOrbit</code>을 회전시키면 반지름 4만큼 떨어져 매달린 지구가 태양 주위를 돌고(공전), <code>moonOrbit</code>도 지구와 같은 자리에 매달려 있으므로 함께 돈다. 다시 <code>moonOrbit</code>을 회전시키면 달이 지구 주위를 돈다. 두 회전이 자동으로 합성되어 달은 "지구를 따라 태양을 돌면서 동시에 지구 주위를 도는" 복합 운동을 하게 된다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch12/ch12_fig01.svg" alt="figure">
+<p><figcaption>그림 12.2: 태양-지구-달 장면 그래프. 장면을 뿌리로 메시(그리는 물체)와 그룹(보이지 않는 회전축)이 부모-자식 트리를 이루며, 부모의 변환이 경로를 따라 자식에게 전파되어 최종 세계 변환 \(M_{\text{world}}\)가 된다(5장 계층 모델링과 대응).</figcaption></figure></p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glCanvas'), antialias: true });
 renderer.setSize(600, 400);
@@ -432,8 +439,8 @@ params.forEach((p, i) =&gt; {
 renderer.render(scene, camera);</code></pre><div class="listing-caption">코드 12.5: 금속성·거칠기가 다른 세 구</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch12/ch12_img01.png" alt="figure">
-<p><figcaption>그림 12.1: 실습 12-1 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 12.1과 같은 결과가 나타난다. 카메라는 세 구가 다 보이도록 <code>camera.position.set(0, 1.5, 5)</code>로 조금 물리고, 루프에서는 회전 없이 <code>renderer.render(scene, camera)</code>만 호출한다. 왼쪽 구는 하이라이트가 거의 없이 부드럽게 밝고, 오른쪽 구는 작고 강한 하이라이트가 맺혀 금속처럼 보인다. <code>metalness</code>와 <code>roughness</code> 값을 바꿔 가며 표면 느낌이 어떻게 달라지는지 관찰해 보자.</p>
+<p><figcaption>그림 12.3: 실습 12-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 12.3과 같은 결과가 나타난다. 카메라는 세 구가 다 보이도록 <code>camera.position.set(0, 1.5, 5)</code>로 조금 물리고, 루프에서는 회전 없이 <code>renderer.render(scene, camera)</code>만 호출한다. 왼쪽 구는 하이라이트가 거의 없이 부드럽게 밝고, 오른쪽 구는 작고 강한 하이라이트가 맺혀 금속처럼 보인다. <code>metalness</code>와 <code>roughness</code> 값을 바꿔 가며 표면 느낌이 어떻게 달라지는지 관찰해 보자.</p>
 <p><strong>실습 12-2</strong>  12.2절의 태양계에 <strong>화성</strong>을 추가하자. 지구보다 바깥 궤도를 돌고, 붉은색이며, 지구보다 느리게 공전해야 한다.</p>
 <p><strong>해답</strong>  지구 계층과 똑같은 방법으로 화성용 공전 그룹과 메시를 만들어 장면에 추가하고, 루프에서 그 그룹을 회전시킨다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const renderer = new THREE.WebGLRenderer({
@@ -491,8 +498,8 @@ renderer.setAnimationLoop((time) =&gt; {
 });</code></pre><div class="listing-caption">코드 12.6: 화성을 추가한 태양계</div></div>
 <figure class="fig">
 <img class="gfx" src="img/ch12/ch12_img02.png" alt="figure">
-<p><figcaption>그림 12.2: 실습 12-2 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 12.2와 같은 결과가 나타난다. 화성은 태양(원점)을 중심으로 도는 독립된 행성이므로 <code>earthOrbit</code>이 아니라 <strong>장면</strong>에 직접 추가한다는 점이 핵심이다. 만약 <code>earthOrbit.add(marsOrbit)</code>으로 잘못 매달면 화성이 지구를 따라다니는 이상한 궤도가 된다  —  장면 그래프에서 "무엇을 무엇에 매다는가"가 곧 운동을 결정한다는 사실을 확인할 수 있다. 카메라는 넓어진 궤도가 다 보이도록 조금 물려 준다.</p>
+<p><figcaption>그림 12.4: 실습 12-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 12.4와 같은 결과가 나타난다. 화성은 태양(원점)을 중심으로 도는 독립된 행성이므로 <code>earthOrbit</code>이 아니라 <strong>장면</strong>에 직접 추가한다는 점이 핵심이다. 만약 <code>earthOrbit.add(marsOrbit)</code>으로 잘못 매달면 화성이 지구를 따라다니는 이상한 궤도가 된다  —  장면 그래프에서 "무엇을 무엇에 매다는가"가 곧 운동을 결정한다는 사실을 확인할 수 있다. 카메라는 넓어진 궤도가 다 보이도록 조금 물려 준다.</p>
 <p><strong>실습 12-3</strong>  12.4절의 제품 뷰어에 <strong>부품 색 변경 기능</strong>을 넣자. 화면 아래에 버튼 몇 개를 만들고, 버튼을 누르면 로봇의 몸통과 머리 색이 바뀌게 한다.</p>
 <p><strong>해답</strong>  코드 12.4의 맨 끝에 다음을 덧붙인다. 재질의 <code>color</code> 속성만 교체하면 되므로 메시를 다시 만들 필요가 없다. (<code>body</code>와 <code>head</code>는 <code>part()</code>가 돌려준 메시를 받아 둔 변수이다.)</p>
 <pre class="line-numbers"><code class="language-javascript">// ----- 몸통 색을 바꾸는 버튼들 -----

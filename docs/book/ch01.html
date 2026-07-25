@@ -92,13 +92,17 @@
 <li><strong>프래그먼트 처리</strong>: 각 프래그먼트의 최종 색을 계산한다. 이 단계는 <strong class="term-ko">프래그먼트 셰이더</strong><sup class="term">fragment shader</sup>가 담당하며, 조명 계산과 텍스처 적용이 주로 여기서 일어난다.</li>
 <li><strong>출력 병합</strong>: 깊이 검사 등을 거쳐 최종 색을 화면 버퍼에 기록한다.</li>
 </ol>
+<p>그림 1.2은 이 흐름을 도식으로 나타낸 것이다. 정점 데이터가 왼쪽에서 들어와 여러 단계를 거쳐 오른쪽 화면에 도달하며, 카퍼 색으로 표시한 정점 셰이더와 프래그먼트 셰이더가 프로그래머가 직접 작성하는 단계이다.</p>
+<figure class="fig">
+<img class="tikz" src="img/fig/ch01/ch01_fig01.svg" alt="figure">
+<p><figcaption>그림 1.2: 렌더링 파이프라인</figcaption></figure></p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">셰이더가 왜 중요할까</span><p>과거의 그래픽스 API는 파이프라인의 동작이 고정되어 있어 정해진 방식으로만 그림을 그릴 수 있었다. 현대 그래픽스에서는 정점 처리와 프래그먼트 처리 단계를 프로그래머가 직접 작성한 프로그램, 즉 <strong>셰이더</strong>로 대체한다. 셰이더를 어떻게 작성하느냐에 따라 만화풍 렌더링부터 사실적인 금속 질감까지 무한한 표현이 가능해진다. 셰이더 작성법은 3장에서 본격적으로 다룬다.</p></div>
 <h3>실시간 렌더링과 오프라인 렌더링</h3>
 <p>렌더링은 계산에 쓸 수 있는 시간에 따라 크게 두 갈래로 나뉜다. 영화나 애니메이션처럼 한 장면을 미리 오랜 시간에 걸쳐 계산하는 방식을 <strong class="term-ko">오프라인 렌더링</strong><sup class="term">offline rendering</sup>이라고 한다. 한 프레임을 그리는 데 몇 분에서 몇 시간을 들일 수 있으므로, 빛의 반사와 굴절을 정교하게 추적하여 사진과 구별하기 어려운 결과를 얻는다.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch01/ch01_img02.png" alt="figure">
-<p><figcaption>그림 1.2: 오프라인 렌더링으로 만든 사실적 이미지</figcaption></figure></p>
-<p>그림 1.2은 유리잔의 투명함과 반사, 그림자를 정교하게 계산한 오프라인 렌더링의 예이다. <span class="fn">(Gilles Tran, Public domain, via Wikimedia Commons.)</span> 반면 게임처럼 사용자의 조작에 즉각 반응해야 하는 콘텐츠는 초당 수십 장의 화면을 <em>그 자리에서</em> 만들어 내야 한다. 이렇게 정해진 짧은 시간 안에 화면을 생성하는 방식을 <strong class="term-ko">실시간 렌더링</strong><sup class="term">real-time rendering</sup>이라고 한다.</p>
+<p><figcaption>그림 1.3: 오프라인 렌더링으로 만든 사실적 이미지</figcaption></figure></p>
+<p>그림 1.3은 유리잔의 투명함과 반사, 그림자를 정교하게 계산한 오프라인 렌더링의 예이다. <span class="fn">(Gilles Tran, Public domain, via Wikimedia Commons.)</span> 반면 게임처럼 사용자의 조작에 즉각 반응해야 하는 콘텐츠는 초당 수십 장의 화면을 <em>그 자리에서</em> 만들어 내야 한다. 이렇게 정해진 짧은 시간 안에 화면을 생성하는 방식을 <strong class="term-ko">실시간 렌더링</strong><sup class="term">real-time rendering</sup>이라고 한다.</p>
 <p>WebGL은 바로 이 <strong>실시간 렌더링</strong>을 위한 기술이다. 오프라인 렌더링만큼의 사실성을 한 프레임에 담기는 어렵지만, GPU의 병렬 처리 능력을 활용해 매끄러운 상호작용을 제공한다. 이 책이 다루는 대상도 실시간 렌더링이며, 앞서 살펴본 렌더링 파이프라인은 이 실시간 처리를 위해 설계된 구조이다. 다만 하드웨어와 알고리즘이 발전하면서 두 갈래의 경계는 점점 좁아지고 있다.</p>
 <h2 id="sec2">1.2 컴퓨터 그래픽스의 역사</h2>
 <p>WebGL을 배우기에 앞서, 오늘날의 실시간 3차원 그래픽스가 어떤 길을 거쳐 왔는지 짚어 보자. 그래픽스의 역사는 컴퓨터의 역사와 나란히 흘러왔으며, 지금 우리가 당연하게 쓰는 화소, 셰이딩, 텍스처, GPU 같은 개념들은 모두 지난 반세기 동안 한 조각씩 발명되어 쌓인 것이다. 그 흐름의 끝에 우리가 배울 WebGL이 자리한다.</p>
@@ -110,10 +114,10 @@
 <p>1970년대에 접어들면서 화면을 규칙적인 격자로 나누고 각 칸의 색을 지정하는 <strong class="term-ko">래스터 그래픽스</strong><sup class="term">raster graphics</sup>가 표준으로 자리 잡았다. 이 격자의 한 칸, 즉 색을 담는 최소 단위가 바로 <strong class="term-ko">화소</strong><sup class="term">pixel</sup>이다.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch01/ch01_img03.png" alt="figure">
-<p><figcaption>그림 1.3: 화소로 표현한 그림</figcaption></figure></p>
-<p>그림 1.3처럼 래스터 그래픽스에서는 모든 그림이 화소의 모임으로 표현된다. <span class="fn">(Andreas -horn- Hornig, CC BY-SA 2.5, via Wikimedia Commons.)</span> 화소 단위로 색을 채울 수 있게 되면서 면을 칠하고 음영을 표현하는 일이 수월해졌고, 사실적인 이미지 생성의 토대가 마련되었다.</p>
+<p><figcaption>그림 1.4: 화소로 표현한 그림</figcaption></figure></p>
+<p>그림 1.4처럼 래스터 그래픽스에서는 모든 그림이 화소의 모임으로 표현된다. <span class="fn">(Andreas -horn- Hornig, CC BY-SA 2.5, via Wikimedia Commons.)</span> 화소 단위로 색을 채울 수 있게 되면서 면을 칠하고 음영을 표현하는 일이 수월해졌고, 사실적인 이미지 생성의 토대가 마련되었다.</p>
 <p>이 시대의 무대는 단연 미국 유타 대학이었다. 서덜랜드와 데이비드 에번스가 이끈 유타 대학의 연구실에서, 오늘날까지 쓰이는 핵심 알고리즘들이 잇달아 태어났다. 면을 부드럽게 칠하는 <strong class="term-ko">구로 셰이딩</strong><sup class="term">Gouraud shading</sup>(1971)과 반질거리는 하이라이트까지 표현하는 <strong class="term-ko">퐁 셰이딩</strong><sup class="term">Phong shading</sup>(1973)이 이곳에서 고안되었다. 뒷면을 가리는 물체를 올바르게 처리하는 <strong class="term-ko">깊이 버퍼</strong><sup class="term">depth buffer</sup>와 표면에 이미지를 입히는 <strong class="term-ko">텍스처 매핑</strong><sup class="term">texture mapping</sup>은 훗날 픽사를 공동 창업하는 에드윈 캣멀이 1974년에 내놓았다. 그리고 1975년, 마틴 뉴웰이 만든 유타 주전자(그림 1.1)가 이 연구실에서 탄생해 그래픽스의 상징이 되었다. 이 시기에 컴퓨터 그래픽스의 대표 학회인 SIGGRAPH도 처음 열렸다(1974).</p>
-<p>한편 빛의 경로를 한 줄기씩 추적해 반사와 그림자를 사실적으로 그려 내는 <strong class="term-ko">광선 추적법</strong><sup class="term">ray tracing</sup>의 이론은 1968년 아서 아펠이 제시했고, 1980년 터너 휘티드가 반사와 굴절을 재귀적으로 따라가는 방식으로 발전시켰다. 계산량이 막대해 당시에는 실시간으로 쓸 수 없었지만, 오늘날 영화 수준의 사실적 영상을 만드는 오프라인 렌더링(그림 1.2)의 근간이 되었다.</p>
+<p>한편 빛의 경로를 한 줄기씩 추적해 반사와 그림자를 사실적으로 그려 내는 <strong class="term-ko">광선 추적법</strong><sup class="term">ray tracing</sup>의 이론은 1968년 아서 아펠이 제시했고, 1980년 터너 휘티드가 반사와 굴절을 재귀적으로 따라가는 방식으로 발전시켰다. 계산량이 막대해 당시에는 실시간으로 쓸 수 없었지만, 오늘날 영화 수준의 사실적 영상을 만드는 오프라인 렌더링(그림 1.3)의 근간이 되었다.</p>
 <h3>하드웨어 가속과 그래픽 처리 장치</h3>
 <p>1980년대에 개인용 컴퓨터가 보급되면서, 그래픽 처리를 전담하는 별도의 하드웨어가 등장하기 시작했다. 중앙처리장치(CPU)가 모든 계산을 도맡는 대신, 화면 출력과 그리기를 전문으로 처리하는 칩을 두어 성능을 끌어올린 것이다. 이것이 오늘날 <strong class="term-ko">그래픽 처리 장치</strong><sup class="term">graphics processing unit</sup>, 즉 GPU의 조상이다.</p>
 <figure class="fig">
@@ -121,15 +125,15 @@
 <img class="gfx" src="img/ch01/ch01_img05.png" alt="figure">
   
 
-<p><figcaption>그림 1.4: 아타리의 ANTIC 칩</figcaption></figure></p>
-<p>그림 1.4의 왼쪽은 1980년대 아케이드 게임과 가정용 컴퓨터에 쓰인 아타리의 그래픽 칩이고, <span class="fn">(Rod Castler, CC BY-SA 3.0, via Wikimedia Commons.)</span> 오른쪽은 개인용 컴퓨터를 위한 최초의 GPU로 꼽히는 NEC의 μPD7220이다. <span class="fn">(Drahtlos, CC BY-SA 4.0, via Wikimedia Commons.)</span> 이런 전용 하드웨어와 함께, 화면 전체의 색을 메모리에 담아 두는 <strong class="term-ko">프레임버퍼</strong><sup class="term">frame buffer</sup> 방식이 자리 잡으면서 화면에 도형과 문자를 빠르게 그릴 수 있게 되었다.</p>
+<p><figcaption>그림 1.5: 아타리의 ANTIC 칩</figcaption></figure></p>
+<p>그림 1.5의 왼쪽은 1980년대 아케이드 게임과 가정용 컴퓨터에 쓰인 아타리의 그래픽 칩이고, <span class="fn">(Rod Castler, CC BY-SA 3.0, via Wikimedia Commons.)</span> 오른쪽은 개인용 컴퓨터를 위한 최초의 GPU로 꼽히는 NEC의 μPD7220이다. <span class="fn">(Drahtlos, CC BY-SA 4.0, via Wikimedia Commons.)</span> 이런 전용 하드웨어와 함께, 화면 전체의 색을 메모리에 담아 두는 <strong class="term-ko">프레임버퍼</strong><sup class="term">frame buffer</sup> 방식이 자리 잡으면서 화면에 도형과 문자를 빠르게 그릴 수 있게 되었다.</p>
 <p>이 무렵 컴퓨터 그래픽스는 처음으로 대중 앞에 실력을 드러냈다. 1982년 영화 《트론》이 컴퓨터로 만든 영상을 본격적으로 사용했고, 같은 해 《스타 트렉 2》에는 온전히 컴퓨터 그래픽스만으로 만든 장면이 처음 등장했다. 상상 속에서나 가능하던 장면을 계산으로 만들어 낼 수 있음을 보여 준 사건이었다.</p>
 <h3>실시간 그래픽스와 OpenGL, 그리고 WebGL</h3>
 <p>1990년대는 GPU가 컴퓨터 그래픽스를 혁명적으로 바꾼 시기이다. 개인용 컴퓨터에도 고성능 GPU가 표준으로 탑재되면서, 텍스처 매핑과 조명 계산 같은 무거운 작업이 실시간으로 가능해졌다. 이 시기에 실시간 그래픽스의 사실상 산업 표준이 되는 <strong class="term-ko">OpenGL</strong><sup class="term">Open Graphics Library</sup>이 등장했다(1992).</p>
 <figure class="fig">
 <img class="gfx" src="img/ch01/ch01_img06.png" alt="figure">
-<p><figcaption>그림 1.5: 실리콘 그래픽스 사의 워크스테이션</figcaption></figure></p>
-<p>OpenGL 표준을 주도한 회사는 그림 1.5과 같은 고성능 그래픽 워크스테이션을 만들던 실리콘 그래픽스(Silicon Graphics)였다. <span class="fn">(Afrank99, CC BY-SA 2.0, via Wikimedia Commons.)</span> OpenGL은 특정 하드웨어나 운영체제에 얽매이지 않는 개방형 표준을 지향했기에, 다양한 시스템에서 같은 방식으로 3차원 그래픽스를 구현할 수 있게 해 주었다. 이 표준 위에서 《둠》(1993)과 《퀘이크》(1996) 같은 실시간 3차원 게임이 꽃을 피웠고, 1995년에는 픽사가 전부 컴퓨터 그래픽스로 만든 최초의 장편 영화 《토이 스토리》를 선보이며 오프라인 렌더링의 상업적 가치를 입증했다.</p>
+<p><figcaption>그림 1.6: 실리콘 그래픽스 사의 워크스테이션</figcaption></figure></p>
+<p>OpenGL 표준을 주도한 회사는 그림 1.6과 같은 고성능 그래픽 워크스테이션을 만들던 실리콘 그래픽스(Silicon Graphics)였다. <span class="fn">(Afrank99, CC BY-SA 2.0, via Wikimedia Commons.)</span> OpenGL은 특정 하드웨어나 운영체제에 얽매이지 않는 개방형 표준을 지향했기에, 다양한 시스템에서 같은 방식으로 3차원 그래픽스를 구현할 수 있게 해 주었다. 이 표준 위에서 《둠》(1993)과 《퀘이크》(1996) 같은 실시간 3차원 게임이 꽃을 피웠고, 1995년에는 픽사가 전부 컴퓨터 그래픽스로 만든 최초의 장편 영화 《토이 스토리》를 선보이며 오프라인 렌더링의 상업적 가치를 입증했다.</p>
 <p>1999년 엔비디아가 내놓은 지포스 256은 변환과 조명 계산까지 하드웨어로 처리하며 "GPU"라는 이름을 대중화했다. 이어 2000년대 초, GPU는 고정된 기능만 수행하던 장치에서 프로그래머가 동작을 직접 정의할 수 있는 <strong class="term-ko">프로그램 가능한</strong><sup class="term">programmable</sup> 장치로 진화했다. 이로써 셰이더를 작성해 무한한 표현을 만들어 내는 오늘날의 그래픽스가 열렸으며, 이 셰이더를 작성하는 언어가 바로 3장에서 배울 GLSL이다.</p>
 <p>그리고 이 OpenGL을 모바일·임베디드 기기로 옮긴 OpenGL ES가 다시 웹 브라우저로 들어와 <strong class="term-ko">WebGL</strong><sup class="term">Web Graphics Library</sup>이 되었다. WebGL 1.0은 2011년, 이 책이 기준으로 삼는 WebGL 2.0은 2017년에 표준이 되었다. 반세기에 걸친 그래픽스의 여정이, 이제 브라우저만 열면 누구나 손댈 수 있는 기술로 우리 앞에 도착한 것이다.</p>
 <div class="table-wrap"><div class="table-caption">표 1.1: 컴퓨터 그래픽스의 주요 이정표</div><table><tr><th>연도</th><th>사건</th></tr><tr><td>1963</td><td>서덜랜드의 스케치패드  —  상호작용 그래픽스의 출발</td></tr><tr><td>1971</td><td>구로 셰이딩 (유타 대학)</td></tr><tr><td>1973</td><td>퐁 셰이딩 (유타 대학)</td></tr><tr><td>1974</td><td>깊이 버퍼·텍스처 매핑 (캣멀), SIGGRAPH 창설</td></tr><tr><td>1975</td><td>유타 주전자 (마틴 뉴웰)</td></tr><tr><td>1980</td><td>재귀적 광선 추적법 (휘티드)</td></tr><tr><td>1992</td><td>OpenGL 표준 발표 (실리콘 그래픽스)</td></tr><tr><td>1995</td><td>최초의 전편 CG 영화 《토이 스토리》</td></tr><tr><td>1999</td><td>엔비디아 지포스 256, "GPU" 용어 대중화</td></tr><tr><td>2000년대</td><td>프로그램 가능한 셰이더의 등장</td></tr><tr><td>2011</td><td>WebGL 1.0 표준</td></tr><tr><td>2017</td><td>WebGL 2.0 표준 (이 책의 기준)</td></tr></table></div>
