@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>표지·머릿말 — WebGL 3D 그래픽스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="book.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="home" href="../index.html">&#8962; 홈</a>
+  <span class="book-title">WebGL 3D 그래픽스</span>
+  <span class="ch-indicator">표지·머릿말</span>
+  <button class="nav-toggle" onclick="document.body.classList.toggle('nav-open')">목차</button>
+</header>
+<div class="layout">
+<nav class="sidebar">
+<div class="nav-ch current"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
+<div class="nav-part">Part I. WebGL 시작</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
+</div>
+<div class="nav-part">Part II. 기하 변환과 카메라</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
+</div>
+<div class="nav-part">Part III. 실감 렌더링</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
+</div>
+<div class="nav-part">Part IV. 한 걸음 더</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+</nav>
+<main class="content">
+<div class="cover-wrap">
+  <img class="cover" src="img/cover.png" alt="WebGL 3D 그래픽스 표지">
+</div>
+<div class="chapter-head">
+  <div class="ch-label">PREFACE</div>
+  <h1>머릿말</h1>
+</div>
+<p>이 책 <strong>『WebGL 3D 그래픽스』</strong>는 3차원 컴퓨터 그래픽스를 웹 브라우저에서 직접 실행해 보며 배우고자 하는 독자를 위해 준비하였습니다. 3차원 그래픽스는 게임, 영화, 가상현실, 디지털 트윈, 데이터 시각화에 이르기까지 현대 소프트웨어의 핵심 기술로 자리 잡았지만, 이를 배우려면 복잡한 개발 환경을 설치하고 낯선 수학과 씨름해야 한다는 부담이 앞서곤 합니다. WebGL은 이 부담을 크게 덜어 줍니다. 웹 브라우저만 있으면 어떤 운영체제에서든 그래픽스 프로그램을 작성하고 즉시 실행해 볼 수 있기 때문입니다.</p>
+<p>『WebGL 3D 그래픽스』는 3차원 그래픽스의 핵심 이론과 WebGL 프로그래밍 기법을 12개 장으로 정리하였습니다. 렌더링 파이프라인과 셰이더, 기하 변환과 카메라, 조명과 텍스처에 이르는 그래픽스의 근간을 다지고, 마지막 IV부에서는 애니메이션과 상호작용, 고급 렌더링 기법, 그리고 Three.js를 이용한 실전 프로젝트까지 나아갑니다. 필요한 수학은 해당 개념이 처음 쓰이는 곳에서 그때그때 설명하여, 선형대수를 미리 공부하지 않은 독자도 따라올 수 있도록 하였습니다.</p>
+<p>이 책의 모든 예제는 웹에서 바로 실행해 볼 수 있습니다. 이 책의 웹 에디션(https://dknife.github.io/WebGL/)에서는 각 예제 코드 바로 아래에서 <strong>실행 결과가 렌더링되는 모습</strong>을 직접 확인하고, 코드를 고쳐 가며 실험할 수 있습니다. 그래픽스는 눈으로 결과를 확인할 때 가장 빠르게 배울 수 있는 분야입니다. 예제를 실행해 보고, 값을 바꾸어 보고, 화면이 어떻게 달라지는지 관찰하는 과정을 반복하시기 바랍니다.</p>
+<p>끝으로, 이 책이 나오기까지 도움을 주신 모든 분께 깊이 감사드립니다.</p>
+<p class="signoff">저자 일동</p>
+<h2>이 책의 구성</h2>
+
+<h3>전체 구성</h3>
+<div class="box construct"><p>이 책은 <strong>4개의 파트</strong>, <strong>12개의 장</strong>으로 이루어져 있습니다.</p>
+<ul>
+<li>I부  WebGL 시작 (1–3장) 
+    3차원 그래픽스의 기본 개념과 렌더링 파이프라인, 첫 WebGL 프로그램, 셰이더와 GLSL을 배웁니다.</li>
+<li>II부  기하 변환과 카메라 (4–6장) 
+    그래픽스를 위한 벡터·행렬, 이동·회전·크기 변환, 카메라와 투영을 학습합니다.</li>
+<li>III부  실감 렌더링 (7–9장) 
+    조명과 셰이딩, 텍스처 매핑, 3차원 메시와 모델을 다룹니다.</li>
+<li>IV부  한 걸음 더 (10–12장) 
+    애니메이션과 상호작용, 고급 렌더링 기법, Three.js 실전 프로젝트를 다룹니다.</li>
+</ul></div>
+<h3>각 장의 구성</h3>
+<div class="box construct"><p>모든 장은 다음과 같은 일관된 흐름으로 구성되어 있습니다.</p>
+<ul>
+<li>챕터 도입부 
+    장식 숫자와 그림, 그리고 해당 장을 학습한 뒤 할 수 있게 될 목표를 정리한 이 장을 마치면 박스로 구성됩니다.</li>
+<li>본문 
+    개념 설명, 코드 예제, 실행 결과를 통해 3차원 그래픽스 이론과 WebGL 프로그래밍을 단계적으로 학습합니다.</li>
+<li>이 장의 실습 
+    장의 마지막에 실습 문제를 모아 제시하며, 해답 코드를 함께 수록하여 자가 학습이 가능하도록 하였습니다.</li>
+<li>요약 
+    해당 장에서 배운 핵심 내용을 항목별로 정리하여 복습에 활용할 수 있습니다.</li>
+<li>연습문제 
+    배운 내용을 스스로 점검할 수 있는 다양한 유형의 문제를 제공합니다.</li>
+</ul></div>
+<h3>웹 에디션과 예제 실행</h3>
+<div class="box construct"><p>이 책의 웹 에디션은 <strong>https://dknife.github.io/WebGL/</strong> 에서 서비스됩니다. 웹 에디션의 각 코드 예제에는 [실행] 버튼이 붙어 있어, 예제 바로 아래에 WebGL 캔버스가 열리고 실행 결과가 렌더링됩니다. 코드를 수정하여 다시 실행할 수도 있으므로, 값을 바꾸어 가며 개념을 실험적으로 확인해 보시기 바랍니다.</p></div>
+<h3>15주 학습 계획</h3>
+<div class="box construct"><p>이 책은 한 학기(15주) 강의에 맞추어 설계하였습니다. 8주차에 중간 점검을 두고, 12장 실전 프로젝트에 2주를 배정하였습니다.</p>
+<div class="center"><div class="table-wrap"><table><tr><th> 주</th><th> 학습 내용</th><th> 비고</th></tr><tr><td>1</td><td>1장  3차원 그래픽스와 WebGL 소개</td><td>렌더링 파이프라인 개관</td></tr><tr><td>2</td><td>2장  첫 번째 WebGL 프로그램</td><td>캔버스, 컨텍스트, 삼각형</td></tr><tr><td>3</td><td>3장  셰이더와 GLSL</td><td>정점·프래그먼트 셰이더</td></tr><tr><td>4</td><td>4장  그래픽스를 위한 벡터와 행렬</td><td>벡터 연산, 행렬 곱</td></tr><tr><td>5</td><td>5장  기하 변환</td><td>이동·회전·크기, 동차좌표</td></tr><tr><td>6</td><td>6장  카메라와 투영</td><td>뷰 행렬, 원근 투영</td></tr><tr><td>7</td><td>7장  조명과 셰이딩</td><td>퐁 조명 모델</td></tr><tr><td>8</td><td> 중간 점검</td><td>1–7장 복습 및 중간고사</td></tr><tr><td>9</td><td>8장  텍스처 매핑</td><td>텍스처 좌표, 필터링</td></tr><tr><td>10</td><td>9장  3차원 메시와 모델</td><td>인덱스 버퍼, OBJ 모델</td></tr><tr><td>11</td><td>10장  애니메이션과 상호작용</td><td>requestAnimationFrame</td></tr><tr><td>12</td><td>11장  고급 렌더링 기법</td><td>프레임버퍼, 그림자</td></tr><tr><td>13</td><td>12장  Three.js와 실전 프로젝트 (전반)</td><td>Three.js 기초</td></tr><tr><td>14</td><td>12장  Three.js와 실전 프로젝트 (후반)</td><td>프로젝트 완성</td></tr><tr><td>15</td><td> 기말 점검</td><td>8–12장 복습 및 기말고사</td></tr></table></div></div>
+<p>무엇보다 중요한 것은 매 장의 예제 코드를 직접 실행하고 수정해 보는 것입니다. 그래픽스는 화면으로 결과를 확인하며 배우는 분야이므로, 웹 에디션의 실행 기능을 적극 활용하시기 바랍니다.</p></div>
+<div class="pager-row"><span></span>
+<a class="pager next" href="ch01.html">1장 &rarr;</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL 3D 그래픽스</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    /* ===== Sutera 디자인 시스템 (알짜파이썬/DESIGN.md) ===== */
+    :root {
+      --bg: #F8F8F8;
+      --bg-2: #EDEDED;
+      --white: #FFFFFF;
+      --text: #222222;
+      --text-2: #313131;
+      --text-light: #767676;
+      --accent: #FA5D29;
+      --cyan: #0693E3;
+      --mint: #7BDCB5;
+      --yellow: #FFF083;
+      --border: #E4E4E4;
+      --btn: #222222;
+      --btn-hover: #383838;
+      --radius: 8px;
+      --radius-lg: 16px;
+      --ease: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter Tight', 'Pretendard', 'Noto Sans KR',
+        -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---- fixed header ---- */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; height: 54px;
+      display: flex; align-items: center; gap: 1.6rem;
+      padding: 0 2rem;
+      background: rgba(248,248,248,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+    .header .logo {
+      font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em;
+      color: var(--text); text-decoration: none;
+    }
+    .header .logo em { color: var(--accent); font-style: normal; }
+    .header nav { margin-left: auto; display: flex; gap: 1.4rem; align-items: center; }
+    .header nav a {
+      color: var(--text-2); text-decoration: none; font-size: 0.88rem;
+      font-weight: 500; transition: color 0.3s ease;
+    }
+    .header nav a:hover { color: var(--accent); }
+    .header nav a.gh {
+      background: var(--btn); color: #fff;
+      padding: 0.35rem 1rem; border-radius: var(--radius);
+      transition: background 0.3s ease;
+    }
+    .header nav a.gh:hover { background: var(--btn-hover); color: #fff; }
+
+    /* ---- hero ---- */
+    .hero {
+      padding: 150px 2rem 60px;
+      max-width: 1300px; margin: 0 auto;
+    }
+    .hero-grid {
+      display: flex; gap: 3.5rem; align-items: center;
+      justify-content: space-between; flex-wrap: wrap;
+    }
+    .hero-text { flex: 1 1 480px; min-width: 0; }
+    .hero-cover { flex: 0 1 340px; max-width: 340px; }
+    .hero-cover img {
+      display: block; width: 100%; border-radius: 6px;
+      box-shadow: 18px 22px 44px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
+      transition: transform 0.4s var(--ease), box-shadow 0.4s ease;
+    }
+    .hero-cover img:hover {
+      transform: translateY(-6px) rotate(-1deg);
+      box-shadow: 20px 28px 56px rgba(0,0,0,0.26), 0 2px 8px rgba(0,0,0,0.10);
+    }
+    .hero .eyebrow {
+      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .hero h1 {
+      font-size: clamp(42px, 7vw, 96px);
+      font-weight: 800; line-height: 1.08; letter-spacing: -0.04em;
+    }
+    .hero h1 .accent { color: var(--accent); }
+    .hero .subtitle {
+      font-size: clamp(16px, 2vw, 20px); color: var(--text-light);
+      margin: 1.4rem 0 0.9rem;
+    }
+    .hero .authors { font-size: 1.02rem; color: var(--text-2); margin-bottom: 1.6rem; }
+    .hero .authors strong { font-weight: 700; }
+    .hero .badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2.2rem; }
+    .hero .badge {
+      font-size: 0.8rem; font-weight: 600; color: var(--text-2);
+      background: var(--bg-2); border-radius: 20px; padding: 0.3rem 0.95rem;
+    }
+    .cta-row { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+    .cta {
+      display: inline-flex; align-items: center; height: 48px; padding: 0 24px;
+      border-radius: var(--radius); font-weight: 600; font-size: 0.95rem;
+      text-decoration: none; transition: all 0.3s ease;
+    }
+    .cta.primary { background: var(--btn); color: #fff; }
+    .cta.primary:hover { background: var(--btn-hover); }
+    .cta.orange { background: var(--accent); color: #fff; }
+    .cta.orange:hover { filter: brightness(0.92); }
+    .cta.ghost { border: 1.5px solid var(--border); color: var(--text-2); background: var(--white); }
+    .cta.ghost:hover { border-color: var(--text); color: var(--text); }
+
+    /* ---- features ---- */
+    .section { max-width: 1300px; margin: 0 auto; padding: 60px 2rem; }
+    .section h2 {
+      font-size: clamp(26px, 3.5vw, 40px); font-weight: 800;
+      letter-spacing: -0.03em; margin-bottom: 2rem;
+    }
+    .section h2 em { color: var(--accent); font-style: normal; }
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .feat {
+      background: var(--white); border-radius: var(--radius-lg);
+      padding: 1.8rem 1.6rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: transform 0.3s var(--ease), box-shadow 0.3s ease;
+    }
+    .feat:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+    .feat .icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; margin-bottom: 1rem;
+    }
+    .feat h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feat p { font-size: 0.88rem; color: var(--text-light); }
+
+    /* ---- curriculum ---- */
+    .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 20px; }
+    .part-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      padding: 1.6rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .part-card .part-label {
+      font-size: 0.78rem; font-weight: 800; letter-spacing: 0.14em;
+      text-transform: uppercase; margin-bottom: 0.3rem;
+    }
+    .part-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.9rem; }
+    .part-card ol { list-style: none; }
+    .part-card li { margin-bottom: 0.45rem; }
+    .part-card a {
+      display: flex; gap: 0.6rem; align-items: baseline;
+      color: var(--text-2); text-decoration: none; font-size: 0.9rem;
+      padding: 0.28rem 0.5rem; border-radius: 6px;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    .part-card a:hover { background: var(--bg); color: var(--text); }
+    .part-card .num {
+      font-weight: 800; font-size: 0.8rem; color: var(--text-light);
+      min-width: 1.4em; text-align: right;
+    }
+
+    /* ---- run demo note ---- */
+    .runnote {
+      background: var(--text); color: #EDEDED; border-radius: var(--radius-lg);
+      padding: 2.4rem 2rem; display: flex; gap: 2rem; align-items: center;
+      flex-wrap: wrap;
+    }
+    .runnote h3 { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .runnote p { font-size: 0.92rem; color: #C9C9C9; max-width: 46em; }
+    .runnote .cta { margin-left: auto; }
+
+    /* ---- footer ---- */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.2rem 2rem; text-align: center;
+      font-size: 0.85rem; color: var(--text-light);
+    }
+    footer a { color: var(--text-2); }
+
+    @media (max-width: 700px) {
+      .header nav a:not(.gh) { display: none; }
+      .hero { padding-top: 110px; }
+      .runnote .cta { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="#">WebGL <em>3D 그래픽스</em></a>
+  <nav>
+    <a href="#features">특징</a>
+    <a href="#curriculum">목차</a>
+    <a href="book/front.html">책 읽기</a>
+    <a class="gh" href="https://github.com/dknife/WebGL" target="_blank">GitHub</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-grid">
+    <div class="hero-text">
+      <div class="eyebrow">Learn 3D Graphics in the Browser</div>
+      <h1>WebGL<br><span class="accent">3D 그래픽스</span></h1>
+      <p class="subtitle">웹 브라우저에서 배우고 바로 실행하는 3차원 그래픽스</p>
+      <p class="authors"><strong>강영민</strong> 지음</p>
+      <div class="badges">
+        <span class="badge">WebGL 2.0</span>
+        <span class="badge">GLSL 셰이더</span>
+        <span class="badge">설치 없이 실행</span>
+        <span class="badge">4부 12장</span>
+        <span class="badge">Three.js 실전</span>
+      </div>
+      <div class="cta-row">
+        <a class="cta orange" href="book/front.html">지금 읽기 시작 →</a>
+        <a class="cta ghost" href="#curriculum">목차 살펴보기</a>
+      </div>
+    </div>
+    <div class="hero-cover">
+      <a href="book/front.html"><img src="book/img/cover.png" alt="WebGL 3D 그래픽스 표지"></a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <h2>이 책의 <em>특징</em></h2>
+  <div class="feat-grid">
+    <div class="feat">
+      <div class="icon" style="background:#FFF083;">▶</div>
+      <h3>예제 아래에서 바로 실행</h3>
+      <p>웹 에디션의 모든 예제에는 [실행] 버튼이 있습니다. 코드 바로 아래에 WebGL 캔버스가 열려 렌더링 결과를 즉시 확인하고, 코드를 고쳐 재실행할 수 있습니다.</p>
+    </div>
+    <div class="feat">
+      <div class="icon" style="background:#7BDCB5;">⬡</div>
+      <h3>현대적 셰이더 파이프라인</h3>
+      <p>구시대의 고정 기능 파이프라인이 아닌 WebGL 2.0과 GLSL ES 3.0 기반의 셰이더 프로그래밍으로, OpenGL·Vulkan·Metal에도 통하는 그래픽스 원리를 배웁니다.</p>
+    </div>
+    <div class="feat">
+      <div class="icon" style="background:#0693E3; color:#fff;">∑</div>
+      <h3>수학은 필요한 곳에서</h3>
+      <p>벡터·행렬·변환 등 그래픽스 수학은 처음 쓰이는 곳에서 그때그때 설명합니다. 선형대수를 미리 공부하지 않아도 따라올 수 있습니다.</p>
+    </div>
+    <div class="feat">
+      <div class="icon" style="background:#FA5D29; color:#fff;">✦</div>
+      <h3>원리에서 실전까지</h3>
+      <p>삼각형 하나를 그리는 저수준 원리부터 시작해, 조명·텍스처·애니메이션을 거쳐 Three.js를 이용한 실전 3차원 웹 애플리케이션 제작으로 마무리합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="curriculum">
+  <h2>목차 <em>— 4부 12장</em></h2>
+  <div class="parts">
+    <div class="part-card">
+      <div class="part-label" style="color:#0693E3;">Part I</div>
+      <h3>WebGL 시작</h3>
+      <ol>
+        <li><a href="book/ch01.html"><span class="num">01</span>3차원 그래픽스와 WebGL 소개</a></li>
+        <li><a href="book/ch02.html"><span class="num">02</span>첫 번째 삼각형 그리기</a></li>
+        <li><a href="book/ch03.html"><span class="num">03</span>셰이더와 GLSL</a></li>
+      </ol>
+    </div>
+    <div class="part-card">
+      <div class="part-label" style="color:#7BDCB5;">Part II</div>
+      <h3>기하 변환과 카메라</h3>
+      <ol>
+        <li><a href="book/ch04.html"><span class="num">04</span>그래픽스를 위한 벡터와 행렬</a></li>
+        <li><a href="book/ch05.html"><span class="num">05</span>기하 변환</a></li>
+        <li><a href="book/ch06.html"><span class="num">06</span>카메라와 투영</a></li>
+      </ol>
+    </div>
+    <div class="part-card">
+      <div class="part-label" style="color:#FA5D29;">Part III</div>
+      <h3>실감 렌더링</h3>
+      <ol>
+        <li><a href="book/ch07.html"><span class="num">07</span>조명과 셰이딩</a></li>
+        <li><a href="book/ch08.html"><span class="num">08</span>텍스처 매핑</a></li>
+        <li><a href="book/ch09.html"><span class="num">09</span>3차원 메시와 모델</a></li>
+      </ol>
+    </div>
+    <div class="part-card">
+      <div class="part-label" style="color:#B58A00;">Part IV</div>
+      <h3>한 걸음 더</h3>
+      <ol>
+        <li><a href="book/ch10.html"><span class="num">10</span>애니메이션과 상호작용</a></li>
+        <li><a href="book/ch11.html"><span class="num">11</span>고급 렌더링 기법</a></li>
+        <li><a href="book/ch12.html"><span class="num">12</span>Three.js와 실전 프로젝트</a></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="runnote">
+    <div>
+      <h3>브라우저가 곧 실습실입니다</h3>
+      <p>WebGL은 별도의 개발 환경 설치가 필요 없습니다. 지금 쓰고 있는 브라우저가 GPU 가속 3차원 그래픽스를 지원합니다. 1장부터 바로 첫 프로그램을 실행해 보세요.</p>
+    </div>
+    <a class="cta orange" href="book/ch01.html">1장 시작하기 →</a>
+  </div>
+</section>
+
+<footer>
+  © 강영민 · <a href="https://github.com/dknife/WebGL" target="_blank">github.com/dknife/WebGL</a> ·
+  이 사이트는 『WebGL 3D 그래픽스』의 웹 에디션입니다.
+</footer>
+
+</body>
+</html>
