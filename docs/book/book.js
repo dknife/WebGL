@@ -1,39 +1,39 @@
 /* WebGL 3D 그래픽스 — 웹 본문 공통 스크립트 (손으로 관리하는 파일)
  *
  * 기능:
- *  1. 모든 코드 블록에 [복사] 버튼
+ *  1. 코드 블록 위(코드 상단)에 [실행]·[복사] 버튼 바
  *  2. 실행 가능한 예제(div.listing 안의 language-javascript)에 [실행] 버튼
- *     → 코드 아래에 편집 가능한 실행 패널(textarea + 샌드박스 iframe)을 연다.
- *     예제 코드는 id가 glCanvas인 600×400 캔버스가 이미 있다고 가정한다
- *     (실행기가 iframe 안에 만들어 준다). glMatrix도 미리 로드된다.
+ *     → 화면 가운데 실행 모달(<dialog>)이 열린다. 편집 가능한 코드 창 +
+ *       [실행] 버튼 + 결과(샌드박스 iframe: id=glCanvas 캔버스 + 콘솔)로 구성.
+ *       glMatrix와 Three.js가 iframe에 미리 로드된다.
  *  3. 본문 그림 클릭 → viewer.html 확대 보기
  */
 (function () {
   'use strict';
 
-  /* ---------- 1. 복사 버튼 + 2. 실행 버튼 ---------- */
+  /* ---------- 1. 코드 위 버튼 바 (실행 + 복사) ---------- */
   document.querySelectorAll('.content pre').forEach(function (pre) {
-    if (pre.closest('.runpanel')) return;
     var code = pre.querySelector('code');
-    var text = (code || pre).textContent;
+    if (!code) return;                       // 출력(jsout 등)에는 버튼 없음
+    var text = code.textContent;
 
     var bar = document.createElement('div');
     bar.className = 'runbar';
 
-    // 실행 버튼: 캡션 있는 JS 예제(div.listing)에만 붙인다
+    // 실행: 캡션 있는 JS 예제(div.listing 안 language-javascript)에만
     var listing = pre.closest('.listing');
-    var isJS = code && /language-javascript/.test(code.className);
+    var isJS = /language-javascript/.test(code.className);
     if (listing && isJS) {
       var runBtn = document.createElement('button');
+      runBtn.type = 'button';
       runBtn.className = 'run';
-      runBtn.textContent = '실행';
-      runBtn.addEventListener('click', function () {
-        openRunPanel(listing, text);
-      });
+      runBtn.textContent = '▶ 실행';
+      runBtn.addEventListener('click', function () { openRunner(text); });
       bar.appendChild(runBtn);
     }
 
     var copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
     copyBtn.textContent = '복사';
     copyBtn.addEventListener('click', function () {
       navigator.clipboard.writeText(text).then(function () {
@@ -43,44 +43,70 @@
     });
     bar.appendChild(copyBtn);
 
+    // 버튼을 코드(또는 리스팅) 바로 위에 올린다
     var host = listing || pre;
-    host.parentNode.insertBefore(bar, host.nextSibling);
+    host.parentNode.insertBefore(bar, host);
   });
 
-  /* ---------- 실행 패널 ---------- */
-  function openRunPanel(listing, codeText) {
-    // 이미 열려 있으면 재사용
-    var next = listing.nextElementSibling;               // runbar
-    var panel = next && next.nextElementSibling;
-    if (!(panel && panel.classList.contains('runpanel'))) {
-      panel = document.createElement('div');
-      panel.className = 'runpanel';
-      panel.innerHTML =
-        '<div class="rp-head"><span>WebGL 실행</span>' +
-        '<button class="rerun">다시 실행</button>' +
-        '<button class="close" title="닫기">✕</button></div>' +
-        '<textarea spellcheck="false"></textarea>';
-      panel.querySelector('textarea').value = codeText;
-      panel.querySelector('.close').addEventListener('click', function () {
-        panel.remove();
-      });
-      panel.querySelector('.rerun').addEventListener('click', function () {
-        execute(panel);
-      });
-      next.parentNode.insertBefore(panel, next.nextSibling);
-    }
-    execute(panel);
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  /* ---------- 2. 실행 모달 <dialog class="runner"> ---------- */
+  var dlg = null, codeEl = null, viewEl = null, statusEl = null, originalCode = '';
+
+  function buildDialog() {
+    dlg = document.createElement('dialog');
+    dlg.className = 'runner';
+    dlg.setAttribute('aria-label', 'WebGL 코드 실행');
+    dlg.innerHTML =
+      '<div class="runner-head">' +
+        '<span class="runner-title">WebGL 실행</span>' +
+        '<span class="runner-hint">Ctrl+Enter 실행 · Esc 닫기</span>' +
+        '<button type="button" class="runner-close" aria-label="닫기">&#10005;</button>' +
+      '</div>' +
+      '<textarea class="runner-code" spellcheck="false" ' +
+        'aria-label="자바스크립트 코드"></textarea>' +
+      '<div class="runner-bar">' +
+        '<button type="button" class="runner-run">&#9654; 실행</button>' +
+        '<button type="button" class="runner-reset">원래 코드로</button>' +
+        '<span class="runner-status"></span>' +
+      '</div>' +
+      '<div class="runner-view"></div>';
+    codeEl = dlg.querySelector('.runner-code');
+    viewEl = dlg.querySelector('.runner-view');
+    statusEl = dlg.querySelector('.runner-status');
+
+    dlg.querySelector('.runner-close').addEventListener('click', function () { dlg.close(); });
+    dlg.querySelector('.runner-run').addEventListener('click', run);
+    dlg.querySelector('.runner-reset').addEventListener('click', function () {
+      codeEl.value = originalCode; run();
+    });
+    // Ctrl/Cmd+Enter 로 실행
+    codeEl.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+    });
+    // 배경(백드롭) 클릭으로 닫기
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+    // 닫을 때 iframe 정리(실행 중이던 애니메이션 루프 종료)
+    dlg.addEventListener('close', function () { viewEl.innerHTML = ''; });
+
+    document.body.appendChild(dlg);
   }
 
-  function execute(panel) {
-    var codeText = panel.querySelector('textarea').value;
-    var old = panel.querySelector('iframe');
-    if (old) old.remove();
+  function openRunner(codeText) {
+    if (!dlg) buildDialog();
+    originalCode = codeText;
+    codeEl.value = codeText;
+    if (!dlg.open) dlg.showModal();
+    run();
+  }
+
+  function run() {
+    statusEl.textContent = '실행 중…';
+    viewEl.innerHTML = '';                    // 이전 실행(iframe) 제거 → 루프 정지
     var iframe = document.createElement('iframe');
+    iframe.className = 'runner-frame';
     iframe.setAttribute('sandbox', 'allow-scripts');
-    iframe.srcdoc = buildRunnerDoc(codeText);
-    panel.appendChild(iframe);
+    iframe.srcdoc = buildRunnerDoc(codeEl.value);
+    iframe.addEventListener('load', function () { statusEl.textContent = ''; });
+    viewEl.appendChild(iframe);
   }
 
   function buildRunnerDoc(codeText) {

@@ -698,33 +698,55 @@ dialog.runner::backdrop { background: rgba(20,20,20,0.55); backdrop-filter: blur
 }
 
 
-/* ===== WebGL 실행 패널 (book.js) ===== */
-.runbar { display: flex; gap: 0.5rem; margin: 0.4rem 0 0.2rem; }
+/* ===== 코드 버튼 바 (코드 위) ===== */
+.runbar { display: flex; gap: 0.5rem; margin: 0 0 -6px; }
 .runbar button {
-  background: #222; color: #fff; border: none; border-radius: 8px;
-  padding: 0.32rem 1.0rem; cursor: pointer; font: inherit; font-size: 0.82rem;
+  background: #222; color: #fff; border: none; border-radius: 8px 8px 0 0;
+  padding: 0.3rem 1.0rem; cursor: pointer; font: inherit; font-size: 0.8rem;
   font-weight: 600; transition: background 0.3s ease;
 }
 .runbar button:hover { background: #383838; }
 .runbar button.run { background: var(--accent, #FA5D29); }
 .runbar button.run:hover { filter: brightness(0.92); }
-.runpanel {
-  margin: 0.6rem 0 1.4rem; border: 1px solid #E4E4E4; border-radius: 12px;
-  background: #fff; overflow: hidden;
+
+/* ===== 실행 모달 <dialog class="runner"> (book.js) ===== */
+dialog.runner {
+  width: min(760px, 94vw); max-width: 94vw; padding: 0; border: none;
+  border-radius: 14px; box-shadow: 0 24px 64px rgba(0,0,0,0.32);
+  background: #fff; color: #222; overflow: hidden;
 }
-.runpanel .rp-head {
-  display: flex; align-items: center; gap: 0.8rem;
-  padding: 0.45rem 0.9rem; background: #F3F3F3; font-size: 0.8rem;
-  font-weight: 700; color: #444;
+dialog.runner::backdrop { background: rgba(20,24,32,0.55); backdrop-filter: blur(3px); }
+.runner-head {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.7rem 1rem; background: #1E293B; color: #fff;
 }
-.runpanel .rp-head .close { margin-left: auto; cursor: pointer; border: none;
-  background: none; font-size: 1rem; color: #888; }
-.runpanel textarea {
-  width: 100%; min-height: 180px; border: none; border-top: 1px solid #EEE;
-  resize: vertical; padding: 0.8rem 1rem; font-family: 'D2Coding', ui-monospace,
-  'Cascadia Code', Consolas, monospace; font-size: 0.82rem; line-height: 1.5;
-  color: #1F2937; background: #FBFCFE; outline: none; box-sizing: border-box;
+.runner-title { font-weight: 700; font-size: 0.95rem; }
+.runner-hint { font-size: 0.72rem; color: #94A3B8; }
+.runner-close {
+  margin-left: auto; background: none; border: none; color: #cbd5e1;
+  font-size: 1rem; cursor: pointer; line-height: 1;
 }
-.runpanel iframe {
-  display: block; width: 100%; height: 480px; border: none; background: #fff;
+.runner-close:hover { color: #fff; }
+.runner-code {
+  width: 100%; min-height: 190px; max-height: 38vh; box-sizing: border-box;
+  border: none; resize: vertical; padding: 0.8rem 1rem;
+  font-family: 'D2Coding', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.82rem; line-height: 1.5; color: #1F2937; background: #FBFCFE; outline: none;
 }
+.runner-bar {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.55rem 1rem; background: #F3F4F6; border-top: 1px solid #E4E4E4;
+}
+.runner-run {
+  background: var(--accent, #FA5D29); color: #fff; border: none; border-radius: 8px;
+  padding: 0.42rem 1.2rem; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+}
+.runner-run:hover { filter: brightness(0.93); }
+.runner-reset {
+  background: #fff; color: #444; border: 1px solid #D1D5DB; border-radius: 8px;
+  padding: 0.42rem 0.9rem; font-size: 0.82rem; cursor: pointer;
+}
+.runner-reset:hover { background: #eceef1; }
+.runner-status { font-size: 0.78rem; color: #6B7280; margin-left: auto; }
+.runner-view { background: #fff; }
+.runner-frame { display: block; width: 100%; height: 460px; border: none; background: #fff; }
