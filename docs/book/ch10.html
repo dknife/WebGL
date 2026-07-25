@@ -605,12 +605,105 @@ requestAnimationFrame(frame);</code></pre><div class="listing-caption">코드 10
 <p>이벤트 핸들러 안에서 직접 그리지 않는 이 분리가 표준 구조인 데는 이유가 있다. <code>mousemove</code> 같은 이벤트는 화면 갱신보다 훨씬 잦게(초당 수백 번) 발생할 수 있는데, 핸들러에서 그때마다 그리면 어차피 표시되지도 않을 프레임을 그리느라 자원을 낭비하고, 돌고 있는 rAF 루프와 겹쳐 한 프레임을 두 번 그리게 된다. 상태와 그리기를 분리해 두면 입력이 아무리 몰아쳐도 그리기는 정확히 주사율만큼만 일어나고, 여러 입력(키보드+마우스+휠)이 자연스럽게 한 장면에 합쳐진다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p><strong>입력 이벤트는 상태만 바꾸고, 그리기는 rAF 루프가 전담한다.</strong> 트랙볼 카메라의 상태는 <code>yaw</code>·<code>pitch</code>·<code>radius</code> 세 값이며, 드래그가 각도를, 휠이 반지름을 바꾸고, 루프가 매 프레임 \(\mathbf{e} = R(\cos p \sin y,\ \sin p,\ \cos p \cos y)\)로 카메라 위치를 계산해 <code>lookAt</code>으로 뷰 행렬을 만든다. 피치는 \(\pm 89^\circ\)로 클램프한다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 10-1</strong>  3장 실습 3-2에서 슬라이더로 색을 바꾸었듯, 코드 10.2의 회전 정육면체에 <strong>회전 속도 슬라이더</strong>를 달아 보자. 슬라이더 값으로 각속도(라디안/초)를 조절한다. 상태를 "각도 = 시간 × 각속도"로 쓸 수 없으므로, 델타 타임으로 각도를 누적하는 방식으로 바꾸어야 한다.</p>
-<p><strong>해답</strong>  코드 10.2에서 각도 누적 부분과 슬라이더만 더하면 된다. <code>render</code> 함수의 회전 계산을 다음처럼 고친다.</p>
-<pre class="line-numbers"><code class="language-javascript">let angle = 0;                       // 누적 회전각
+<p><strong>해답</strong>  코드 10.2에 회전 속도 슬라이더와 각도 누적을 더한 완성 프로그램이다. 셰이더 — 정육면체 버퍼 — 행렬 준비는 그대로이고, 달라진 곳은 슬라이더와 <code>render</code>의 각도 계산뿐이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ----- 셰이더: 코드 10.2와 같은 색 정육면체용 -----
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uProjection, uView, uModel;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(vColor, 1.0);
+}`;
+
+// 셰이더 도우미 (2장의 도우미를 압축한 형태)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 정육면체: 꼭짓점 8개, 삼각형 12개 (코드 10.2) -----
+const positions = new Float32Array([
+    -0.5, -0.5, -0.5,     0.5, -0.5, -0.5,
+     0.5,  0.5, -0.5,    -0.5,  0.5, -0.5,
+    -0.5, -0.5,  0.5,     0.5, -0.5,  0.5,
+     0.5,  0.5,  0.5,    -0.5,  0.5,  0.5,
+]);
+const colors = new Float32Array([
+    0, 0, 0,   1, 0, 0,   1, 1, 0,   0, 1, 0,
+    0, 0, 1,   1, 0, 1,   1, 1, 1,   0, 1, 1,
+]);
+const indices = new Uint16Array([
+    4, 5, 6,   4, 6, 7,      5, 1, 2,   5, 2, 6,
+    1, 0, 3,   1, 3, 2,      0, 4, 7,   0, 7, 3,
+    7, 6, 2,   7, 2, 3,      0, 1, 5,   0, 5, 4,
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const colVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ----- 행렬: 투영·뷰는 고정, 모델만 매 프레임 -----
+const uProjLoc  = gl.getUniformLocation(program, 'uProjection');
+const uViewLoc  = gl.getUniformLocation(program, 'uView');
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const projection = mat4.create();
+mat4.perspective(projection, Math.PI / 4,
+                 canvas.width / canvas.height, 0.1, 100);
+const view = mat4.create();
+mat4.lookAt(view, [1.5, 1.2, 3], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(uProjLoc, false, projection);
+gl.uniformMatrix4fv(uViewLoc, false, view);
+const model = mat4.create();
+gl.enable(gl.DEPTH_TEST);            // 깊이 검사 (6장)
+
+// ----- 회전 속도 슬라이더 + 각도 누적 -----
+let angle = 0;                       // 누적 회전각
 let speed = 1.0;                     // 각속도 (라디안/초), 슬라이더로 조절
 let prevTime = 0;
 
-// 슬라이더: 0~100을 각속도 0~5로 사상
+// 슬라이더: 값 0~100을 각속도 0~5로 사상
 const slider = document.createElement('input');
 slider.type = 'range';
 slider.value = 20;                   // 초깃값 20 → 속도 1.0
@@ -630,15 +723,110 @@ function render(time) {
     gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
     requestAnimationFrame(render);
 }
-requestAnimationFrame(render);</code></pre>
-<p>슬라이더를 오른쪽으로 밀수록 정육면체가 빨리 돈다. 각도를 <code>time * speed</code>로 계산하지 않은 이유를 생각해 보자. 그렇게 하면 슬라이더로 속도를 바꾸는 순간 이미 흐른 시간 전체에 새 속도가 곱해져 정육면체가 갑자기 튄다. 델타 타임으로 <em>조금씩</em> 누적해야 속도를 바꾸어도 현재 각도에서 자연스럽게 이어진다.</p>
+requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.5: 슬라이더로 회전 속도 조절</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch10/ch10_img01.png" alt="figure">
+<p><figcaption>그림 10.1: 실습 10-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.1과 같은 결과가 나타난다. 슬라이더를 오른쪽으로 밀수록 정육면체가 빨리 돈다. 각도를 <code>time * speed</code>로 계산하지 않은 이유를 생각해 보자. 그렇게 하면 슬라이더로 속도를 바꾸는 순간 이미 흐른 시간 전체에 새 속도가 곱해져 정육면체가 갑자기 튄다. 델타 타임으로 <em>조금씩</em> 누적해야 속도를 바꾸어도 현재 각도에서 자연스럽게 이어진다.</p>
 <p><strong>실습 10-2</strong>  스페이스바로 애니메이션을 <strong>일시정지</strong>했다가 다시 재생하는 기능을 실습 10-1에 더해 보자. (힌트: <code>keydown</code>에서 <code>e.key === ' '</code>이면 정지 상태 플래그를 뒤집는다. 정지 중에는 각도를 누적하지 않는다.)</p>
-<p><strong>해답</strong>  캔버스에 포커스를 주고(<code>tabindex</code>), 정지 플래그를 두어 갱신만 건너뛴다.</p>
-<pre class="line-numbers"><code class="language-javascript">canvas.setAttribute('tabindex', '0');
-canvas.focus();
+<p><strong>해답</strong>  창(<code>window</code>)의 <code>keydown</code>으로 스페이스바를 받아 정지 플래그를 뒤집고, 정지 중에는 각도 누적만 건너뛴다. 준비 과정은 실습 10-1과 같고 슬라이더 대신 키 입력이 붙는다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uProjection, uView, uModel;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(vColor, 1.0);
+}`;
+
+// 셰이더 도우미 (2장의 도우미를 압축한 형태)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 정육면체 (코드 10.2) -----
+const positions = new Float32Array([
+    -0.5, -0.5, -0.5,     0.5, -0.5, -0.5,
+     0.5,  0.5, -0.5,    -0.5,  0.5, -0.5,
+    -0.5, -0.5,  0.5,     0.5, -0.5,  0.5,
+     0.5,  0.5,  0.5,    -0.5,  0.5,  0.5,
+]);
+const colors = new Float32Array([
+    0, 0, 0,   1, 0, 0,   1, 1, 0,   0, 1, 0,
+    0, 0, 1,   1, 0, 1,   1, 1, 1,   0, 1, 1,
+]);
+const indices = new Uint16Array([
+    4, 5, 6,   4, 6, 7,      5, 1, 2,   5, 2, 6,
+    1, 0, 3,   1, 3, 2,      0, 4, 7,   0, 7, 3,
+    7, 6, 2,   7, 2, 3,      0, 1, 5,   0, 5, 4,
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const colVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+const uProjLoc  = gl.getUniformLocation(program, 'uProjection');
+const uViewLoc  = gl.getUniformLocation(program, 'uView');
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const projection = mat4.create();
+mat4.perspective(projection, Math.PI / 4,
+                 canvas.width / canvas.height, 0.1, 100);
+const view = mat4.create();
+mat4.lookAt(view, [1.5, 1.2, 3], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(uProjLoc, false, projection);
+gl.uniformMatrix4fv(uViewLoc, false, view);
+const model = mat4.create();
+gl.enable(gl.DEPTH_TEST);
+
+// ----- 스페이스바로 정지/재생 -----
+let angle = 0;
+let speed = 1.0;                     // 각속도 (라디안/초)
+let prevTime = 0;
 let paused = false;
 
-canvas.addEventListener('keydown', (e) =&gt; {
+window.addEventListener('keydown', (e) =&gt; {
     if (e.key === ' ') {             // 스페이스바로 정지/재생 토글
         paused = !paused;
         e.preventDefault();          // 스페이스의 페이지 스크롤 방지
@@ -651,13 +839,100 @@ function render(time) {
     if (!paused) angle += speed * dt;   // 정지 중에는 각도 누적만 생략
 
     mat4.fromYRotation(model, angle);
-    // ... 그리기는 그대로 (정지 중에도 화면은 계속 그린다) ...
+    gl.uniformMatrix4fv(uModelLoc, false, model);
+    gl.clearColor(0.1, 0.15, 0.25, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);   // 정지 중에도 계속 그린다
     requestAnimationFrame(render);
-}</code></pre>
-<p>두 가지 함정에 주의하자. 첫째, <strong>정지 중에도</strong> <code>prevTime</code>은 매 프레임 갱신해야 한다. 정지 동안 <code>prevTime</code>을 멈춰 두면, 재생하는 순간 <code>dt</code>가 정지했던 시간만큼 커져 정육면체가 그만큼 확 돌아 버린다. 둘째, 그리기(<code>draw</code>)는 정지 중에도 계속한다. 갱신만 멈추면 화면은 정지 직전 각도로 고정되어 "멈춰 선 정육면체"가 보인다.</p>
+}
+requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.6: 스페이스바로 회전 일시정지</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch10/ch10_img02.png" alt="figure">
+<p><figcaption>그림 10.2: 실습 10-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.2와 같은 결과가 나타난다. 두 가지 함정에 주의하자. 첫째, <strong>정지 중에도</strong> <code>prevTime</code>은 매 프레임 갱신해야 한다. 정지 동안 <code>prevTime</code>을 멈춰 두면, 재생하는 순간 <code>dt</code>가 정지했던 시간만큼 커져 정육면체가 그만큼 확 돌아 버린다. 둘째, 그리기(<code>draw</code>)는 정지 중에도 계속한다. 갱신만 멈추면 화면은 정지 직전 각도로 고정되어 "멈춰 선 정육면체"가 보인다. (웹 에디션에서는 실행 창의 캔버스를 클릭해 포커스를 준 뒤 스페이스바를 눌러 보자.)</p>
 <p><strong>실습 10-3</strong>  5장의 계층 모델링과 이 장의 시간을 결합해, 태양 주위를 도는 행성 애니메이션을 만들어 보자. 가운데 노란 큰 정육면체(태양)를 두고, 작은 파란 정육면체(행성)가 그 둘레를 공전하게 한다. 행성의 모델 행렬은 "공전각 회전 → 궤도 반지름만큼 이동 → 축소"의 합성이다.</p>
-<p><strong>해답</strong>  코드 10.2의 정육면체 버퍼를 그대로 쓰고, 물체마다 모델 행렬을 새로 만들어 두 번 그린다. 색은 uniform으로 넘긴다고 하자(정점 색 대신 <code>uColor</code> 사용, 셰이더는 3장 참고).</p>
-<pre class="line-numbers"><code class="language-javascript">const model = mat4.create();
+<p><strong>해답</strong>  코드 10.2의 정육면체 버퍼를 그대로 쓰되, 색은 꼭짓점 색 대신 <code>uColor</code> uniform으로 넘긴다(셰이더는 3장 참고). 물체마다 모델 행렬과 색을 새로 지정해 두 번 그린다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ----- 셰이더: 색을 uniform으로 받는다 (정점 색 대신 uColor, 3장) -----
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+uniform mat4 uProjection, uView, uModel;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec3 uColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(uColor, 1.0);
+}`;
+
+// 셰이더 도우미 (2장의 도우미를 압축한 형태)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 정육면체 (코드 10.2의 위치·인덱스, 색은 uniform으로) -----
+const positions = new Float32Array([
+    -0.5, -0.5, -0.5,     0.5, -0.5, -0.5,
+     0.5,  0.5, -0.5,    -0.5,  0.5, -0.5,
+    -0.5, -0.5,  0.5,     0.5, -0.5,  0.5,
+     0.5,  0.5,  0.5,    -0.5,  0.5,  0.5,
+]);
+const indices = new Uint16Array([
+    4, 5, 6,   4, 6, 7,      5, 1, 2,   5, 2, 6,
+    1, 0, 3,   1, 3, 2,      0, 4, 7,   0, 7, 3,
+    7, 6, 2,   7, 2, 3,      0, 1, 5,   0, 5, 4,
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+const uProjLoc  = gl.getUniformLocation(program, 'uProjection');
+const uViewLoc  = gl.getUniformLocation(program, 'uView');
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
+const projection = mat4.create();
+mat4.perspective(projection, Math.PI / 4,
+                 canvas.width / canvas.height, 0.1, 100);
+const view = mat4.create();
+mat4.lookAt(view, [2.5, 2.5, 5], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(uProjLoc, false, projection);
+gl.uniformMatrix4fv(uViewLoc, false, view);
+gl.enable(gl.DEPTH_TEST);
+
+// ----- 태양과 공전하는 행성 -----
+const model = mat4.create();
 const orbit = mat4.create();
 let prevTime = 0, theta = 0;         // theta: 행성의 공전각
 
@@ -685,8 +960,11 @@ function render(time) {
 
     requestAnimationFrame(render);
 }
-requestAnimationFrame(render);</code></pre>
-<p>행성의 모델 행렬 \(M = R_y(\theta)\, T(1.5, 0, 0)\, S(0.25)\)는 5장에서 배운 변환 합성 그대로이다. 시간에 따라 \(\theta\)만 커지므로 행성이 태양 둘레를 돈다. 여기에 행성 자체의 자전(\(M\) 안에 또 하나의 회전)이나 위성을 붙이면 5장 실습의 태양계가 살아 움직이는 장면이 된다.</p></div></p>
+requestAnimationFrame(render);</code></pre><div class="listing-caption">코드 10.7: 공전하는 행성 애니메이션</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch10/ch10_img03.png" alt="figure">
+<p><figcaption>그림 10.3: 실습 10-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 10.3과 같은 결과가 나타난다. 행성의 모델 행렬 \(M = R_y(\theta)\, T(1.5, 0, 0)\, S(0.25)\)는 5장에서 배운 변환 합성 그대로이다. 시간에 따라 \(\theta\)만 커지므로 행성이 태양 둘레를 돈다. 여기에 행성 자체의 자전(\(M\) 안에 또 하나의 회전)이나 위성을 붙이면 5장 실습의 태양계가 살아 움직이는 장면이 된다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">10장 요약</summary><div class="sum-body"><ul>
 <li>애니메이션은 <strong>매 프레임 장면을 조금 바꾸어 다시 그리는 것</strong>이다. 화면에 표시되는 한 장이 <strong>프레임</strong>, 모니터가 1초에 화면을 갱신하는 횟수가 <strong>주사율</strong>이다.</li>
 <li><code>requestAnimationFrame(frame)</code>은 다음 화면 갱신 때 <code>frame</code>을 한 번 실행하는 일회성 예약이다. <code>frame</code> 안에서 자신을 다시 예약하는 재귀 패턴으로 애니메이션 루프를 만든다.</li>

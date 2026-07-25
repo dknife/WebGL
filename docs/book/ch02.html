@@ -352,7 +352,34 @@ const vertices = new Float32Array([
 //     fragColor = vec4(0.4, 0.7, 1.0, 1.0);</code></pre>
 <p><strong>실습 2-2</strong>  사각형 프리미티브가 없는 WebGL에서 정점 4개만으로 화면 중앙에 정사각형을 그려 보자. (힌트: <code>TRIANGLE_STRIP</code>은 정점 \(n\)개로 삼각형 \(n-2\)개를 만든다.)</p>
 <p><strong>해답</strong></p>
-<pre class="line-numbers"><code class="language-javascript">// TRIANGLE_STRIP은 지그재그 순서로 정점을 배치해야 한다:
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() { gl_Position = aPosition; }`;
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() { fragColor = vec4(1.0, 0.6, 0.2, 1.0); }`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src); gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+gl.useProgram(makeProgram(gl, vsSource, fsSource));
+
+// TRIANGLE_STRIP은 지그재그 순서로 정점을 배치해야 한다:
 // (왼쪽 아래 → 오른쪽 아래 → 왼쪽 위 → 오른쪽 위)
 const vertices = new Float32Array([
     -0.5, -0.5,     // 0: 왼쪽 아래
@@ -360,11 +387,26 @@ const vertices = new Float32Array([
     -0.5,  0.5,     // 2: 왼쪽 위
      0.5,  0.5,     // 3: 오른쪽 위
 ]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
 // 정점 4개 → 삼각형 2개 (0-1-2, 1-2-3)가 만들어져 사각형이 된다
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre>
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 2.3: 정사각형 그리기</div></div>
+<p>실행하면 그림 2.1와 같이 화면 중앙에 사각형이 그려진다. 캔버스가 가로로 길어 클립 공간의 정사각형이 직사각형으로 보이는데, 이는 6장에서 종횡비로 바로잡는다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch02/ch02_img01.png" alt="figure">
+<p><figcaption>그림 2.1: 실습 2-2 실행 결과</figcaption></figure></p>
 <p><strong>실습 2-3</strong>  캔버스를 마우스로 클릭할 때마다 그 위치에 정점이 추가되고, 지금까지의 정점들이 <code>LINE_STRIP</code>으로 이어져 그려지는 프로그램을 작성해 보자. 마우스 좌표(픽셀, \(y\)가 아래로 증가)를 클립 공간 좌표(\(-1 \sim 1\), \(y\)가 위로 증가)로 변환해야 한다는 점에 주의하자.</p>
 <p><strong>해답</strong></p>
-<pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
 const gl = canvas.getContext('webgl2');
 
 const vsSource = `#version 300 es
@@ -414,8 +456,11 @@ function render() {
     gl.drawArrays(gl.LINE_STRIP, 0, points.length / 2);
 }
 
-render();   // 첫 화면 (빈 배경)</code></pre>
-<p>캔버스를 여러 번 클릭하면 클릭한 자리들이 꺾은선으로 이어진다. <code>render()</code> 안의 <code>LINE_STRIP</code>을 <code>POINTS</code>, <code>LINE_LOOP</code>, <code>TRIANGLE_FAN</code> 등으로 바꾸어, 같은 클릭 궤적이 다른 도형으로 조립되는 것도 관찰해 보자.</p></div></p>
+render();   // 첫 화면 (빈 배경)</code></pre><div class="listing-caption">코드 2.4: 클릭한 자리에 꺾은선 그리기</div></div>
+<p>캔버스를 여러 번 클릭하면 클릭한 자리들이 꺾은선으로 이어진다. 예를 들어 다섯 번 클릭하면 그림 2.2과 같은 꺾은선이 그려진다. <code>render()</code> 안의 <code>LINE_STRIP</code>을 <code>POINTS</code>, <code>LINE_LOOP</code>, <code>TRIANGLE_FAN</code> 등으로 바꾸어, 같은 클릭 궤적이 다른 도형으로 조립되는 것도 관찰해 보자.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch02/ch02_img02.png" alt="figure">
+<p><figcaption>그림 2.2: 실습 2-3 실행 결과  —  다섯 번 클릭한 예</figcaption></figure></p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">2장 요약</summary><div class="sum-body"><ul>
 <li>WebGL 프로그램은 자원을 준비하는 <strong>초기화</strong>와 화면을 그리는 <strong>그리기</strong>의 두 단계로 조직한다.</li>
 <li>셰이더는 <strong>컴파일</strong>(<code>compileShader</code>) 후 <strong>링크</strong>(<code>linkProgram</code>)하여 하나의 프로그램으로 만들고, <code>useProgram()</code>으로 파이프라인에 장착한다. 실패 여부는 <code>COMPILE_STATUS</code>·<code>LINK_STATUS</code>로 확인한다.</li>

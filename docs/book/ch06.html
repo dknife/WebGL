@@ -382,24 +382,200 @@ gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption"
 <p>오른쪽에는 반듯한 정사각형이 그려지지만, 왼쪽의 같은 정사각형은 세로로 길쭉한 직사각형으로 찌그러진다. 두 그리기의 차이는 오직 <code>aspect</code> 값 하나임을 눈여겨보자. 참고로 <code>gl.clear</code>는 뷰포트와 무관하게 캔버스 전체를 지우므로, 화면을 지우는 일은 뷰포트를 나누기 전에 한 번만 하면 된다.</p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">캔버스의 두 가지 크기</span><p>HTML 캔버스에는 크기가 두 벌 있다. <code>width</code> · <code>height</code> 속성이 정하는 <strong>도화지의 픽셀 수</strong>와, CSS가 정하는 <strong>화면에 표시되는 크기</strong>이다. CSS로만 캔버스를 키우면 \(600 \times 400\)짜리 그림을 잡아 늘여 보여 주는 것이라 흐릿해지고, 두 비율이 다르면 찌그러짐도 생긴다. WebGL의 뷰포트와 종횡비 계산은 모두 <code>width</code> · <code>height</code> 속성 기준이라는 것을 기억해 두자.</p></div>
 <div class="box keypoint"><span class="chip">요점</span><p><strong>뷰포트 변환</strong>은 NDC의 \(-1 \sim 1\) 정사각형을 <code>gl.viewport(x, y, w, h)</code>로 지정한 픽셀 영역에 늘려 붙이는 마지막 변환이다. 이 늘림에 의한 왜곡을 상쇄하도록 <strong>투영의 <code>aspect</code>는 뷰포트의 가로/세로 비율과 일치</strong>시켜야 하며, 캔버스 전체를 쓸 때는 <code>canvas.width / canvas.height</code>를 넘기면 된다.</p></div>
-<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 6-1</strong>  코드 6.1(정육면체)의 <code>eye</code> 값을 바꾸어 가며 정육면체를 여러 방향에서 관찰해 보자.
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 6-1</strong>  코드 6.1(정육면체)의 <code>eye</code>와 <code>up</code> 값을 바꾸어 가며 정육면체를 여러 방향에서 관찰해 보자.
 (a) 정면 \((0, 0, 2.5)\),
 (b) 바로 위 \((0, 2.5, 0)\),
 (c) (b)에서 <code>up</code>을 \((0, 0, -1)\)로 바꾼 경우.
 각각 어떤 면이 보이는지, 혹시 아무것도 보이지 않는다면 왜 그런지 설명해 보자.</p>
-<p><strong>해답</strong>  <code>mat4.lookAt</code> 호출의 인자만 바꾸면 된다.</p>
-<pre class="line-numbers"><code class="language-javascript">// (a) 정면에서: 빨간 앞면(+z) 하나만 보인다
-mat4.lookAt(view, [0, 0, 2.5], [0, 0, 0], [0, 1, 0]);
+<p><strong>해답</strong>  코드 6.1의 정육면체 준비 과정은 그대로 두고, 화면을 좌·중·우 세 뷰포트로 나누어 (a)(b)(c)를 한 화면에 나란히 그려 본다. <code>mat4.lookAt</code>의 인자만 바꾸면 된다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
 
-// (b) 바로 위에서: 화면에 아무것도 나타나지 않는다!
-mat4.lookAt(view, [0, 2.5, 0], [0, 0, 0], [0, 1, 0]);
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
 
-// (c) up을 시선과 평행하지 않게 바꾸면: 청록 윗면(+y)이 보인다
-mat4.lookAt(view, [0, 2.5, 0], [0, 0, 0], [0, 0, -1]);</code></pre>
-<p>(a)에서는 빨간 앞면만 정사각형으로 보인다. 면 하나를 정면으로 보면 원근 단축의 단서가 사라져 입체감도 함께 사라진다는 점이 흥미롭다. (b)는 6.1절의 주의 그대로이다. 시선 방향 \((0, -1, 0)\)과 <code>up</code> \((0, 1, 0)\)이 평행하여 외적이 영벡터가 되고, 카메라 축을 만들지 못해 물체가 통째로 사라진다. (c)처럼 <code>up</code>을 다른 방향으로 틀어 주면 청록 윗면이 나타난다. 이 밖에도 \((2.5, 0, 0)\)(파란 오른면), \((1.2, -1.0, 1.8)\)(아래에서 올려다보기  —  자홍 아랫면 등장) 등 여러 위치를 시험해 보자.</p>
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 정육면체 데이터: 꼭짓점 8개 + 면 6개로 압축 =====
+const corner = [
+    [-0.5,-0.5, 0.5], [ 0.5,-0.5, 0.5], [ 0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    [-0.5,-0.5,-0.5], [ 0.5,-0.5,-0.5], [ 0.5, 0.5,-0.5], [-0.5, 0.5,-0.5],
+];
+const face = [
+    [0, 1, 2, 3,  1.0, 0.3, 0.3],           // 앞면(+z): 빨강
+    [5, 4, 7, 6,  0.3, 0.8, 0.3],           // 뒷면(-z): 초록
+    [1, 5, 6, 2,  0.3, 0.4, 1.0],           // 오른면(+x): 파랑
+    [4, 0, 3, 7,  1.0, 0.8, 0.2],           // 왼면(-x): 노랑
+    [3, 2, 6, 7,  0.3, 0.9, 0.9],           // 윗면(+y): 청록
+    [4, 5, 1, 0,  0.9, 0.4, 0.9],           // 아랫면(-y): 자홍
+];
+const pos = [], col = [];
+for (const [a, b, c, d, ...rgb] of face) {
+    for (const i of [a, b, c,  a, c, d]) {
+        pos.push(...corner[i]);
+        col.push(...rgb);
+    }
+}
+function setAttribute(loc, data, size) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+setAttribute(0, pos, 3);
+setAttribute(1, col, 3);
+
+// ===== 행렬 uniform 위치 =====
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uViewLoc  = gl.getUniformLocation(program, 'uView');
+const uProjLoc  = gl.getUniformLocation(program, 'uProjection');
+const model = mat4.create();                     // 단위 행렬: 원점에 그대로
+gl.uniformMatrix4fv(uModelLoc, false, model);
+const view = mat4.create();
+const projection = mat4.create();
+
+// ===== 세 가지 카메라 설정을 좌·중·우로 나란히 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+const aspect = 200 / 400;                        // 뷰포트 3분할의 종횡비
+const shots = [                                  // [eye, up]
+    [[0, 0, 2.5], [0, 1, 0]],                    // (a) 정면
+    [[0, 2.5, 0], [0, 1, 0]],                    // (b) 바로 위 — up이 시선과 평행!
+    [[0, 2.5, 0], [0, 0, -1]],                   // (c) 바로 위 + up 교정
+];
+shots.forEach(([eye, up], k) =&gt; {
+    gl.viewport(k * 200, 0, 200, 400);
+    mat4.lookAt(view, eye, [0, 0, 0], up);
+    gl.uniformMatrix4fv(uViewLoc, false, view);
+    mat4.perspective(projection, Math.PI / 4, aspect, 0.1, 10.0);
+    gl.uniformMatrix4fv(uProjLoc, false, projection);
+    gl.drawArrays(gl.TRIANGLES, 0, 36);          // 6면 x 2삼각형 x 3정점
+});</code></pre><div class="listing-caption">코드 6.3: 카메라 위치를 바꿔 정육면체 관찰</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch06/ch06_img01.png" alt="figure">
+<p><figcaption>그림 6.1: 실습 6-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 6.1과 같은 결과가 나타난다. 왼쪽 (a)에서는 빨간 앞면만 정사각형으로 보인다. 면 하나를 정면으로 보면 원근 단축의 단서가 사라져 입체감도 함께 사라진다는 점이 흥미롭다. 가운데 (b)는 6.1절의 주의 그대로여서 화면이 텅 빈다. 시선 방향 \((0, -1, 0)\)과 <code>up</code> \((0, 1, 0)\)이 평행하여 외적이 영벡터가 되고, 카메라 축을 만들지 못해 물체가 통째로 사라지는 것이다. 오른쪽 (c)처럼 <code>up</code>을 다른 방향으로 틀어 주면 청록 윗면이 나타난다. 이 밖에도 \((2.5, 0, 0)\)(파란 오른면), \((1.2, -1.0, 1.8)\)(아래에서 올려다보기  —  자홍 아랫면 등장) 등 여러 위치를 <code>shots</code> 배열에 넣어 시험해 보자.</p>
 <p><strong>실습 6-2</strong>  같은 정육면체를 <strong>직교 투영과 원근 투영으로 나란히</strong> 그려 두 투영의 차이를 눈으로 비교해 보자. 6.4절의 분할 화면 기법을 이용하여 왼쪽 절반에는 <code>mat4.ortho</code>, 오른쪽 절반에는 <code>mat4.perspective</code>를 적용한다.</p>
-<p><strong>해답</strong>  코드 6.1에서 투영 행렬 설정과 그리기 부분을 다음으로 바꾼다. 뷰포트 절반의 종횡비 \(300/400\)을 두 투영 모두에 반영하는 것이 요령이다. 직교 투영에는 <code>aspect</code> 인자가 없으므로, 가로 범위를 \(\pm 1.2\)로 잡았다면 세로 범위를 \(\pm 1.2 / \texttt{aspect}\)로 잡아 비율을 맞춘다.</p>
-<pre class="line-numbers"><code class="language-javascript">const projection = mat4.create();
+<p><strong>해답</strong>  코드 6.1의 준비 과정은 그대로 두고, 그리기 부분에서 화면을 좌우로 나누어 두 투영을 각각 적용한다. 뷰포트 절반의 종횡비 \(300/400\)을 두 투영 모두에 반영하는 것이 요령이다. 직교 투영에는 <code>aspect</code> 인자가 없으므로, 가로 범위를 \(\pm 1.2\)로 잡았다면 세로 범위를 \(\pm 1.2 / \texttt{aspect}\)로 잡아 비율을 맞춘다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 정육면체 데이터: 꼭짓점 8개 + 면 6개로 압축 =====
+const corner = [
+    [-0.5,-0.5, 0.5], [ 0.5,-0.5, 0.5], [ 0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    [-0.5,-0.5,-0.5], [ 0.5,-0.5,-0.5], [ 0.5, 0.5,-0.5], [-0.5, 0.5,-0.5],
+];
+const face = [
+    [0, 1, 2, 3,  1.0, 0.3, 0.3],           // 앞면(+z): 빨강
+    [5, 4, 7, 6,  0.3, 0.8, 0.3],           // 뒷면(-z): 초록
+    [1, 5, 6, 2,  0.3, 0.4, 1.0],           // 오른면(+x): 파랑
+    [4, 0, 3, 7,  1.0, 0.8, 0.2],           // 왼면(-x): 노랑
+    [3, 2, 6, 7,  0.3, 0.9, 0.9],           // 윗면(+y): 청록
+    [4, 5, 1, 0,  0.9, 0.4, 0.9],           // 아랫면(-y): 자홍
+];
+const pos = [], col = [];
+for (const [a, b, c, d, ...rgb] of face) {
+    for (const i of [a, b, c,  a, c, d]) {
+        pos.push(...corner[i]);
+        col.push(...rgb);
+    }
+}
+function setAttribute(loc, data, size) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+setAttribute(0, pos, 3);
+setAttribute(1, col, 3);
+
+// ===== 모델·뷰 행렬 (양쪽 뷰포트 공통) =====
+const model = mat4.create();
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+const view = mat4.create();
+mat4.lookAt(view, [1.2, 1.0, 1.8], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+
+const projection = mat4.create();
 const uProjLoc = gl.getUniformLocation(program, 'uProjection');
 
 // ===== 그리기: 왼쪽 절반은 직교, 오른쪽 절반은 원근 =====
@@ -407,13 +583,13 @@ gl.enable(gl.DEPTH_TEST);
 gl.clearColor(0.1, 0.15, 0.25, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-const aspect = 300 / 400;                    // 뷰포트 절반의 종횡비
+const aspect = 300 / 400;                        // 뷰포트 절반의 종횡비
 
 // 왼쪽 절반: 직교 투영 — 원근감이 없다
 gl.viewport(0, 0, 300, 400);
-mat4.ortho(projection, -1.2, 1.2,            // left, right
-           -1.2 / aspect, 1.2 / aspect,      // bottom, top (비율 유지)
-           0.1, 10.0);                       // near, far
+mat4.ortho(projection, -1.2, 1.2,                // left, right
+           -1.2 / aspect, 1.2 / aspect,          // bottom, top (비율 유지)
+           0.1, 10.0);                           // near, far
 gl.uniformMatrix4fv(uProjLoc, false, projection);
 gl.drawArrays(gl.TRIANGLES, 0, 36);
 
@@ -421,11 +597,94 @@ gl.drawArrays(gl.TRIANGLES, 0, 36);
 gl.viewport(300, 0, 300, 400);
 mat4.perspective(projection, Math.PI / 4, aspect, 0.1, 10.0);
 gl.uniformMatrix4fv(uProjLoc, false, projection);
-gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre>
-<p>같은 카메라, 같은 정육면체인데 왼쪽 직교 투영에서는 평행한 모서리가 화면에서도 평행하게 남아 어딘가 도면 같은 느낌을 주고, 오른쪽 원근 투영에서는 가까운 모서리가 크게 그려져 입체감이 살아난다. 6.2절의 비교 표를 화면으로 확인한 셈이다.</p>
+gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코드 6.4: 직교 투영과 원근 투영 나란히 비교</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch06/ch06_img02.png" alt="figure">
+<p><figcaption>그림 6.2: 실습 6-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 6.2와 같은 결과가 나타난다. 같은 카메라, 같은 정육면체인데 왼쪽 직교 투영에서는 평행한 모서리가 화면에서도 평행하게 남아 어딘가 도면 같은 느낌을 주고, 오른쪽 원근 투영에서는 가까운 모서리가 크게 그려져 입체감이 살아난다. 6.2절의 비교 표를 화면으로 확인한 셈이다.</p>
 <p><strong>실습 6-3</strong>  3장 실습(슬라이더로 색 바꾸기)의 패턴을 응용하여, 슬라이더로 <code>fovy</code>를 \(10^\circ \sim 120^\circ\) 범위에서 조절하는 망원/광각 실험 프로그램을 만들어 보자. 카메라는 그대로 두고 시야각만 바꿀 때 장면이 어떻게 달라지는가?</p>
-<p><strong>해답</strong>  코드 6.1에서 투영 설정과 그리기를 함수로 묶고, 슬라이더의 <code>input</code> 이벤트에서 다시 호출한다.</p>
-<pre class="line-numbers"><code class="language-javascript">const projection = mat4.create();
+<p><strong>해답</strong>  코드 6.1의 준비 과정은 그대로 두고, 투영 설정과 그리기를 <code>render</code> 함수로 묶어 슬라이더의 <code>input</code> 이벤트에서 다시 호출한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 정육면체 데이터: 꼭짓점 8개 + 면 6개로 압축 =====
+const corner = [
+    [-0.5,-0.5, 0.5], [ 0.5,-0.5, 0.5], [ 0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    [-0.5,-0.5,-0.5], [ 0.5,-0.5,-0.5], [ 0.5, 0.5,-0.5], [-0.5, 0.5,-0.5],
+];
+const face = [
+    [0, 1, 2, 3,  1.0, 0.3, 0.3],           // 앞면(+z): 빨강
+    [5, 4, 7, 6,  0.3, 0.8, 0.3],           // 뒷면(-z): 초록
+    [1, 5, 6, 2,  0.3, 0.4, 1.0],           // 오른면(+x): 파랑
+    [4, 0, 3, 7,  1.0, 0.8, 0.2],           // 왼면(-x): 노랑
+    [3, 2, 6, 7,  0.3, 0.9, 0.9],           // 윗면(+y): 청록
+    [4, 5, 1, 0,  0.9, 0.4, 0.9],           // 아랫면(-y): 자홍
+];
+const pos = [], col = [];
+for (const [a, b, c, d, ...rgb] of face) {
+    for (const i of [a, b, c,  a, c, d]) {
+        pos.push(...corner[i]);
+        col.push(...rgb);
+    }
+}
+function setAttribute(loc, data, size) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+setAttribute(0, pos, 3);
+setAttribute(1, col, 3);
+
+// ===== 모델·뷰 행렬 (카메라는 고정) =====
+const model = mat4.create();
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+const view = mat4.create();
+mat4.lookAt(view, [1.2, 1.0, 1.8], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+
+const projection = mat4.create();
 const uProjLoc = gl.getUniformLocation(program, 'uProjection');
 
 gl.enable(gl.DEPTH_TEST);
@@ -448,8 +707,11 @@ slider.style.cssText = 'display:block; width:300px; margin:6px auto;';
 slider.addEventListener('input', () =&gt; render(Number(slider.value)));
 document.body.appendChild(slider);
 
-render(45);</code></pre>
-<p>시야각을 \(10^\circ\) 근처로 좁히면 좁은 영역만 화면 가득 담기므로 망원 렌즈처럼 정육면체가 크게 확대되고, \(120^\circ\) 근처로 넓히면 광각 렌즈처럼 정육면체가 작아지는 대신 가까운 모서리의 원근 왜곡이 급격해진다. 카메라는 한 발짝도 움직이지 않았다는 점에 주목하자. "확대"에는 카메라를 다가가는 방법과 시야각을 좁히는 방법 두 가지가 있고, 둘은 원근감이 서로 다른 그림을 만든다.</p></div></p>
+render(45);</code></pre><div class="listing-caption">코드 6.5: 시야각을 바꾼 망원·광각 비교</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch06/ch06_img03.png" alt="figure">
+<p><figcaption>그림 6.3: 실습 6-3 실행 결과(기본 시야각 \(45^\circ\))</figcaption></figure></p>
+<p>기본 시야각 \(45^\circ\) 상태로 실행하면 그림 6.3과 같이 정육면체가 원근감 있게 나타나고, 슬라이더를 움직이면 시야각이 바뀐다. 시야각을 \(10^\circ\) 근처로 좁히면 좁은 영역만 화면 가득 담기므로 망원 렌즈처럼 정육면체가 크게 확대되고, \(120^\circ\) 근처로 넓히면 광각 렌즈처럼 정육면체가 작아지는 대신 가까운 모서리의 원근 왜곡이 급격해진다. 카메라는 한 발짝도 움직이지 않았다는 점에 주목하자. "확대"에는 카메라를 다가가는 방법과 시야각을 좁히는 방법 두 가지가 있고, 둘은 원근감이 서로 다른 그림을 만든다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">6장 요약</summary><div class="sum-body"><ul>
 <li>WebGL의 눈은 원점에서 \(-z\) 방향을 바라보도록 고정되어 있다. 카메라를 움직이는 대신 <strong>세상에 그 반대 변환을 적용</strong>하는 것이 <strong>뷰 변환</strong>이며, 변환된 좌표계를 뷰 공간(카메라 공간)이라 한다.</li>
 <li>카메라는 <code>eye</code>(위치)·<code>center</code>(바라보는 점)·<code>up</code>(위쪽 힌트)의 세 요소로 결정되고, <code>mat4.lookAt(view, eye, center, up)</code>이 뷰 행렬을 만든다. 내부적으로는 두 점의 차(시선)와 외적(오른쪽·위쪽 축)으로 카메라의 세 축을 세운다  —  4장의 벡터 연산 그대로이다.</li>

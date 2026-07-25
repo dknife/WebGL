@@ -273,21 +273,127 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코�
 <p>보간은 색에만 일어나는 특별한 일이 아니다. 정점 셰이더가 <code>out</code>으로 내보내는 <strong>모든 값</strong>이 같은 방식으로 보간된다. 7장에서는 법선 벡터를 보간하여 매끄러운 조명을 만들고, 8장에서는 텍스처 좌표를 보간하여 이미지를 면에 입힌다. 세 꼭짓점의 정보만으로 면 전체를 채우는 이 메커니즘이 실시간 그래픽스 효율의 핵심 원리이다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p>정점 셰이더의 <code>out</code> 값은 래스터화 단계에서 <strong>프래그먼트의 위치에 따라 가중 평균(보간)</strong>되어 프래그먼트 셰이더의 <code>in</code>으로 전달된다. 정점에만 값을 주면 면 전체가 부드럽게 채워지는 이 원리는 색뿐 아니라 법선, 텍스처 좌표 등 모든 정점 데이터에 적용된다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 3-1</strong>  실습 2-2의 사각형(<code>TRIANGLE_STRIP</code>, 정점 4개)에 정점 색 속성을 추가하여, 네 모서리가 각각 빨강·초록·파랑·노랑인 그라데이션 사각형을 그려 보자.</p>
-<p><strong>해답</strong>  코드 3.2에서 정점 데이터와 그리기 부분만 바꾸면 된다.</p>
-<pre class="line-numbers"><code class="language-javascript">// 위치: TRIANGLE_STRIP 지그재그 순서 (실습 2-2와 동일)
+<p><strong>해답</strong>  코드 3.2에서 정점 데이터와 그리기 부분을 바꾼 완성 프로그램이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+layout(location = 1) in vec3 aColor;
+out vec3 vColor;
+void main() {
+    gl_Position = aPosition;
+    vColor = aColor;               // 색을 다음 단계로 넘긴다
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;                    // 보간되어 도착한 색
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(vColor, 1.0);
+}`;
+
+// 정점·프래그먼트 셰이더를 컴파일해 하나의 프로그램으로 링크한다
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+// 0번 속성: 위치 — TRIANGLE_STRIP 지그재그 순서 (실습 2-2와 동일)
 const positions = new Float32Array([
     -0.5, -0.5,     0.5, -0.5,    -0.5,  0.5,     0.5,  0.5,
 ]);
-// 색: 정점 순서대로 빨강, 초록, 파랑, 노랑
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// 1번 속성: 정점 색 — 네 모서리 빨강, 초록, 파랑, 노랑
 const colors = new Float32Array([
     1.0, 0.0, 0.0,   0.0, 1.0, 0.0,
     0.0, 0.0, 1.0,   1.0, 1.0, 0.0,
 ]);
-// ... 버퍼 2개를 0번(위치, 성분 2개)·1번(색, 성분 3개) 속성에 연결 ...
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre>
+const colVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 3.3: 네 모서리 색이 보간되는 사각형</div></div>
+<p>실행하면 그림 3.1과 같이 네 모서리 색이 안쪽으로 부드럽게 섞인 사각형이 나타난다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch03/ch03_img01.png" alt="figure">
+<p><figcaption>그림 3.1: 실습 3-1 실행 결과</figcaption></figure></p>
 <p><strong>실습 3-2</strong>  옛 데스크톱 그래픽스 강의에서는 슬라이더 위젯 3개로 도형의 RGB 색을 조절하는 예제를 만들곤 했다. 같은 프로그램을 웹으로 만들어 보자. 슬라이더(<code>&lt;input type="range"&gt;</code>) 3개를 만들고, 슬라이더를 움직일 때마다 <code>uColor</code> uniform을 갱신하여 삼각형을 다시 그린다.</p>
-<p><strong>해답</strong>  코드 3.1의 뒷부분을 다음으로 바꾼다.</p>
-<pre class="line-numbers"><code class="language-javascript">const uColorLoc = gl.getUniformLocation(program, 'uColor');
+<p><strong>해답</strong>  코드 3.1에 RGB 슬라이더를 더한 완성 프로그램이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() {
+    gl_Position = aPosition;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec4 uColor;           // 모든 프래그먼트에 공통인 색
+out vec4 fragColor;
+void main() {
+    fragColor = uColor;
+}`;
+
+// 정점·프래그먼트 셰이더를 컴파일해 하나의 프로그램으로 링크한다
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const vertices = new Float32Array([
+     0.0,  0.6,   -0.6, -0.6,    0.6, -0.6,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
 const rgb = [1.0, 0.2, 0.4];        // 현재 색 (초깃값)
 
 function render() {
@@ -311,19 +417,68 @@ function render() {
     document.body.appendChild(slider);
 });
 
-render();</code></pre>
-<p>슬라이더를 움직이는 즉시 삼각형 색이 바뀐다. "값이 바뀌면 uniform을 갱신하고 다시 그린다"라는 이 패턴은 10장에서 배울 상호작용 프로그램의 기본 골격이다.</p>
+render();</code></pre><div class="listing-caption">코드 3.4: 슬라이더로 RGB 색 조절</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch03/ch03_img02.png" alt="figure">
+<p><figcaption>그림 3.2: 실습 3-2 실행 결과 (슬라이더 초깃값 상태)</figcaption></figure></p>
+<p>처음 화면은 초깃값 색인 그림 3.2의 진분홍 삼각형이며, 슬라이더를 움직이는 즉시 삼각형 색이 바뀐다. "값이 바뀌면 uniform을 갱신하고 다시 그린다"라는 이 패턴은 10장에서 배울 상호작용 프로그램의 기본 골격이다.</p>
 <p><strong>실습 3-3</strong>  프래그먼트 셰이더에는 지금 처리 중인 프래그먼트의 화면 픽셀 좌표를 담은 내장 변수 <code>gl_FragCoord</code>가 있다. 정점 색 없이 이 좌표만으로, 화면 왼쪽에서 오른쪽으로 갈수록 검정에서 주황으로 변하는 그라데이션 삼각형을 만들어 보자. (힌트: 캔버스 폭이 600픽셀이라면 <code>gl_FragCoord.x / 600.0</code>은 \(0 \sim 1\) 범위가 된다.)</p>
-<p><strong>해답</strong>  코드 3.1의 프래그먼트 셰이더만 바꾼다.</p>
-<pre class="line-numbers"><code class="language-glsl">#version 300 es
+<p><strong>해답</strong>  코드 3.1에서 프래그먼트 셰이더만 바꾼 완성 프로그램이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() {
+    gl_Position = aPosition;
+}`;
+
+const fsSource = `#version 300 es
 precision mediump float;
 out vec4 fragColor;
 void main() {
     float t = gl_FragCoord.x / 600.0;           // 왼쪽 0.0 ~ 오른쪽 1.0
     vec3 orange = vec3(1.0, 0.6, 0.2);
     fragColor = vec4(orange * t, 1.0);          // 검정 → 주황
-}</code></pre>
-<p>정점 데이터는 그대로인데 색이 프래그먼트의 위치로부터 <strong>계산</strong>되었다. 프래그먼트 셰이더 안에서 색을 만들어 내는 이 발상이 조명(7장)과 각종 특수 효과의 출발점이다.</p></div></p>
+}`;
+
+// 정점·프래그먼트 셰이더를 컴파일해 하나의 프로그램으로 링크한다
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const vertices = new Float32Array([
+     0.0,  0.6,   -0.6, -0.6,    0.6, -0.6,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코드 3.5: 프래그먼트 좌표로 계산한 그라데이션 삼각형</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch03/ch03_img03.png" alt="figure">
+<p><figcaption>그림 3.3: 실습 3-3 실행 결과</figcaption></figure></p>
+<p>그림 3.3처럼 삼각형은 왼쪽 끝이 검정, 오른쪽 끝이 주황으로 이어지는 그라데이션을 띤다. 정점 데이터는 그대로인데 색이 프래그먼트의 위치로부터 <strong>계산</strong>되었다. 프래그먼트 셰이더 안에서 색을 만들어 내는 이 발상이 조명(7장)과 각종 특수 효과의 출발점이다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">3장 요약</summary><div class="sum-body"><ul>
 <li>셰이더의 <code>main()</code>은 <strong>처리 대상 하나마다 한 번씩</strong>, GPU의 수천 개 코어에서 <strong>병렬로</strong> 실행된다. 정점 셰이더는 정점마다, 프래그먼트 셰이더는 프래그먼트마다 실행된다.</li>
 <li>GLSL의 기본 자료형은 벡터(<code>vec2</code>\(\sim\)<code>vec4</code>)와 행렬(<code>mat2</code>\(\sim\)<code>mat4</code>)이다. 성분은 <code>.xyzw</code> 또는 <code>.rgba</code>로 접근하며, 여러 성분을 골라 조합하는 <strong>스위즐링</strong>(<code>p.xy</code>, <code>c.bgr</code>)이 가능하다.</li>

@@ -240,7 +240,7 @@ console.log('삼각형 법선  =', n);   // (0, 0, 1)</code></pre><div class="li
 <div class="box keypoint"><span class="chip">요점</span><p>glMatrix는 <code>Float32Array</code> 기반의 벡터·행렬 라이브러리로, 연산 결과를 <strong>첫 번째 <code>out</code> 인자</strong>에 채워 넣는 규약을 쓴다. <code>vec3.dot</code>·<code>vec3.cross</code>·<code>vec3.normalize</code>·<code>mat4.multiply</code>만 알아도 이 책의 수학 코드 대부분을 읽을 수 있다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 4-1</strong>  점 \(P = (1, 2, 3)\)에서 점 \(Q = (4, 6, 3)\)을 바라보는 단위 방향 벡터를 glMatrix로 계산하고, 두 점 사이의 거리도 출력해 보자.</p>
 <p><strong>해답</strong></p>
-<pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
 
 const P = vec3.fromValues(1, 2, 3);
 const Q = vec3.fromValues(4, 6, 3);
@@ -250,10 +250,10 @@ vec3.subtract(dir, Q, P);            // Q - P = (3, 4, 0)
 console.log('거리 =', vec3.length(dir));      // 5
 vec3.normalize(dir, dir);
 console.log('방향 =', dir);                   // (0.6, 0.8, 0)
-// vec3.distance(P, Q)로 거리를 바로 구할 수도 있다</code></pre>
+// vec3.distance(P, Q)로 거리를 바로 구할 수도 있다</code></pre><div class="listing-caption">코드 4.2: 두 점 사이 거리와 방향 벡터</div></div>
 <p><strong>실습 4-2</strong>  내적 공식 \(\mathbf{a} \cdot \mathbf{b} = \lVert\mathbf{a}\rVert \lVert\mathbf{b}\rVert \cos\theta\)를 거꾸로 이용하면 두 벡터의 사잇각을 구할 수 있다. 벡터 \((1, 0, 0)\)과 \((1, 1, 0)\)의 사잇각을 도(degree) 단위로 계산해 보자.</p>
 <p><strong>해답</strong></p>
-<pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
 
 const a = vec3.fromValues(1, 0, 0);
 const b = vec3.fromValues(1, 1, 0);
@@ -266,10 +266,10 @@ const cos = vec3.dot(an, bn);
 
 const rad = Math.acos(cos);               // 라디안
 const deg = rad * 180 / Math.PI;          // 도 단위로 변환
-console.log('사잇각 =', deg, '도');        // 45도</code></pre>
+console.log('사잇각 =', deg, '도');        // 45도</code></pre><div class="listing-caption">코드 4.3: 내적으로 두 벡터의 사잇각 구하기</div></div>
 <p><strong>실습 4-3</strong>  벡터 덧셈의 평행사변형 법칙을 화면으로 확인해 보자. 원점에서 뻗어 나가는 벡터 \(\mathbf{a} = (0.6, 0.2)\), \(\mathbf{b} = (0.2, 0.6)\), 그리고 \(\mathbf{a} + \mathbf{b}\)를 각각 다른 색의 선분(<code>LINES</code>)으로 그린다. (힌트: 3장의 uniform 색 프로그램에 선분마다 <code>uniform4f</code>로 색을 바꾸며 <code>drawArrays</code>를 세 번 호출한다.)</p>
 <p><strong>해답</strong></p>
-<pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
 const gl = canvas.getContext('webgl2');
 
 const vsSource = `#version 300 es
@@ -320,8 +320,11 @@ gl.drawArrays(gl.LINES, 0, 2);
 gl.uniform4f(uColorLoc, 0.3, 1.0, 0.3, 1.0);
 gl.drawArrays(gl.LINES, 2, 2);
 gl.uniform4f(uColorLoc, 1.0, 1.0, 0.3, 1.0);
-gl.drawArrays(gl.LINES, 4, 2);</code></pre>
-<p>노란 선분(\(\mathbf{a}+\mathbf{b}\))이 빨강과 초록 선분이 만드는 평행사변형의 대각선이 되는 것을 확인하자. <code>drawArrays</code>의 둘째 인자 <code>first</code>를 이용해 한 버퍼의 서로 다른 구간을 그린 점도 눈여겨보자.</p></div></p>
+gl.drawArrays(gl.LINES, 4, 2);</code></pre><div class="listing-caption">코드 4.4: 벡터 덧셈의 평행사변형 법칙</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch04/ch04_img01.png" alt="figure">
+<p><figcaption>그림 4.1: 실습 4-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 4.1과 같이 원점에서 뻗어 나가는 세 벡터가 그려진다. 노란 선분(\(\mathbf{a}+\mathbf{b}\))이 빨강과 초록 선분이 만드는 평행사변형의 대각선이 되는 것을 확인하자. <code>drawArrays</code>의 둘째 인자 <code>first</code>를 이용해 한 버퍼의 서로 다른 구간을 그린 점도 눈여겨보자.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">4장 요약</summary><div class="sum-body"><ul>
 <li><strong>점</strong>은 위치, <strong>벡터</strong>는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터가 된다.</li>
 <li>벡터의 덧셈·뺄셈·스칼라 곱은 성분별로 계산한다. 크기는 \(\lVert\mathbf{a}\rVert = \sqrt{a_x^2 + a_y^2 + a_z^2}\)이고, 벡터를 크기로 나누어 크기 1로 만드는 것이 <strong>정규화</strong>이다. 방향만 나타내는 벡터(법선, 빛 방향)는 항상 단위 벡터로 쓴다.</li>

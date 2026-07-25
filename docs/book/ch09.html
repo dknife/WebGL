@@ -593,7 +593,52 @@ gl.drawArrays(gl.TRIANGLES, 0, mesh.count);</code></pre><div class="listing-capt
 <div class="box keypoint"><span class="chip">요점</span><p>OBJ 파일은 <code>v</code>(위치)·<code>vn</code>(법선)·<code>f</code>(면 인덱스) 라인으로 메시를 담으며, 인덱스는 <strong>1부터</strong> 시작한다. 파서는 <code>v</code>·<code>vn</code>을 순서대로 모으고 <code>f</code>가 가리키는 값을 풀어써서 정점 배열을 만든다. 이렇게 하면 면마다 다른 법선을 실을 수 있어 조명이 자연스럽고, 문자열만 파일 내용으로 바꾸면 어떤 모델이든 읽을 수 있다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 9-1</strong>  정팔면체(octahedron)를 인덱스 버퍼로 그려 보자. 정팔면체는 위·아래·앞·뒤·좌·우 여섯 꼭짓점을 삼각형 여덟 개로 잇는 물체이다. 꼭짓점 여섯 개의 위치와 색, 그리고 삼각형 여덟 개(인덱스 24개)를 작성하여 9.1절 정육면체 예제의 데이터 부분만 교체한다.</p>
 <p><strong>해답</strong>  꼭짓점을 여섯 축 끝에 두고, 위 꼭짓점(2번)과 아래 꼭짓점(3번)을 중심으로 옆면 네 개씩을 잇는다.</p>
-<pre class="line-numbers"><code class="language-javascript">// 여섯 꼭짓점: +x, -x, +y, -y, +z, -z 끝
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(vColor, 1.0);
+}`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 정점 6개: +x, -x, +y, -y, +z, -z 여섯 축 끝 -----
 const positions = new Float32Array([
      1, 0, 0,   -1, 0, 0,    0, 1, 0,
      0, -1, 0,   0, 0, 1,    0, 0, -1,
@@ -602,14 +647,52 @@ const colors = new Float32Array([
     1, 0, 0,   0, 1, 0,   0, 0, 1,
     1, 1, 0,   1, 0, 1,   0, 1, 1,
 ]);
-// 위쪽 네 면(2번 꼭짓점 공유) + 아래쪽 네 면(3번 꼭짓점 공유)
+// ----- 인덱스: 위 꼭짓점(2)·아래 꼭짓점(3) 둘레로 삼각형 8개 -----
 const indices = new Uint16Array([
     0, 2, 4,   1, 4, 2,   0, 4, 3,   1, 3, 4,   // 앞쪽 위·아래
     0, 5, 2,   1, 2, 5,   0, 3, 5,   1, 5, 3,   // 뒤쪽 위·아래
 ]);
-// ... (버퍼 설정은 정육면체 예제와 동일) ...
-gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);  // 인덱스 24개</code></pre>
-<p>삼각형이 여덟 개이므로 <code>drawElements</code>의 <code>count</code>는 \(8 \times 3 = 24\)이다. 꼭짓점은 여섯 개뿐인데 여덟 삼각형이 그 꼭짓점을 공유한다. 옆에서 보면 마름모꼴로 보이는 정팔면체가 나타난다.</p>
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+const posVbo = gl.createBuffer();                  // 위치 버퍼 → 0번 속성
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+const colVbo = gl.createBuffer();                  // 색 버퍼 → 1번 속성
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+const ibo = gl.createBuffer();                     // 인덱스 버퍼
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ----- MVP 행렬 -----
+const model = mat4.create();
+const view = mat4.create();
+const projection = mat4.create();
+mat4.rotateY(model, model, 0.5);
+mat4.lookAt(view, [3, 2, 3.5], [0, 0, 0], [0, 1, 0]);
+mat4.perspective(projection, Math.PI / 4, 600 / 400, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjection'), false,
+                    projection);
+
+// ----- 그리기 -----
+gl.enable(gl.DEPTH_TEST);                          // 깊이 검사
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);  // 인덱스 24개</code></pre><div class="listing-caption">코드 9.4: 인덱스 버퍼로 팔면체 그리기</div></div>
+<figure class="fig">
+<img class="gfx" src="img/ch09/ch09_img01.png" alt="figure">
+<p><figcaption>그림 9.1: 실습 9-1 실행 결과</figcaption></figure></p>
+<p>삼각형이 여덟 개이므로 <code>drawElements</code>의 <code>count</code>는 \(8 \times 3 = 24\)이다. 꼭짓점은 여섯 개뿐인데 여덟 삼각형이 그 꼭짓점을 공유한다. 실행하면 그림 9.1과 같이 옆에서 보면 마름모꼴로 보이는 정팔면체가 나타난다.</p>
 <p><strong>실습 9-2</strong>  어떤 메시가 한 정점마다 <strong>위치 3개, 법선 3개, 텍스처 좌표 2개</strong>(모두 <code>float</code>)를 인터리브 버퍼에 담는다고 하자. (a) 한 정점의 스트라이드는 몇 바이트인가? (b) 위치·법선·텍스처 좌표 세 속성의 오프셋은 각각 얼마인가? (c) 이 셋을 0·1·2번 속성에 연결하는 <code>vertexAttribPointer</code> 호출을 작성하시오.</p>
 <p><strong>해답</strong>  <code>float</code>는 4바이트이고 한 정점은 \(3 + 3 + 2 = 8\)개의 <code>float</code>로 이루어진다.</p>
 <ul>
