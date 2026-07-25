@@ -34,7 +34,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
-<div class="nav-secs"></div>
+<div class="nav-secs"><a class="nav-sec" href="ch05.html#sec1">5.1 동차좌표와 변환 행렬</a><a class="nav-sec" href="ch05.html#sec2">5.2 glMatrix로 변환 적용하기</a><a class="nav-sec" href="ch05.html#sec3">5.3 변환의 합성과 순서</a><a class="nav-sec" href="ch05.html#sec4">5.4 계층적 모델링</a><a class="nav-sec" href="ch05.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch05.html#summary">5장 요약</a><a class="nav-sec" href="ch05.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
@@ -59,18 +59,510 @@
   <h1>기하 변환</h1>
 </div>
 <div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><ul>
-<li>동차좌표가 왜 필요한지 이해한다.</li>
-<li>이동·회전·크기 변환 행렬을 만들고 적용할 수 있다.</li>
-<li>변환의 합성 순서가 결과에 미치는 영향을 이해한다.</li>
-<li>계층적 모델링으로 관절 구조를 표현할 수 있다.</li>
+<li>이동을 행렬 곱으로 표현하기 위해 동차좌표가 필요한 이유를 설명할 수 있다.</li>
+<li>이동·크기·회전 변환 행렬을 쓰고 점에 적용할 수 있다.</li>
+<li>glMatrix로 변환 행렬을 만들어 셰이더의 uniform으로 전달할 수 있다.</li>
+<li>변환을 합성할 때 곱하는 순서가 결과를 어떻게 바꾸는지 예측할 수 있다.</li>
+<li>부모의 변환이 자식에게 전파되는 계층적 모델링을 구현할 수 있다.</li>
 </ul></div></details></div>
-<div class="box note"><span class="chip">잠깐</span><span class="box-title">집필 예정</span><p>이 장은 집필 예정이다. 다음 절들로 구성될 계획이다.
+<p>지금까지 우리가 그린 도형은 모두 버퍼에 넣어 둔 좌표 그 자리에 붙박여 있었다. 삼각형을 오른쪽으로 옮기고 싶으면 어떻게 해야 할까? 정점 배열의 숫자를 일일이 고쳐 버퍼를 다시 채우는 것은 답이 아니다. 그래픽스의 방식은 다르다. 정점 데이터는 그대로 두고, 정점 셰이더에서 모든 정점에 <strong>변환 행렬</strong>을 곱하는 것이다. 행렬 하나만 바꾸면 수만 개의 정점이 한꺼번에 움직이고, 회전하고, 커진다. 물체를 움직이는 것이 아니라 좌표를 변환하는 것  —  이 장의 제목 아래에 적힌 문장이 바로 이 발상이다.</p>
+<p>이 장에서는 먼저 이동·크기·회전을 표현하는 변환 행렬을 만든다. 이 과정에서 "왜 3차원 그래픽스가 \(3 \times 3\)이 아닌 \(4 \times 4\) 행렬을 쓰는가"라는 물음에 답하는 <strong>동차좌표</strong>를 만나게 된다. 이어서 glMatrix로 변환 행렬을 만들어 셰이더에 전달하는 방법, 여러 변환을 하나로 합성할 때 순서가 갖는 의미를 익히고, 마지막으로 부모의 움직임이 자식에게 전파되는 <strong>계층적 모델링</strong>으로 태양--행성--위성 구조를 조립해 본다. 4장에서 벼려 둔 행렬이라는 연장이 드디어 화면 위에서 일하기 시작한다.</p>
+<h2 id="sec1">5.1 동차좌표와 변환 행렬</h2>
+<p><h3>이동은 왜 (3 × 3) 행렬로 표현할 수 없는가</h3></p>
+<p>4장에서 행렬은 변환을 담는 그릇이라고 했다. 3차원 점은 성분이 세 개이니 \(3 \times 3\) 행렬이면 충분할 것 같다. 실제로 회전과 크기 변환은 \(3 \times 3\) 행렬 곱으로 완벽하게 표현된다. 그런데 가장 단순해 보이는 변환인 <strong>이동</strong>이 문제를 일으킨다. 점 \((x, y, z)\)를 \((t_x, t_y, t_z)\)만큼 옮기는 이동은 덧셈이다.
+\[
+(x, y, z) \;\longrightarrow\; (x + t_x,\ y + t_y,\ z + t_z)
+\]</p>
+<p>이 덧셈을 \(3 \times 3\) 행렬 곱 하나로 표현할 수 있을까? 불가능하다. 어떤 행렬 \(M\)이든 영벡터에 곱하면 결과는 영벡터이기 때문이다.
+\[
+M \begin{pmatrix} 0 \\ 0 \\ 0 \end{pmatrix}
+= \begin{pmatrix} 0 \\ 0 \\ 0 \end{pmatrix}
+\]
+행렬 곱은 <strong>원점을 항상 원점에 남겨 두는</strong> 변환만 만들 수 있다. 회전과 크기 변환은 원점을 움직이지 않으므로 괜찮지만, 이동은 원점까지 옮겨야 하므로 \(3 \times 3\) 곱의 틀에 들어가지 않는 것이다.</p>
+<p>물론 "곱은 곱대로, 이동은 덧셈으로" 처리하는 방법도 있다. 그러나 그렇게 하면 변환을 여러 개 이어 붙일 때마다 곱셈과 덧셈이 뒤섞인 지저분한 식이 되고, 4장에서 본 "여러 변환을 미리 곱해 행렬 하나로 만든다"는 강력한 성질도 쓸 수 없게 된다. GPU 파이프라인이 원하는 것은 <strong>정점마다 행렬 하나를 곱하면 끝나는</strong> 통일된 형식이다. 이동까지 곱셈의 세계로 데려올 방법이 필요하다.</p>
+<h3>동차좌표  —  차원을 하나 늘리는 마술</h3>
+<p>해결책은 의외로 간단하다. 좌표에 성분을 하나 더 붙여, 3차원 점 \((x, y, z)\)를 네 성분의 <strong class="term-ko">동차좌표</strong><sup class="term">homogeneous coordinates</sup> \((x, y, z, 1)\)로 표현하는 것이다. 넷째 성분을 \(w\)라고 부른다. 이제 행렬도 \(4 \times 4\)가 되는데, 다음 행렬을 동차좌표 점에 곱해 보자.
+\[
+T(t_x, t_y, t_z) =
+\begin{pmatrix}
+1 & 0 & 0 & t_x \\
+0 & 1 & 0 & t_y \\
+0 & 0 & 1 & t_z \\
+0 & 0 & 0 & 1
+\end{pmatrix}, \qquad
+T \begin{pmatrix} x \\ y \\ z \\ 1 \end{pmatrix}
+=
+\begin{pmatrix} x + t_x \\ y + t_y \\ z + t_z \\ 1 \end{pmatrix}
+\]</p>
+<p>각 행과 열벡터의 내적을 직접 계산해 보면, 마지막 성분의 1이 \(t_x, t_y, t_z\)와 곱해지면서 정확히 이동의 덧셈이 만들어진다. <strong>이동이 행렬 곱이 되었다.</strong> 이 행렬 \(T\)를 <strong class="term-ko">이동 변환</strong><sup class="term">translation</sup> 행렬이라고 한다. 차원을 하나 늘렸을 뿐인데 회전·크기·이동, 나아가 6장에서 배울 투영까지 모든 변환이 \(4 \times 4\) 행렬 곱이라는 하나의 형식으로 통일된다. 3차원 그래픽스의 행렬이 \(4 \times 4\)인 이유가 바로 이것이다.</p>
+<p>사실 독자는 이 행렬을 이미 만난 적이 있다. 4장 연습문제 8의 배열이 그 주인공이다.</p>
+<pre class="line-numbers"><code class="language-javascript">m = [1, 0, 0, 0,   0, 1, 0, 0,   0, 0, 1, 0,   5, 7, 9, 1]</code></pre>
+<p>열 우선 규칙으로 읽으면 이 배열은 \(T(5, 7, 9)\), 즉 \((5, 7, 9)\)만큼의 이동 행렬이다. 이동량은 넷째 <strong>열</strong>에 놓이므로, 열 우선 배열에서는 <code>m[12]</code>, <code>m[13]</code>, <code>m[14]</code> 자리에 나타난다. 행렬 배열을 디버깅할 때 요긴한 지표이니 기억해 두자.</p>
+<h3>크기 변환</h3>
+<p><strong class="term-ko">크기 변환</strong><sup class="term">scaling</sup>은 각 축 방향으로 좌표를 \(s_x, s_y, s_z\)배 하는 변환으로, 대각선에 배율을 놓으면 된다.
+\[
+S(s_x, s_y, s_z) =
+\begin{pmatrix}
+s_x & 0 & 0 & 0 \\
+0 & s_y & 0 & 0 \\
+0 & 0 & s_z & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}, \qquad
+S \begin{pmatrix} x \\ y \\ z \\ 1 \end{pmatrix}
+=
+\begin{pmatrix} s_x x \\ s_y y \\ s_z z \\ 1 \end{pmatrix}
+\]</p>
+<p>세 배율이 같으면(\(s_x = s_y = s_z\)) 모양을 유지한 채 커지거나 작아지는 균등 크기 변환이고, 다르면 특정 축으로만 늘어나는 비균등 크기 변환이다. 단위 정육면체 하나를 \(S(2, 1, 2)\)로 납작하게 펴서 몸통을 만들고 \(S(0.5, 4, 0.5)\)로 길게 늘여 팔을 만드는 식으로, 기본 도형 하나를 여러 모양으로 재활용할 때 크기 변환이 활약한다. 배율이 음수이면 그 축에 대해 뒤집히는 반사가 된다는 점도 알아 두자.</p>
+<p>크기 변환의 기준은 <strong>원점</strong>이다. 원점에서 떨어져 있는 물체에 크기 변환을 적용하면 커지면서 원점에서 멀어지는 쪽으로 밀려난다. 물체가 "제자리에서" 커지게 하려면 변환을 합성해야 하는데, 이는 5.3절의 주제이다.</p>
+<h3>회전 변환</h3>
+<p><strong class="term-ko">회전 변환</strong><sup class="term">rotation</sup>은 원점을 지나는 축을 중심으로 좌표를 돌리는 변환이다. 가장 이해하기 쉬운 \(z\)축 회전부터 유도해 보자. \(z\)축을 중심으로 도는 회전에서 \(z\) 좌표는 변하지 않으므로, \(xy\) 평면의 2차원 회전만 생각하면 된다.</p>
+<p>점 \((x, y)\)가 원점에서 거리 \(r\), \(x\)축에서 잰 각 \(\phi\)의 자리에 있다고 하자. 즉 \(x = r\cos\phi\), \(y = r\sin\phi\)이다. 이 점을 반시계 방향으로 \(\theta\)만큼 돌리면 거리는 \(r\) 그대로, 각만 \(\phi + \theta\)가 된다. 삼각함수의 덧셈 정리를 적용하면
+\[
+\begin{aligned}
+x' &= r\cos(\phi + \theta) = r\cos\phi\cos\theta - r\sin\phi\sin\theta = x\cos\theta - y\sin\theta \\
+y' &= r\sin(\phi + \theta) = r\sin\phi\cos\theta + r\cos\phi\sin\theta = x\sin\theta + y\cos\theta
+\end{aligned}
+\]</p>
+<p>결과가 \(x\)와 \(y\)의 일차결합이므로 행렬로 쓸 수 있다. \(z\)와 \(w\) 성분을 그대로 두는 행과 열을 채우면 \(z\)축 회전 행렬이 완성된다.
+\[
+R_z(\theta) =
+\begin{pmatrix}
+\cos\theta & -\sin\theta & 0 & 0 \\
+\sin\theta & \cos\theta  & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]</p>
+<p>\(\theta = 90^\circ\)를 넣으면 좌상단 \(2 \times 2\) 부분이 4장에서 본 \(90^\circ\) 회전 행렬 \(\bigl(\begin{smallmatrix} 0 & -1 \\ 1 & 0 \end{smallmatrix}\bigr)\)이 되는 것을 확인해 보자. \(x\)축·\(y\)축 회전도 같은 원리로, 돌지 않는 축의 행과 열만 단위 행렬처럼 남긴 형태이다.
+\[
+R_x(\theta) =
+\begin{pmatrix}
+1 & 0 & 0 & 0 \\
+0 & \cos\theta & -\sin\theta & 0 \\
+0 & \sin\theta & \cos\theta & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}, \qquad
+R_y(\theta) =
+\begin{pmatrix}
+\cos\theta & 0 & \sin\theta & 0 \\
+0 & 1 & 0 & 0 \\
+-\sin\theta & 0 & \cos\theta & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]</p>
+<p>회전의 양의 방향은 <strong>회전축의 양의 끝에서 원점을 내려다볼 때 반시계 방향</strong>이다. 오른손 엄지를 축의 양의 방향으로 향하게 하면 나머지 손가락이 감기는 방향  —  오른손 좌표계다운 관례이다. \(R_y\)만 \(\sin\theta\)의 부호 위치가 달라 보이는 것도 이 관례를 지키기 위해서이다.</p>
+<p><h3>점은 (w = 1), 벡터는 (w = 0)</h3></p>
+<p>동차좌표는 덤으로 4장에서 강조한 점과 벡터의 구분까지 좌표에 새겨 넣는다. 위치인 <strong>점</strong>은 \(w = 1\)로, 방향과 크기인 <strong>벡터</strong>는 \(w = 0\)으로 표현하는 것이다. 이동 행렬을 벡터에 곱해 보면 이 구분의 의미가 드러난다.
+\[
+T \begin{pmatrix} x \\ y \\ z \\ 0 \end{pmatrix}
+=
+\begin{pmatrix} x \\ y \\ z \\ 0 \end{pmatrix}
+\]</p>
+<p>\(w = 0\)이면 이동량 \(t_x, t_y, t_z\)와 곱해질 1이 없으므로 <strong>이동이 아무 효과도 내지 못한다</strong>. 이는 버그가 아니라 정확히 원하던 성질이다. 벡터는 위치가 없는 양이므로 평행이동해도 그대로여야 한다. 화살표를 어디로 옮겨 그리든 방향과 길이는 같지 않은가. 반면 회전과 크기 변환은 \(w\)와 무관하게 좌상단 \(3 \times 3\) 부분으로 작용하므로 벡터에도 온전히 적용된다. 같은 행렬 하나가 점은 옮기고 벡터는 돌리기만 하는 셈이다. 이 구분은 7장에서 법선 벡터를 변환할 때 다시 중요해진다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>\(3 \times 3\) 행렬 곱은 원점을 움직일 수 없어 이동을 표현하지 못한다. 좌표에 \(w\) 성분을 더한 <strong>동차좌표</strong>를 쓰면 이동까지 \(4 \times 4\) 행렬 곱으로 통일된다. 점은 \(w = 1\)이라 이동의 영향을 받고, 벡터는 \(w = 0\)이라 이동에 불변이다. 크기·회전 변환의 기준은 언제나 <strong>원점</strong>이다.</p></div>
+<h2 id="sec2">5.2 glMatrix로 변환 적용하기</h2>
+<p>변환 행렬의 수식을 알았으니 이제 코드로 옮길 차례이다. 다행히 \(\cos\)과 \(\sin\)을 배열에 손으로 채워 넣을 필요는 없다. glMatrix의 <code>mat4</code> 모듈이 이 절의 행렬들을 한 줄에 만들어 준다.</p>
+<h3>변환 행렬을 만드는 함수들</h3>
+<p><code>mat4</code>의 <code>from*</code> 계열 함수는 단위 행렬에서 출발해 원하는 변환 행렬 하나를 <code>out</code> 인자에 채워 넣는다.</p>
+<pre class="line-numbers"><code class="language-javascript">const { mat4 } = glMatrix;
+const T = mat4.create();                       // 그릇 준비 (단위 행렬)
+const S = mat4.create();
+const R = mat4.create();
+
+mat4.fromTranslation(T, [0.4, 0.3, 0]);        // T(0.4, 0.3, 0)
+mat4.fromScaling(S, [2, 1, 2]);                // S(2, 1, 2)
+mat4.fromZRotation(R, Math.PI / 6);            // Rz(30도) — 각도는 라디안!</code></pre>
+<div class="table-wrap"><div class="table-caption">표 5.1: 변환 행렬을 만드는 mat4 함수</div><table><tr><th>함수</th><th>만들어지는 행렬</th></tr><tr><td><code>mat4.fromTranslation(out, [x,y,z])</code></td><td>이동 행렬 \(T(x, y, z)\)</td></tr><tr><td><code>mat4.fromScaling(out, [x,y,z])</code></td><td>크기 행렬 \(S(x, y, z)\)</td></tr><tr><td><code>mat4.fromXRotation(out, rad)</code></td><td>\(x\)축 회전 \(R_x\)</td></tr><tr><td><code>mat4.fromYRotation(out, rad)</code></td><td>\(y\)축 회전 \(R_y\)</td></tr><tr><td><code>mat4.fromZRotation(out, rad)</code></td><td>\(z\)축 회전 \(R_z\)</td></tr><tr><td><code>mat4.fromRotation(out, rad, [x,y,z])</code></td><td>임의의 축 \((x,y,z)\) 중심 회전</td></tr></table></div>
+<div class="box caution"><span class="chip">주의</span><p>glMatrix의 모든 각도는 <strong>라디안</strong>이다. 도(degree) 단위의 값은 <code>deg * Math.PI / 180</code>으로 변환해서 넘겨야 한다. \(30^\circ\) 대신 30 라디안(약 \(1719^\circ\))을 넘기는 실수는 오류 메시지 없이 엉뚱한 각도로 조용히 그려지기 때문에 찾기 어렵다.</p></div>
+<h3>셰이더로 행렬 보내기  —  uniform mat4</h3>
+<p>만들어진 행렬은 어디에서 정점과 곱해질까? 정점마다 반복되는 계산이므로 당연히 <strong>정점 셰이더</strong>의 일이다. 3장에서 배운 uniform이 여기서 다시 등장한다. 행렬은 모든 정점에 공통으로 적용되는 값이므로 <code>uniform mat4</code>로 선언하면 된다.</p>
+<pre class="line-numbers"><code class="language-glsl">#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;                    // 모델 변환 행렬
+void main() {
+    gl_Position = uModel * aPosition;   // 행렬 곱 = 변환 적용
+}</code></pre>
+<p>GLSL은 행렬과 벡터가 기본 자료형이라 <code>uModel * aPosition</code>이라고 쓰면 \(4 \times 4\) 행렬과 4차원 벡터의 곱이 그대로 계산된다. 물체의 정점을 원하는 위치·방향·크기로 옮겨 놓는 이 행렬을 <strong class="term-ko">모델 행렬</strong><sup class="term">model matrix</sup>이라고 부른다. 참고로 <code>aPosition</code>은 성분 2개짜리 정점 데이터를 <code>vec4</code>로 받고 있는데, 이때 모자라는 성분은 \(z = 0\), \(w = 1\)로 자동으로 채워진다. 우리가 넘긴 2차원 정점이 셰이더 안에서는 이미 \(w = 1\)인 동차좌표 <strong>점</strong>으로 취급되고 있었던 것이다.</p>
+<p>자바스크립트 쪽에서 행렬 uniform을 채우는 함수는 <code>uniformMatrix4fv()</code>이다.</p>
+<pre class="line-numbers"><code class="language-javascript">const uModelLoc = gl.getUniformLocation(program, 'uModel');
+gl.uniformMatrix4fv(uModelLoc, false, model);   // 행렬을 셰이더로 전달</code></pre>
+<p>둘째 인자는 행렬을 전치(행과 열을 뒤집기)해서 보낼지 여부인데, WebGL에서는 <strong>반드시 <code>false</code></strong>여야 한다(사양이 <code>true</code>를 허용하지 않는다). glMatrix의 행렬은 이미 WebGL이 원하는 열 우선 배열이므로 전치할 이유도 없다. 셋째 인자로 <code>mat4</code>를 그대로 넘기면 된다. <code>mat4</code>의 정체가 16칸 <code>Float32Array</code>이기에 가능한 일이다.</p>
+<h3>삼각형을 이동하고 회전하기</h3>
+<p>이제 부품이 모두 준비되었다. 2장의 삼각형 프로그램에 모델 행렬을 더해, 원점의 삼각형을 \(30^\circ\) 회전시키고 오른쪽 위로 옮겨 그려 보자. 지면을 아끼기 위해 셰이더 컴파일·링크 도우미는 2장의 도우미를 압축한 형태로 포함했다. 하는 일은 완전히 같다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ===== 셰이더: 정점마다 uModel을 곱한다 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;                    // 모델 변환 행렬
+void main() {
+    gl_Position = uModel * aPosition;   // 행렬 곱 = 변환 적용
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(1.0, 0.6, 0.2, 1.0);   // 주황색
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미 압축판) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+
+// ===== 원점 주변의 삼각형 =====
+const vertices = new Float32Array([
+     0.0,  0.3,   -0.3, -0.3,    0.3, -0.3,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ===== 모델 행렬: 30도 회전한 뒤 (0.4, 0.3)만큼 이동 =====
+const R = mat4.create();
+const T = mat4.create();
+const model = mat4.create();
+mat4.fromZRotation(R, 30 * Math.PI / 180);
+mat4.fromTranslation(T, [0.4, 0.3, 0]);
+mat4.multiply(model, T, R);              // model = T x R
+
+gl.uniformMatrix4fv(uModelLoc, false, model);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코드 5.1: 모델 행렬로 삼각형 이동·회전하기</div></div>
+<p>실행하면 왼쪽으로 \(30^\circ\) 기운 주황 삼각형이 화면 오른쪽 위에 나타난다. 정점 배열은 처음 그대로인데 삼각형이 다른 자리에, 다른 방향으로 그려졌다. 행렬의 각도와 이동량을 바꾸어 다시 실행해 보자. 버퍼는 건드리지 않고 행렬 하나로 물체를 어디로든 보낼 수 있다.</p>
+<p>코드 끝부분의 <code>mat4.multiply(model, T, R)</code>에 눈길이 갔을 것이다. 회전 행렬과 이동 행렬을 곱해 하나의 모델 행렬로 합쳤는데, 왜 하필 \(T\)가 앞이고 \(R\)이 뒤일까? 순서를 바꾸면 어떻게 될까? 이것이 바로 다음 절의 주제이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p><code>mat4.fromTranslation</code>·<code>fromScaling</code>·<code>fromZRotation</code> 등으로 변환 행렬을 만들고(각도는 라디안), <code>uniformMatrix4fv(loc, false, m)</code>로 정점 셰이더의 <code>uniform mat4</code>에 전달하며, 셰이더에서는 <code>uModel * aPosition</code> 한 줄로 모든 정점에 변환이 적용된다. 정점 버퍼는 그대로 두고 <strong>행렬만 바꾸어</strong> 물체를 움직이는 것이 그래픽스의 방식이다.</p></div>
+<h2 id="sec3">5.3 변환의 합성과 순서</h2>
+<h3>오른쪽에 있는 변환이 먼저 적용된다</h3>
+<p>4장에서 행렬 곱은 변환의 연결이며 교환법칙이 성립하지 않는다고 했다. 이제 그 말의 무게를 실감할 차례이다. 앞 절의 모델 행렬을 다시 보자.
+\[
+M = T\,R, \qquad M\mathbf{v} = T(R\mathbf{v})
+\]</p>
+<p>정점 \(\mathbf{v}\)에 \(M\)을 곱하면 괄호가 보여 주듯 <strong>\(\mathbf{v}\)에 가까운 오른쪽 행렬 \(R\)이 먼저</strong> 적용되고, 그 결과에 \(T\)가 적용된다. 즉 \(TR\)은 "회전한 뒤 이동"이고, \(RT\)는 "이동한 뒤 회전"이다. 수식을 읽는 방향과 변환이 일어나는 순서가 반대라서 처음에는 혼란스럽지만, 정점이 오른쪽에서 곱해 들어온다는 것만 기억하면 헷갈릴 일이 없다.</p>
+<p>두 순서는 정말 다른 결과를 낳을까? \(90^\circ\) 회전 \(R\)과 오른쪽으로 0.5 이동 \(T\)를 놓고 따져 보자.</p>
 <ul>
-<li>동차좌표와 변환 행렬</li>
-<li>이동, 회전, 크기 변환</li>
-<li>변환의 합성</li>
-<li>계층적 모델링</li>
-</ul></p></div>
+<li>\(T\,R\) (회전 후 이동)  —  원점의 삼각형이 제자리에서 \(90^\circ\) 돌고, 그 모습 그대로 오른쪽으로 0.5 옮겨진다. 결과: \((0.5, 0)\)에 놓인 회전된 삼각형.</li>
+<li>\(R\,T\) (이동 후 회전)  —  삼각형이 먼저 \((0.5, 0)\)으로 옮겨진 뒤, <strong>원점을 중심으로</strong> \(90^\circ\) 돈다. 회전의 기준은 언제나 원점이므로 삼각형 자체가 원점 둘레를 공전하듯 휩쓸려 \((0, 0.5)\)로 가 버린다.</li>
+</ul>
+<p>말로만 들어서는 미덥지 않으니 두 결과를 한 화면에 그려 비교해 보자. 이번에는 프래그먼트 셰이더에 색 uniform을 두어, 같은 삼각형을 행렬과 색만 바꿔 가며 세 번 그린다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;
+void main() {
+    gl_Position = uModel * aPosition;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec4 uColor;                    // 그리기마다 바꿀 색
+out vec4 fragColor;
+void main() {
+    fragColor = uColor;
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미 압축판) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
+
+// 원점 주변의 삼각형 (위 꼭짓점으로 방향을 알아본다)
+const vertices = new Float32Array([
+     0.0,  0.25,   -0.25, -0.25,    0.25, -0.25,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ===== 같은 R, T로 곱하는 순서만 다른 두 행렬 =====
+const R = mat4.create();
+const T = mat4.create();
+mat4.fromZRotation(R, 90 * Math.PI / 180);   // 90도 회전
+mat4.fromTranslation(T, [0.5, 0, 0]);        // 오른쪽으로 0.5 이동
+
+const TR = mat4.create();
+const RT = mat4.create();
+mat4.multiply(TR, T, R);                     // TR: 회전 후 이동
+mat4.multiply(RT, R, T);                     // RT: 이동 후 회전
+
+// 행렬과 색을 바꿔 가며 같은 삼각형을 세 번 그린다
+function drawTriangle(m, r, g, b) {
+    gl.uniformMatrix4fv(uModelLoc, false, m);
+    gl.uniform4f(uColorLoc, r, g, b, 1.0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+drawTriangle(mat4.create(), 0.5, 0.5, 0.5);  // 회색: 변환 전 원본
+drawTriangle(TR, 1.0, 0.6, 0.2);             // 주황: 회전 후 이동
+drawTriangle(RT, 0.2, 0.8, 0.8);             // 청록: 이동 후 회전</code></pre><div class="listing-caption">코드 5.2: 회전 후 이동 vs 이동 후 회전  —  순서 비교</div></div>
+<p>실행 결과를 보자. 주황 삼각형(\(TR\))은 원본의 오른쪽, \((0.5, 0)\)에서 왼쪽으로 누운 채 있다. 회전이 원점의 제자리에서 일어난 뒤 이동했기 때문이다. 반면 청록 삼각형(\(RT\))은 화면 위쪽 \((0, 0.5)\)에 가 있다. 먼저 오른쪽으로 이동한 삼각형이 원점 중심의 \(90^\circ\) 회전에 휩쓸려 위로 쓸려 간 것이다. 같은 두 행렬을 곱하는 순서만 바꿨는데 물체가 전혀 다른 곳에 놓였다.</p>
+<p>여기서 실용적인 공식 하나를 얻는다. 물체를 "제자리에서 회전·크기 변환한 뒤 원하는 곳에 놓는" 가장 흔한 배치는 항상
+\[
+M = T \; R \; S
+\]
+의 순서로 곱한다(오른쪽부터 크기 \(\to\) 회전 \(\to\) 이동). 크기와 회전은 물체가 아직 원점에 있을 때 끝내 놓고 마지막에 이동하는 것이다. 순서가 뒤집히면 조금 전의 청록 삼각형처럼 물체가 엉뚱한 곳으로 휩쓸려 간다.</p>
+<h3>누적 함수  —  행렬에 변환 이어 붙이기</h3>
+<p>행렬 두세 개를 만들어 <code>multiply</code>로 합치는 일이 잦다 보니, glMatrix는 <strong>기존 행렬의 오른쪽에 변환을 곱해 붙이는</strong> 누적 함수도 제공한다.</p>
+<pre class="line-numbers"><code class="language-javascript">mat4.translate(out, m, [x, y, z]);   // out = m x T(x, y, z)
+mat4.rotateZ(out, m, rad);           // out = m x Rz(rad)  (rotateX, rotateY도 있다)
+mat4.scale(out, m, [x, y, z]);       // out = m x S(x, y, z)</code></pre>
+<p><code>from*</code> 계열이 행렬을 새로 만드는 것과 달리, 누적 계열은 받은 행렬 <code>m</code>에 변환 하나를 이어 붙인 결과를 <code>out</code>에 담는다. <code>out</code>과 <code>m</code>에 같은 행렬을 넘기면 행렬을 제자리에서 키워 나갈 수 있다. 앞 예제의 \(TR\)은 다음과 같이 다시 쓸 수 있다.</p>
+<pre class="line-numbers"><code class="language-javascript">const model = mat4.create();                    // I
+mat4.translate(model, model, [0.5, 0, 0]);      // I x T = T
+mat4.rotateZ(model, model, 90 * Math.PI / 180); // T x R
+// model = T x R : "회전 후 이동"과 같다</code></pre>
+<p>새 변환이 <strong>오른쪽에</strong> 곱해지므로, 코드에서 <strong>나중에 호출한 변환이 정점에는 먼저</strong> 적용된다. 처음에는 이 어긋남이 낯설지만, 다음 상자에서 보듯 읽는 관점을 바꾸면 오히려 코드 순서 그대로 자연스럽게 읽을 수 있다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">변환을 읽는 두 가지 방법</span><p>\(M = T\,R\)은 두 가지로 읽을 수 있다. 첫째는 <strong>세계 좌표계 기준</strong>으로, 정점에 가까운 오른쪽부터 "회전하고, 이동한다"라고 읽는 방법이다. 둘째는 <strong>지역 좌표계 기준</strong>으로, 물체가 자신의 좌표계를 갖고 다닌다고 상상하고 코드에 쓴 순서 그대로 "좌표계를 이동시키고, 그 옮겨진 좌표계 안에서 회전한 뒤, 거기에 물체를 그린다"라고 읽는 방법이다. 놀랍게도 두 해석의 결과는 항상 같다. 관절처럼 이어진 구조를 다룰 때는 둘째 해석이 압도적으로 편리한데, 다음 절의 계층적 모델링이 바로 그 무대이다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>\(M\mathbf{v} = T(R\mathbf{v})\)  —  곱해 놓은 행렬에서 <strong>정점에 가까운 오른쪽 변환이 먼저</strong> 적용된다. "제자리 변형 후 배치"는 \(M = TRS\) 순서가 공식이다. 누적 함수 <code>mat4.translate</code>·<code>rotateZ</code>·<code>scale</code>은 행렬의 오른쪽에 변환을 이어 붙이므로, 코드에서 나중에 쓴 변환이 정점에 먼저 적용된다.</p></div>
+<h2 id="sec4">5.4 계층적 모델링</h2>
+<h3>부모를 따라 움직이는 자식</h3>
+<p>그래픽스가 다루는 물체들은 흔히 구조를 가진다. 로봇의 몸통이 움직이면 팔도 함께 움직이고, 팔이 굽으면 손도 따라온다. 그러나 손을 움직인다고 몸통이 움직이지는 않는다. 몸통에 적용된 변환은 팔과 손에 <strong>전파</strong>되지만 그 반대는 아닌 것이다. 이때 몸통이 팔의 <strong>부모</strong>, 팔이 몸통의 <strong>자식</strong>이라고 하며, 이런 부모--자식 관계로 물체를 조립하는 기법을 <strong class="term-ko">계층적 모델링</strong><sup class="term">hierarchical modeling</sup>이라고 한다. 관계 전체는 몸통을 뿌리로 하는 트리로 그릴 수 있다: 몸통 아래 팔, 팔 아래 손이 매달린 구조이다.</p>
+<p>행렬의 언어로 옮기면 규칙은 한 줄이다. <strong>자식의 모델 행렬은 부모의 모델 행렬에 자신의 변환을 오른쪽에 곱한 것이다.</strong>
+\[
+M_{\text{자식}} = M_{\text{부모}} \; L_{\text{자식}}
+\]
+여기서 \(L_{\text{자식}}\)은 부모 기준의 상대 변환("부모에서 얼마나 떨어져 어느 방향에 붙어 있는가")이다. 5.3절의 지역 좌표계 읽기가 그대로 들어맞는다. 부모의 행렬은 부모의 좌표계이고, 자식은 그 좌표계에서 출발해 자신의 상대 변환만큼 더 나아간 좌표계를 갖는다. 부모 행렬이 바뀌면 그것을 물려받은 자식·손자의 행렬이 모두 함께 바뀌므로, 전파가 저절로 일어난다.</p>
+<h3>태양--행성--위성 만들기</h3>
+<p>계층 구조의 고전적인 예제인 태양계를 조립해 보자. 태양은 세계의 중심에 있고, 행성은 태양에서 궤도 반지름만큼 떨어져 있으며, 위성은 <strong>행성을 기준으로</strong> 그 곁에 붙어 있다. 태양\(\to\)행성\(\to\)위성으로 이어지는 3대 구조이다.</p>
+<p>몸은 모두 사각형 하나로 만든다. 2장에서 배운 대로 <code>TRIANGLE_STRIP</code>은 정점 4개로 사각형을 만들 수 있다. 버퍼에는 한 변이 1인 사각형 <strong>하나만</strong> 담아 두고, 크기 행렬로 큰 태양·중간 행성·작은 위성을 찍어내며, 색은 uniform으로 바꾼다. 정점 데이터 하나를 변환으로 재활용하는 것  —  이것이 이 장 전체의 정신이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;
+void main() {
+    gl_Position = uModel * aPosition;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec4 uColor;
+out vec4 fragColor;
+void main() {
+    fragColor = uColor;
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미 압축판) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
+
+// ===== 사각형 하나: TRIANGLE_STRIP 정점 4개 (한 변 1) =====
+const vertices = new Float32Array([
+    -0.5, -0.5,    0.5, -0.5,   -0.5,  0.5,    0.5,  0.5,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// 좌표계 행렬 m에 크기 s를 곱해 색 (r, g, b)의 사각형을 그린다
+const drawM = mat4.create();             // 그리기 직전에만 쓰는 행렬
+function drawSquare(m, s, r, g, b) {
+    mat4.scale(drawM, m, [s, s, 1]);     // 크기는 좌표계에 물려주지 않는다
+    gl.uniformMatrix4fv(uModelLoc, false, drawM);
+    gl.uniform4f(uColorLoc, r, g, b, 1.0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+gl.clearColor(0.05, 0.05, 0.12, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// ----- 태양: 세계의 중심 -----
+const sunM = mat4.create();              // 태양 좌표계 = 원점
+drawSquare(sunM, 0.5, 1.0, 0.8, 0.2);    // 노란 태양
+
+// ----- 행성: 태양 좌표계에서 30도 방향으로 0.65 떨어진 곳 -----
+const planetM = mat4.clone(sunM);        // 부모 좌표계를 복사해서 출발
+mat4.rotateZ(planetM, planetM, 30 * Math.PI / 180);
+mat4.translate(planetM, planetM, [0.65, 0, 0]);
+drawSquare(planetM, 0.2, 0.3, 0.6, 1.0); // 파란 행성
+
+// ----- 위성: "행성" 좌표계에서 60도 방향으로 0.25 떨어진 곳 -----
+const moonM = mat4.clone(planetM);       // 부모는 태양이 아니라 행성!
+mat4.rotateZ(moonM, moonM, 60 * Math.PI / 180);
+mat4.translate(moonM, moonM, [0.25, 0, 0]);
+drawSquare(moonM, 0.1, 0.85, 0.85, 0.85);  // 회색 위성</code></pre><div class="listing-caption">코드 5.3: 계층적 모델링  —  태양, 행성, 위성</div></div>
+<p>실행하면 중앙의 노란 태양, 오른쪽 위로 \(30^\circ\) 방향에 파란 행성, 그 위쪽에 회색 위성이 나타난다. 코드의 구조를 뜯어보자.</p>
+<p>행성의 행렬 <code>planetM</code>은 <code>mat4.clone(sunM)</code>으로 <strong>부모의 좌표계를 복사</strong>하며 출발한다. 거기에 "\(30^\circ\) 돌고 0.65 나아간다"라는 상대 변환을 이어 붙이면 \(M_{\text{행성}} = M_{\text{태양}} R(30^\circ)\, T(0.65)\)가 된다. 위성도 똑같은 절차인데, 복사해 오는 대상이 <code>sunM</code>이 아니라 <code>planetM</code>이라는 점이 핵심이다. 위성의 위치는 어디까지나 "행성에서 얼마나"로 기술되어 있을 뿐, 태양에서 어디인지는 코드 어디에도 없다. 그런데도 위성이 제자리를 찾아가는 것은 행성 행렬에 이미 태양\(\to\)행성의 변환이 쌓여 있고 위성이 그것을 통째로 물려받았기 때문이다. 파란 행성 사각형이 \(30^\circ\) 기울어 그려지는 것도 좌표계의 회전이 전파된 결과이다.</p>
+<p>시험 삼아 행성의 각도 \(30^\circ\)를 다른 값으로 바꿔 실행해 보자. 행성이 태양 둘레의 새 위치로 옮겨 가고, <strong>위성도 코드 한 글자 고치지 않았는데 행성을 따라간다</strong>. 부모의 변환이 자식에게 전파되는 것, 이것이 계층적 모델링의 전부이다.</p>
+<p>한 가지 설계 결정도 눈여겨보자. 크기 변환은 <code>drawSquare</code> 안에서 <code>drawM</code>이라는 별도 행렬에만 곱하고, 좌표계 행렬(<code>sunM</code>, <code>planetM</code>, <code>moonM</code>)에는 절대 넣지 않았다. 태양을 5배로 키운 크기 변환이 <code>sunM</code>에 들어가 있었다면 그것을 물려받은 행성의 궤도 반지름과 몸집까지 5배로 부풀었을 것이다. <strong>크기는 각 물체의 겉모습일 뿐 자식에게 물려줄 좌표계가 아니므로</strong>, 그리기 직전에만 곱하고 버리는 것이 계층 구조의 정석이다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">옛 OpenGL의 행렬 스택  —  glPushMatrix와 glPopMatrix</span><p>고정 기능 시대의 OpenGL에는 현재 변환 행렬(CTM)이라는 전역 상태가 하나 있고, <code>glTranslatef</code>·<code>glRotatef</code> 같은 명령이 그 오른쪽에 변환을 곱해 나갔다. 계층 구조를 그릴 때는 <strong class="term-ko">행렬 스택</strong><sup class="term">matrix stack</sup>이 등장한다. <code>glPushMatrix()</code>로 현재 행렬을 스택에 저장해 두고 자식을 그린 뒤, <code>glPopMatrix()</code>로 저장해 둔 부모의 행렬로 되돌아오는 방식이다. 형제 관계인 두 자식(예: 팔 끝에 달린 두 손가락)을 그리려면 첫째를 그리기 전에 push, 그린 뒤 pop 하여 부모 상태를 복원하고 둘째를 그렸다. 현대 API에는 행렬 스택도 CTM도 없지만 아쉬워할 것은 없다. 행렬이 그냥 변수이므로 push/pop이 하던 일을 <code>mat4.clone()</code>(새 복사본 생성)과 <code>mat4.copy(out, m)</code>(기존 그릇에 복사)가 대신한다. 위 예제에서 <code>planetM</code>을 남겨 둔 채 <code>moonM</code>을 복사해 쓴 것이 정확히 push/pop의 현대식 번역이다. 형제가 필요하면 부모 행렬을 한 번 더 clone하면 된다.</p></div>
+<p>지금 우리의 태양계는 멈춰 있는 정물화이다. 행성의 각도를 매 프레임 조금씩 키우며 다시 그리면 행성이 태양을 공전하고 위성이 그 곁을 따라도는 살아 있는 태양계가 된다. 매 프레임 화면을 갱신하는 애니메이션 루프는 10장에서 다룬다. 그때 이 예제가 다시 등장할 것이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>계층적 모델링의 규칙은 \(M_{\text{자식}} = M_{\text{부모}} L_{\text{자식}}\) 하나이다. 부모의 행렬을 <code>mat4.clone</code>/<code>copy</code>로 복사한 뒤 자신의 상대 변환을 이어 붙이면, 부모의 움직임이 자식에게 저절로 전파된다. 옛 OpenGL의 <code>glPushMatrix</code>/<code>glPopMatrix</code>가 하던 일이 바로 이 복사이다. 크기 변환은 좌표계에 물려주지 말고 그리기 직전에만 곱한다.</p></div>
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 5-1</strong>  버퍼에는 원점 주변의 작은 삼각형 하나만 담아 두고, 이동 행렬만 바꾸어 가며 네 사분면의 중앙에 삼각형을 하나씩, 모두 4개 그려 보자. (힌트: 이동 벡터 4개를 배열에 담아 두고, 반복문 안에서 <code>mat4.fromTranslation</code>으로 행렬을 만들어 uniform을 갱신한 뒤 <code>drawArrays</code>를 호출한다.)</p>
+<p><strong>해답</strong>  코드 5.1과 같은 골격에서 그리기 부분만 반복문으로 바꾼다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 코드 5.1의 셰이더·버퍼 설정은 그대로, 삼각형만 작게 줄인다
+const vertices = new Float32Array([
+     0.0,  0.15,   -0.15, -0.15,    0.15, -0.15,
+]);
+// ... VAO/VBO 설정 생략 ...
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// 네 사분면 중앙으로 가는 이동 벡터들
+const offsets = [
+    [ 0.5,  0.5],   // 1사분면
+    [-0.5,  0.5],   // 2사분면
+    [-0.5, -0.5],   // 3사분면
+    [ 0.5, -0.5],   // 4사분면
+];
+const model = mat4.create();
+for (const [tx, ty] of offsets) {
+    mat4.fromTranslation(model, [tx, ty, 0]);   // 행렬만 바꾸고
+    gl.uniformMatrix4fv(uModelLoc, false, model);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);          // 같은 버퍼를 다시 그린다
+}</code></pre>
+<p>정점 데이터는 3개뿐인데 화면에는 삼각형이 4개다. "버퍼는 하나, 행렬은 여러 개"로 같은 물체를 여러 곳에 찍어내는 이 패턴은 나무 100그루, 별 1000개를 뿌릴 때도 그대로 쓰인다.</p>
+<p><strong>실습 5-2</strong>  회전의 기준은 언제나 원점이라고 했다. 그렇다면 물체를 <strong>원점이 아닌 점</strong> \(\mathbf{p}\)를 기준으로 돌리려면 어떻게 해야 할까? 답은 세 변환의 합성 \(M = T(\mathbf{p})\,R\,T(-\mathbf{p})\)이다. 물체를 \(-\mathbf{p}\)만큼 옮겨 회전 기준점 \(\mathbf{p}\)를 원점에 갖다 놓고, 원점 중심으로 회전한 뒤, 다시 \(\mathbf{p}\)만큼 되돌리는 것이다. 이런 기준점을 <strong class="term-ko">피벗</strong><sup class="term">pivot</sup>이라고 한다. 삼각형을 자신의 왼쪽 아래 꼭짓점을 피벗으로 \(45^\circ\) 돌려, 원본(회색)과 회전본(주황)을 겹쳐 그려 보자.</p>
+<p><strong>해답</strong>  코드 5.2와 같은 골격(색 uniform 포함)에서 행렬 계산과 그리기 부분만 바꾼다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 삼각형: 왼쪽 아래 꼭짓점이 (-0.3, -0.3)
+const vertices = new Float32Array([
+    -0.3, -0.3,    0.3, -0.3,    0.0,  0.3,
+]);
+// ... VAO/VBO 설정 생략 ...
+
+// 피벗 p = (-0.3, -0.3) 기준 45도 회전: M = T(p) R T(-p)
+const p = [-0.3, -0.3, 0];
+const model = mat4.create();                     // I
+mat4.translate(model, model, p);                 // T(p)
+mat4.rotateZ(model, model, 45 * Math.PI / 180);  // T(p) R
+mat4.translate(model, model, [-p[0], -p[1], 0]); // T(p) R T(-p)
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+drawTriangle(mat4.create(), 0.5, 0.5, 0.5);      // 회색: 원본
+drawTriangle(model, 1.0, 0.6, 0.2);              // 주황: 피벗 회전본</code></pre>
+<p>두 삼각형이 왼쪽 아래 꼭짓점 한 점을 공유한 채, 주황 삼각형만 그 점을 축으로 \(45^\circ\) 돌아가 있다. 누적 함수로 쌓은 <code>model</code>이 정확히 \(T(\mathbf{p})\,R\,T(-\mathbf{p})\) 순서의 곱이 된다는 점, 즉 정점에는 \(T(-\mathbf{p})\)부터 적용된다는 점을 코드와 대조하며 확인하자.</p>
+<p><strong>실습 5-3</strong>  코드 5.3의 태양계에 <strong>두 번째 행성</strong>을 추가해 보자. 태양에서 \(-120^\circ\) 방향으로 0.8 떨어진 곳에 크기 0.15의 붉은 행성을 놓는다. 첫 행성과 두 번째 행성은 부모(태양)가 같은 형제 관계임에 유의하자.</p>
+<p><strong>해답</strong>  코드 5.3의 끝에 다음을 덧붙인다.</p>
+<pre class="line-numbers"><code class="language-javascript">// ----- 두 번째 행성: 태양 좌표계를 "다시" 복사한다 -----
+const planet2M = mat4.clone(sunM);          // planetM이 아니라 sunM에서 출발!
+mat4.rotateZ(planet2M, planet2M, -120 * Math.PI / 180);
+mat4.translate(planet2M, planet2M, [0.8, 0, 0]);
+drawSquare(planet2M, 0.15, 1.0, 0.4, 0.35); // 붉은 행성</code></pre>
+<p>화면 왼쪽 아래에 붉은 행성이 나타난다. 형제 노드는 <strong>부모의 행렬을 각자 복사</strong>해서 출발한다  —  옛 OpenGL이라면 첫 행성을 그리기 전후로 <code>glPushMatrix</code>/<code>glPopMatrix</code>를 넣어 태양의 상태를 복원했을 자리이다. 만약 실수로 <code>sunM</code> 대신 <code>planetM</code>을 복사하면 어떻게 될까? 붉은 행성이 첫 행성의 <strong>자식</strong>(제2의 위성)이 되어 전혀 다른 자리에 그려진다. 직접 바꿔 실행하며 확인해 보자.</p></div></p>
+<details class="box summary" id="summary"><summary class="box-head">5장 요약</summary><div class="sum-body"><ul>
+<li>이동은 원점을 움직여야 하므로 \(3 \times 3\) 행렬 곱으로 표현할 수 없다. 좌표에 \(w\) 성분을 더한 <strong>동차좌표</strong> \((x, y, z, 1)\)을 쓰면 이동까지 포함한 모든 변환이 \(4 \times 4\) 행렬 곱으로 통일된다.</li>
+<li><strong>이동 행렬</strong> \(T\)는 넷째 열에 이동량을 담는다(열 우선 배열의 <code>m[12..14]</code>). <strong>크기 행렬</strong> \(S\)는 대각선에 배율을 담고, <strong>회전 행렬</strong> \(R_x, R_y, R_z\)는 2차원 회전 \(x' = x\cos\theta - y\sin\theta\), \(y' = x\sin\theta + y\cos\theta\)의 확장이다. 크기·회전의 기준은 언제나 <strong>원점</strong>이다.</li>
+<li><strong>점은 \(w = 1\), 벡터는 \(w = 0\)</strong>으로 구분한다. \(w = 0\)이면 이동 행렬이 효과를 내지 못하므로, 방향인 벡터는 이동에 불변이라는 성질이 좌표에 새겨진다.</li>
+<li>glMatrix의 <code>mat4.fromTranslation</code>·<code>fromScaling</code>·<code>fromZRotation</code> 등이 변환 행렬을 만들어 준다(각도는 <strong>라디안</strong>). 행렬은 <code>uniformMatrix4fv(loc, false, m)</code>로 정점 셰이더의 <code>uniform mat4</code>에 전달하고, 셰이더에서 <code>uModel * aPosition</code>으로 적용한다.</li>
+<li>합성 행렬 \(M = TR\)에서 <strong>정점에 가까운 오른쪽 변환이 먼저 적용</strong>된다. "회전 후 이동"(\(TR\))과 "이동 후 회전"(\(RT\))은 결과가 다르며, 제자리 변형 후 배치는 \(M = TRS\) 순서가 공식이다.</li>
+<li>누적 함수 <code>mat4.translate</code>·<code>rotateZ</code>·<code>scale</code>은 기존 행렬의 오른쪽에 변환을 이어 붙인다. 지역 좌표계 관점으로 읽으면 코드에 쓴 순서대로 좌표계가 옮겨 간다고 해석할 수 있다.</li>
+<li><strong>계층적 모델링</strong>의 규칙은 \(M_{\text{자식}} = M_{\text{부모}} L_{\text{자식}}\)이다. 부모 행렬을 <code>mat4.clone</code>/<code>copy</code>로 복사한 뒤 상대 변환을 이어 붙이면 부모의 움직임이 자식에게 전파된다. 옛 OpenGL의 행렬 스택(<code>glPushMatrix</code>/<code>glPopMatrix</code>)이 하던 일을 현대에는 행렬 복사가 대신한다.</li>
+<li>크기 변환은 자식에게 물려줄 좌표계 행렬에 넣지 말고, 그리기 직전의 별도 행렬에만 곱한다.</li>
+</ul></div></details>
+<details class="box exercise" id="exercises"><summary class="box-head">5장 연습문제</summary><div class="ex-body"><ol>
+<li class="ex-item" data-ex="1"><span class="diff"><span class="d1">★</span></span>  이동 행렬 \(T(3, -1, 2)\)를 \(4 \times 4\)로 쓰고, 다음 두 동차좌표에 각각 곱한 결과를 구하시오. 두 결과의 차이가 뜻하는 바를 설명하시오.
+<ol type="a">
+<li>점 \((1, 2, 0, 1)\)</li>
+<li>벡터 \((1, 2, 0, 0)\)</li>
+</ol></li>
+<li class="ex-item" data-ex="2"><span class="diff"><span class="d1">★</span></span>  \(z\)축 회전 행렬 \(R_z(90^\circ)\)의 성분을 값으로 쓰고, 점 \((1, 0, 0, 1)\)에 곱한 결과를 구하시오. 결과가 반시계 방향 회전과 일치하는가?</li>
+<li class="ex-item" data-ex="3"><span class="diff"><span class="d2">★★</span></span>  크기 행렬 \(S = S(2, 2, 1)\)과 이동 행렬 \(T = T(1, 0, 0)\)에 대해, 점 \(P = (1, 1, 0, 1)\)에 \(TS\)를 적용한 결과와 \(ST\)를 적용한 결과를 각각 구하고, 왜 달라지는지 변환의 적용 순서로 설명하시오.</li>
+<li class="ex-item" data-ex="4"><span class="diff"><span class="d2">★★</span></span>  다음 두 코드가 만드는 행렬을 각각 \(T\), \(R\)의 곱으로 쓰고, 원점 주변의 삼각형에 적용했을 때의 결과 위치를 예측하시오. (\(R\)은 \(90^\circ\) 회전, 이동량은 \((0.5, 0, 0)\))
+<pre class="line-numbers"><code class="language-javascript">// 코드 A
+mat4.translate(m, m, [0.5, 0, 0]);
+mat4.rotateZ(m, m, Math.PI / 2);
+// 코드 B
+mat4.rotateZ(m, m, Math.PI / 2);
+mat4.translate(m, m, [0.5, 0, 0]);</code></pre></li>
+<li class="ex-item" data-ex="5"><span class="diff"><span class="d2">★★</span></span>  이동 행렬 \(T(t_x, t_y, t_z)\)와 벡터 \((x, y, z, 0)\)의 곱을 행렬 곱 계산으로 전개하여, \(w = 0\)인 동차좌표가 이동의 영향을 받지 않음을 보이시오.</li>
+<li class="ex-item" data-ex="6"><span class="diff"><span class="d2">★★</span></span>  코드 5.1을 수정하여, 삼각형을 <strong>시계 방향</strong>으로 \(45^\circ\) 회전한 뒤 왼쪽으로 0.5 이동시키는 모델 행렬을 만드는 코드를 작성하시오. (힌트: 반시계가 양의 방향이다.)</li>
+<li class="ex-item" data-ex="7"><span class="diff"><span class="d3">★★★</span></span>  이동 행렬의 역행렬은 \(T(\mathbf{t})^{-1} = T(-\mathbf{t})\), 회전 행렬의 역행렬은 \(R(\theta)^{-1} = R(-\theta)\)이다.
+<ol type="a">
+<li>두 등식이 성립하는 이유를 "변환을 되돌린다"라는 관점에서 설명하시오.</li>
+<li>합성 변환 \(M = T\,R\)의 역행렬이 \(M^{-1} = R^{-1}\,T^{-1}\)임을 \(M^{-1}M = I\) 계산으로 확인하고, 곱하는 순서가 왜 뒤집히는지 설명하시오.</li>
+</ol></li>
+<li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  코드 5.3의 태양계에서 위성의 세계 좌표(태양 기준 좌표)를 손으로 계산해 보자. 행성은 태양 좌표계에서 \(30^\circ\) 회전 후 \(x\) 방향으로 0.65 이동, 위성은 행성 좌표계에서 \(60^\circ\) 회전 후 \(x\) 방향으로 0.25 이동한 자리에 있다.
+<ol type="a">
+<li>행성 중심의 세계 좌표를 구하시오. (\(\cos 30^\circ \approx 0.866\))</li>
+<li>위성 중심의 세계 좌표를 구하시오. (힌트: 위성의 이동 방향은 세계 기준으로 \(30^\circ + 60^\circ = 90^\circ\) 방향이 된다.)</li>
+<li>계산 결과가 맞는지 코드 5.3에 <code>console.log</code>를 넣어 확인하는 방법을 제시하시오. (힌트: <code>moonM</code>의 열 우선 배열에서 이동 성분은 <code>moonM[12]</code>, <code>moonM[13]</code>이다.)</li>
+</ol></li>
+</ol></div></details>
 <div class="pager-row"><a class="pager prev" href="ch04.html">&larr; 4장</a><a class="pager next" href="ch06.html">6장 &rarr;</a></div>
 </main>
 </div>

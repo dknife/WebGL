@@ -104,7 +104,7 @@ vec3 h = a * 0.5;      // (0.5, 1.0, 1.5) — 스칼라 배</code></pre>
 <p>셰이더 프로그래밍의 핵심은 데이터가 어디서 들어와 어디로 나가는지를 파악하는 것이다. 파이프라인을 따라 데이터가 흐르는 경로를 정리해 보자.</p>
 <div class="center"><div class="table-wrap"><table><tr><th>버퍼(정점 데이터)</th></tr><tr><td>\(\downarrow\)  <code>in</code> (정점 속성)</td></tr><tr><td><strong>정점 셰이더</strong></td></tr><tr><td>\(\downarrow\)  <code>out</code> 변수 + <code>gl_Position</code></td></tr><tr><td>래스터화 (보간)</td></tr><tr><td>\(\downarrow\)  <code>in</code> 변수</td></tr><tr><td><strong>프래그먼트 셰이더</strong></td></tr><tr><td>\(\downarrow\)  <code>out</code> 변수 (색)</td></tr><tr><td>화면 버퍼</td></tr></table></div></div>
 <h3>정점 셰이더의 입출력</h3>
-<p>정점 셰이더의 <code>in</code> 변수는 2장에서 배운 <strong>정점 속성</strong>이다. 버퍼에 담아 둔 데이터가 <code>layout(location = $n$)</code> 번호에 따라 정점 하나 분량씩 잘려 들어온다. 출력은 두 갈래이다. 하나는 반드시 기록해야 하는 내장 변수 <code>gl_Position</code>(정점의 최종 위치)이고, 다른 하나는 프로그래머가 자유롭게 선언하는 <code>out</code> 변수들로, 다음 단계로 넘기고 싶은 값(색, 텍스처 좌표 등)을 담는다.</p>
+<p>정점 셰이더의 <code>in</code> 변수는 2장에서 배운 <strong>정점 속성</strong>이다. 버퍼에 담아 둔 데이터가 <code>layout(location = \(n\))</code> 번호에 따라 정점 하나 분량씩 잘려 들어온다. 출력은 두 갈래이다. 하나는 반드시 기록해야 하는 내장 변수 <code>gl_Position</code>(정점의 최종 위치)이고, 다른 하나는 프로그래머가 자유롭게 선언하는 <code>out</code> 변수들로, 다음 단계로 넘기고 싶은 값(색, 텍스처 좌표 등)을 담는다.</p>
 <pre class="line-numbers"><code class="language-glsl">#version 300 es
 layout(location = 0) in vec4 aPosition;   // 입력: 정점 속성 (버퍼에서)
 layout(location = 1) in vec3 aColor;      // 입력: 정점 속성 (버퍼에서)

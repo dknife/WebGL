@@ -48,7 +48,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
-<div class="nav-secs"></div>
+<div class="nav-secs"><a class="nav-sec" href="ch11.html#sec1">11.1 프레임버퍼 오브젝트</a><a class="nav-sec" href="ch11.html#sec2">11.2 포스트 프로세싱</a><a class="nav-sec" href="ch11.html#sec3">11.3 그림자 매핑</a><a class="nav-sec" href="ch11.html#sec4">11.4 스카이박스와 환경 매핑</a><a class="nav-sec" href="ch11.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch11.html#summary">11장 요약</a><a class="nav-sec" href="ch11.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
 </div>
@@ -59,17 +59,706 @@
   <h1>고급 렌더링 기법</h1>
 </div>
 <div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><ul>
-<li>프레임버퍼 오브젝트로 텍스처에 렌더링할 수 있다.</li>
-<li>그림자 매핑의 원리를 이해하고 구현할 수 있다.</li>
-<li>스카이박스와 환경 매핑을 구현할 수 있다.</li>
+<li>프레임버퍼 오브젝트(FBO)로 렌더링 결과를 텍스처에 담을 수 있다.</li>
+<li>2패스 구조로 포스트 프로세싱 필터를 적용할 수 있다.</li>
+<li>그림자 매핑의 원리를 이해하고 깊이맵으로 그림자를 그릴 수 있다.</li>
+<li>큐브맵으로 스카이박스와 환경 매핑을 구현할 수 있다.</li>
 </ul></div></details></div>
-<div class="box note"><span class="chip">잠깐</span><span class="box-title">집필 예정</span><p>이 장은 집필 예정이다. 다음 절들로 구성될 계획이다.
-<ul>
-<li>프레임버퍼 오브젝트</li>
-<li>그림자 매핑</li>
-<li>스카이박스와 환경 매핑</li>
-<li>포스트 프로세싱</li>
-</ul></p></div>
+<p>지금까지 우리가 그린 모든 그림은 곧장 화면으로 향했다. <code>drawArrays</code>나 <code>drawElements</code>를 호출하면 그 결과는 브라우저 캔버스, 즉 <strong>기본 프레임버퍼</strong>(default framebuffer)에 나타났다. 그런데 게임과 영화가 보여 주는 화려한 효과들  —  흑백·블룸 같은 화면 필터, 물체가 드리우는 그림자, 하늘을 감싸는 배경, 금속에 비치는 주변 풍경  —  은 하나같이 <strong>화면이 아닌 곳에 먼저 그려 두는</strong> 기법에 뿌리를 둔다.</p>
+<p>이 장의 열쇠는 하나다. <strong>렌더링 결과를 화면 대신 텍스처에 담을 수 있다</strong>는 것. 한 번 그린 결과를 텍스처로 손에 쥐면, 그것을 입력 삼아 다시 그릴 수 있다. 이 되먹임이 열어 주는 세계를 네 가지 대표 기법  —  프레임버퍼 오브젝트, 포스트 프로세싱, 그림자 매핑, 스카이박스와 환경 매핑  —  으로 둘러본다. 앞선 장들에서 익힌 셰이더, 행렬, 텍스처가 여기서 하나로 모인다.</p>
+<h2 id="sec1">11.1 프레임버퍼 오브젝트</h2>
+<h3>목적지가 늘 화면이었던 이유</h3>
+<p>WebGL 컨텍스트를 얻는 순간, 화면에 대응하는 <strong class="term-ko">프레임버퍼</strong><sup class="term">framebuffer</sup> 하나가 자동으로 준비된다. 이것을 <strong class="term-ko">기본 프레임버퍼</strong><sup class="term">default framebuffer</sup>라고 한다. 프레임버퍼란 렌더링 결과가 최종적으로 쌓이는 메모리 묶음으로, 색을 저장하는 <strong class="term-ko">색 버퍼</strong><sup class="term">color buffer</sup>와 깊이를 저장하는 <strong class="term-ko">깊이 버퍼</strong><sup class="term">depth buffer</sup>로 이루어진다. 지금까지 우리가 <code>gl.clear</code>로 지우고 <code>drawArrays</code>로 채운 대상이 바로 이 기본 프레임버퍼의 두 버퍼였다.</p>
+<p>기본 프레임버퍼의 색 버퍼는 브라우저가 화면에 직접 표시하므로, 우리는 그 내용을 <strong>그려 넣을</strong> 수만 있을 뿐 <strong>읽어서 다시 쓸</strong> 수는 없다. 한 번 그린 결과를 입력으로 되먹이려면, 결과가 화면이 아니라 <strong>내가 읽을 수 있는 메모리</strong>에 쌓여야 한다. 그 메모리가 바로 텍스처다. 우리가 직접 만들어 붙이는 프레임버퍼, 즉 <strong class="term-ko">프레임버퍼 오브젝트</strong><sup class="term">framebuffer object</sup>(FBO)가 이 일을 해낸다. FBO의 색 버퍼로 텍스처를 지정하면, 그 FBO에 그린 그림이 고스란히 텍스처 안에 담긴다. 화면 대신 텍스처를 목적지로 삼는 이 방식을 <strong class="term-ko">오프스크린 렌더링</strong><sup class="term">off-screen rendering</sup>이라고 부른다.</p>
+<h3>FBO 만들기  —  색 텍스처와 깊이 렌더버퍼</h3>
+<p>FBO 하나를 완성하려면 세 조각이 필요하다. FBO 본체, 색을 받을 텍스처, 그리고 깊이를 받을 저장소다. 먼저 결과를 담을 텍스처를 만든다. 8장에서 이미지를 올릴 때와 달리, 여기서는 픽셀 데이터 자리에 <code>null</code>을 넘겨 <strong>빈 텍스처</strong>를 만든다는 점이 다르다. 아직 내용은 없지만, 지정한 크기만큼의 공간을 마련해 두는 것이다.</p>
+<pre class="line-numbers"><code class="language-javascript">const FBO_W = 600, FBO_H = 400;
+const sceneTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, sceneTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, FBO_W, FBO_H, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, null);   // null: 빈 텍스처
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);</code></pre>
+<p>색만 담아서는 3차원 장면을 제대로 그릴 수 없다. 깊이 검사(depth test)가 동작하려면 깊이 버퍼도 있어야 하기 때문이다. 깊이값은 나중에 텍스처로 읽을 일이 없다면 굳이 텍스처로 만들 필요가 없다. 그럴 때 쓰는 것이 <strong class="term-ko">렌더버퍼</strong><sup class="term">renderbuffer</sup>로, 렌더링 도중 GPU가 쓰기만 하는 용도에 최적화된 가벼운 저장소다.</p>
+<pre class="line-numbers"><code class="language-javascript">const depthRbo = gl.createRenderbuffer();
+gl.bindRenderbuffer(gl.RENDERBUFFER, depthRbo);
+gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
+                       FBO_W, FBO_H);            // 16비트 깊이 저장소</code></pre>
+<p>이제 FBO 본체를 만들고, 두 저장소를 <strong class="term-ko">부착</strong><sup class="term">attachment</sup>한다. 색 텍스처는 <code>COLOR_ATTACHMENT0</code> 자리에, 깊이 렌더버퍼는 <code>DEPTH_ATTACHMENT</code> 자리에 붙인다.</p>
+<pre class="line-numbers"><code class="language-javascript">const fbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, sceneTex, 0);      // 색 → 텍스처
+gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                           gl.RENDERBUFFER, depthRbo);    // 깊이 → 렌더버퍼</code></pre>
+<p>부착이 끝났다면 이 FBO가 실제로 렌더링에 쓸 수 있는 완전한 상태인지 반드시 확인해야 한다. 크기가 맞지 않거나 지원하지 않는 형식을 붙이면 FBO가 <strong>불완전</strong>(incomplete)한 상태가 되어 아무것도 그려지지 않는다. <code>checkFramebufferStatus</code>가 <code>FRAMEBUFFER_COMPLETE</code>를 돌려주는지 검사하는 습관을 들이자.</p>
+<pre class="line-numbers"><code class="language-javascript">if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    console.log('framebuffer incomplete');   // 부착 조합이 잘못되었다</code></pre>
+<h3>목적지 전환  —  화면과 FBO를 오가기</h3>
+<p>렌더링 목적지를 바꾸는 명령은 <code>bindFramebuffer</code> 하나다. FBO 객체를 넘기면 그 FBO(즉 텍스처)로, <code>null</code>을 넘기면 다시 화면(기본 프레임버퍼)으로 목적지가 바뀐다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);    // 이후 그리기 → 텍스처로
+// ... 장면을 그린다 ...
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);   // 이후 그리기 → 화면으로</code></pre>
+<div class="box caution"><span class="chip">주의</span><p>FBO와 화면은 크기가 다를 수 있다. 목적지를 바꿀 때는 <strong>반드시 <code>gl.viewport</code>도 함께 바꾸어야</strong> 한다. 뷰포트는 목적지를 따라 자동으로 바뀌지 않기 때문이다. 600×400 화면 프로그램에 300×300 FBO를 끼워 넣고 뷰포트를 그대로 두면, 장면이 텍스처의 왼쪽 아래 귀퉁이에만 그려지거나 잘려 나간다. <code>bindFramebuffer(... fbo)</code> 다음에는 <code>gl.viewport(0, 0, FBO_W, FBO_H)</code>를, <code>bindFramebuffer(... null)</code> 다음에는 <code>gl.viewport(0, 0, canvas.width, canvas.height)</code>를 짝지어 호출하자.</p></div>
+<h3>"텍스처에 그린다"가 열어 주는 것</h3>
+<p>렌더링 결과를 텍스처로 손에 쥔다는 이 단순한 능력이, 이 장 전체를 떠받친다. 대표적인 응용을 미리 정리해 두자.</p>
+<div class="table-wrap"><div class="table-caption">표 11.1: 오프스크린 렌더링이 가능하게 하는 기법들</div><table><tr><th>기법</th><th>텍스처에 무엇을 담는가</th></tr><tr><td><strong>포스트 프로세싱</strong> (11.2)</td><td>완성된 장면 색  —  이후 필터를 적용</td></tr><tr><td><strong>그림자 매핑</strong> (11.3)</td><td>빛 시점의 깊이  —  가려짐을 판정</td></tr><tr><td><strong>거울·수면 반사</strong></td><td>반사된 시점의 장면  —  표면에 되비침</td></tr><tr><td><strong>미니맵</strong></td><td>위에서 내려다본 장면  —  UI에 표시</td></tr></table></div>
+<p>이 가운데 가장 직관적인 포스트 프로세싱부터 실제로 만들어 보며, "두 번 그리기"의 감각을 익히자.</p>
+<div class="box keypoint"><span class="chip">요점</span><p><strong>프레임버퍼 오브젝트</strong>(FBO)는 렌더링 목적지를 화면 대신 <strong>텍스처</strong>로 바꾼다. 색은 <code>COLOR_ATTACHMENT0</code>에 텍스처로, 깊이는 <code>DEPTH_ATTACHMENT</code>에 렌더버퍼로 부착하고, <code>checkFramebufferStatus</code>로 완전성을 확인한다. 목적지를 바꿀 때는 <code>viewport</code>도 함께 바꾼다.</p></div>
+<h2 id="sec2">11.2 포스트 프로세싱</h2>
+<h3>2패스 구조</h3>
+<p><strong class="term-ko">포스트 프로세싱</strong><sup class="term">post-processing</sup>은 완성된 장면 전체에 화면 단위의 후처리를 입히는 기법이다. 흑백·세피아 같은 색조 변환, 화면 가장자리를 어둡게 하는 비네팅, 밝은 부분을 번지게 하는 블룸이 모두 여기에 속한다. 이런 효과들의 공통점은 <strong>개별 물체가 아니라 화면 이미지 자체를 대상으로 한다</strong>는 것이다. 그래서 렌더링을 두 단계로 나눈다.</p>
+<ol>
+<li><strong>1패스</strong>  —  장면(정육면체, 모델 등)을 화면이 아니라 FBO의 텍스처에 그린다.</li>
+<li><strong>2패스</strong>  —  화면을 가득 채운 사각형에 그 텍스처를 입히되, 프래그먼트 셰이더에서 필터를 적용해 화면에 그린다.</li>
+</ol>
+<p>1패스가 끝나면 완성된 장면이 텍스처 한 장에 담긴다. 2패스는 그 텍스처를 화면 전체에 펼쳐 놓고, 픽셀 하나하나에 원하는 계산을 적용해 최종 색을 만든다.</p>
+<h3>화면 가득 사각형</h3>
+<p>2패스에서 텍스처를 펼칠 도화지는 화면 전체를 덮는 사각형이다. 그런데 이 사각형은 3차원 공간에 놓인 물체가 아니라 화면 그 자체이므로, 모델·뷰·투영 행렬이 필요 없다. 정점 좌표를 처음부터 <strong class="term-ko">클립 공간</strong><sup class="term">clip space</sup>의 값 \(-1 \sim 1\)로 직접 지정하면, 변환 없이 곧바로 화면을 꽉 채운다. 네 귀퉁이를 <code>TRIANGLE_STRIP</code>으로 조립하면 정점 4개로 사각형이 완성된다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 클립 공간 네 귀퉁이 (행렬 불필요)
+const quad = new Float32Array([
+    -1, -1,   1, -1,   -1, 1,   1, 1,   // TRIANGLE_STRIP 지그재그 순서
+]);</code></pre>
+<p>정점 셰이더는 이 좌표를 그대로 <code>gl_Position</code>에 넣고, 텍스처를 읽을 좌표(0 1)는 클립 좌표를 \(0.5\)배 하고 \(0.5\)를 더해 만든다.</p>
+<pre class="line-numbers"><code class="language-glsl">#version 300 es
+layout(location = 0) in vec2 aPosition;      // 이미 클립 공간 좌표
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0); // 변환 없이 그대로
+    vTexCoord = aPosition * 0.5 + 0.5;       // [-1,1] → [0,1]
+}</code></pre>
+<h3>흑백 필터</h3>
+<p>색을 밝기 하나로 바꾸는 흑백 변환이 가장 간단한 필터다. 그런데 단순히 R·G·B를 평균 내면 사람 눈이 느끼는 밝기와 어긋난다. 눈은 초록에 가장 민감하고 파랑에 가장 둔감하기 때문이다. 그래서 각 채널에 서로 다른 가중치를 준 <strong class="term-ko">휘도</strong><sup class="term">luminance</sup> 공식을 쓴다.</p>
+\[
+\text{luminance} = 0.299\,R + 0.587\,G + 0.114\,B
+\]
+<p>이 가중합은 벡터의 내적 한 번으로 계산된다. 4장에서 배운 내적이 여기서 이렇게 쓰인다.</p>
+<pre class="line-numbers"><code class="language-glsl">#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uScene;                    // 1패스가 남긴 장면 텍스처
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(uScene, vTexCoord);
+    float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    fragColor = vec4(vec3(lum), 1.0);        // 세 채널 모두 같은 밝기 → 회색
+}</code></pre>
+<h3>두 패스를 코드로 짜기</h3>
+<p>이제 전체를 하나의 프로그램으로 엮는다. 핵심은 <strong>프로그램 2개</strong>(장면용·필터용)와 <strong>VAO 2개</strong>(정육면체·사각형)를 갖추고, 목적지와 함께 이들을 정확히 갈아 끼우는 것이다. 6장에서 그린 색 정육면체를 FBO에 담고, 흑백 필터를 씌워 화면에 내보낸다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">// ===== 준비: 컨텍스트와 glMatrix =====
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 1패스 셰이더: 색 정육면체를 그리는 장면 셰이더 =====
+const sceneVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uMVP;
+out vec3 vColor;
+void main() {
+    gl_Position = uMVP * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const sceneFS = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+// ===== 2패스 셰이더: 화면 가득 사각형 + 흑백 필터 =====
+const filterVS = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);   // 행렬이 필요 없다
+    vTexCoord = aPosition * 0.5 + 0.5;         // [-1,1] → [0,1]
+}`;
+const filterFS = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uScene;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(uScene, vTexCoord);
+    float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    fragColor = vec4(vec3(lum), 1.0);          // 흑백 변환
+}`;
+
+const sceneProgram  = makeProgram(gl, sceneVS, sceneFS);
+const filterProgram = makeProgram(gl, filterVS, filterFS);
+
+// ===== VAO 1: 색 정육면체 (정점 8개 + 인덱스 36개) =====
+const positions = new Float32Array([
+    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,   // 앞면
+    -1, -1, -1,   1, -1, -1,   1,  1, -1,  -1,  1, -1,   // 뒷면
+]);
+const colors = new Float32Array([                        // 좌표를 색으로
+    0, 0, 1,   1, 0, 1,   1, 1, 1,   0, 1, 1,
+    0, 0, 0,   1, 0, 0,   1, 1, 0,   0, 1, 0,
+]);
+const indices = new Uint16Array([
+    0, 1, 2,  0, 2, 3,   1, 5, 6,  1, 6, 2,   5, 4, 7,  5, 7, 6,
+    4, 0, 3,  4, 3, 7,   3, 2, 6,  3, 6, 7,   4, 5, 1,  4, 1, 0,
+]);
+const cubeVao = gl.createVertexArray();
+gl.bindVertexArray(cubeVao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const colVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ===== VAO 2: 화면 가득 사각형 (TRIANGLE_STRIP 정점 4개) =====
+const quadVao = gl.createVertexArray();
+gl.bindVertexArray(quadVao);
+const quadVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadVbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,   1, -1,   -1, 1,   1, 1,
+]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ===== FBO: 색 텍스처 + 깊이 렌더버퍼 =====
+const FBO_W = 600, FBO_H = 400;
+const sceneTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, sceneTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, FBO_W, FBO_H, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+const depthRbo = gl.createRenderbuffer();
+gl.bindRenderbuffer(gl.RENDERBUFFER, depthRbo);
+gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, FBO_W, FBO_H);
+
+const fbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, sceneTex, 0);
+gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                           gl.RENDERBUFFER, depthRbo);
+if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    console.log('framebuffer incomplete');
+
+// ===== MVP 행렬 =====
+const proj = mat4.create(), view = mat4.create(), mvp = mat4.create();
+mat4.perspective(proj, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+mat4.lookAt(view, [2.4, 2.0, 3.2], [0, 0, 0], [0, 1, 0]);
+mat4.multiply(mvp, proj, view);
+
+// ===== 1패스: 정육면체를 FBO(텍스처)에 그린다 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+gl.viewport(0, 0, FBO_W, FBO_H);             // FBO 크기에 맞춘 뷰포트
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.9, 0.85, 0.75, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(sceneProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(sceneProgram, 'uMVP'), false, mvp);
+gl.bindVertexArray(cubeVao);
+gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+
+// ===== 2패스: 텍스처를 화면 가득 사각형에 입혀 필터 적용 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);    // 목적지를 화면으로 복귀
+gl.viewport(0, 0, canvas.width, canvas.height);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(filterProgram);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, sceneTex);     // 1패스의 결과를 입력으로
+gl.uniform1i(gl.getUniformLocation(filterProgram, 'uScene'), 0);
+gl.bindVertexArray(quadVao);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 11.1: 장면을 FBO에 그리고 흑백 필터로 출력하기</div></div>
+<p>실행하면 6장의 알록달록한 색 정육면체가 <strong>흑백</strong>으로 나타난다. 필터 프래그먼트 셰이더의 마지막 두 줄만 바꾸면 세피아·색반전 등 다른 효과로 손쉽게 넘어갈 수 있다(실습 11-1). 필터가 화면 전체의 픽셀에 균일하게 적용되는 것은, 2패스가 개별 물체가 아니라 <strong>텍스처 한 장</strong>을 다루기 때문이다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">패스마다 VAO와 프로그램을 갈아 끼운다</span><p>2패스 렌더링에서 가장 흔한 실수는 프로그램이나 VAO를 바꾸지 않은 채 다음 패스를 그리는 것이다. 1패스는 <code>sceneProgram</code>과 <code>cubeVao</code>로, 2패스는 <code>filterProgram</code>과 <code>quadVao</code>로 그려야 한다. <code>useProgram</code>과 <code>bindVertexArray</code>를 패스 시작마다 짝지어 호출하면 헷갈리지 않는다. 여기에 <code>bindFramebuffer</code>와 <code>viewport</code>까지, "프로그램·VAO·목적지·뷰포트" 네 가지를 패스마다 챙기는 습관을 들이자.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>포스트 프로세싱은 <strong>2패스</strong> 구조다. 1패스에서 장면을 FBO 텍스처에 담고, 2패스에서 <strong>화면 가득 사각형</strong>(클립 공간 4정점, 행렬 불필요)에 그 텍스처를 입혀 필터를 적용한다. 흑백은 휘도 \(\text{dot}(\text{color}, (0.299, 0.587, 0.114))\)로 계산한다.</p></div>
+<h2 id="sec3">11.3 그림자 매핑</h2>
+<h3>그림자란 빛이 닿지 못한 자리</h3>
+<p>물체가 바닥에 드리우는 그림자는 장면에 깊이와 사실감을 준다. 그림자의 본질은 간단하다. 어떤 지점이 빛과 자기 사이에 다른 물체를 두고 있으면, 그 지점에는 빛이 닿지 못한다. 즉 <strong>빛의 눈으로 봤을 때 가려진 곳이 그림자</strong>다. <strong class="term-ko">그림자 매핑</strong><sup class="term">shadow mapping</sup>은 이 통찰을 그대로 알고리즘으로 옮긴다. 그리고 "빛의 눈으로 본다"라는 말은, 카메라를 빛의 위치에 두고 한 번 렌더링한다는 뜻이다. 여기서 다시 2패스 구조가 등장한다.</p>
+<ol>
+<li><strong>1패스</strong>  —  빛의 시점에서 장면을 렌더링하되, 색은 버리고 <strong>깊이만</strong> 텍스처에 기록한다. 이 텍스처를 <strong class="term-ko">깊이맵</strong><sup class="term">depth map</sup> 또는 섀도맵이라 한다. 깊이맵의 각 픽셀에는 "그 방향에서 빛에 가장 가까운 표면까지의 거리"가 담긴다.</li>
+<li><strong>2패스</strong>  —  카메라 시점에서 본 렌더링을 하며, 각 프래그먼트를 <strong>빛의 좌표계로 변환</strong>해 깊이맵과 비교한다. 내 깊이가 깊이맵에 적힌 값보다 크면(= 빛에서 더 멀면) 나와 빛 사이에 다른 표면이 있다는 뜻이므로 그림자다.</li>
+</ol>
+<h3>깊이 텍스처</h3>
+<p>1패스에서 만들 깊이맵은 색이 아니라 깊이를 담으므로, 11.1절의 색 텍스처와 형식이 다르다. 내부 형식으로 <code>DEPTH_COMPONENT24</code>(24비트 깊이)를 쓰고, FBO에는 <code>COLOR_ATTACHMENT0</code>이 아니라 <code>DEPTH_ATTACHMENT</code>에 부착한다. 색 버퍼는 아예 필요 없다.</p>
+<pre class="line-numbers"><code class="language-javascript">const SHADOW_SIZE = 1024;
+const depthTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, depthTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24,
+              SHADOW_SIZE, SHADOW_SIZE, 0,
+              gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+const depthFbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, depthFbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                        gl.TEXTURE_2D, depthTex, 0);   // 깊이만 부착</code></pre>
+<h3>빛 시점 행렬과 bias 행렬</h3>
+<p>빛의 시점에서 장면을 그리려면, 카메라 때와 똑같이 뷰 행렬과 투영 행렬이 필요하다. 다만 이번 시점의 주인공은 카메라가 아니라 빛이다. 빛의 위치에서 장면 중심을 바라보는 <code>lookAt</code>으로 뷰 행렬을, 방향광이라면 <code>ortho</code>(직교 투영)로 투영 행렬을 만든다. 둘을 곱한 것이 빛의 뷰-투영 행렬이다.</p>
+<pre class="line-numbers"><code class="language-javascript">const lightView = mat4.create(), lightProj = mat4.create();
+mat4.lookAt(lightView, lightPos, [0, 0, 0], [0, 1, 0]);
+mat4.ortho(lightProj, -8, 8, -8, 8, 1, 20);      // 방향광 → 직교 투영
+const lightMVP = mat4.create();
+mat4.multiply(lightMVP, lightProj, lightView);   // 1패스에서 사용</code></pre>
+<p>2패스에서 프래그먼트를 빛 좌표계로 옮기면 그 결과는 클립 공간, 곧 \(-1 \sim 1\) 범위로 나온다. 그런데 텍스처(깊이맵)를 읽는 좌표는 \(0 \sim 1\) 범위여야 한다. 이 범위를 맞춰 주는 것이 <strong class="term-ko">bias 행렬</strong><sup class="term">bias matrix</sup>이다. 모든 축을 \(0.5\)배 하고 \(0.5\)만큼 옮겨 \([-1, 1]\)을 \([0, 1]\)로 사상한다.</p>
+\[
+B =
+\begin{pmatrix}
+0.5 & 0 & 0 & 0.5 \\
+0 & 0.5 & 0 & 0.5 \\
+0 & 0 & 0.5 & 0.5 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+<pre class="line-numbers"><code class="language-javascript">const biasMatrix = mat4.fromValues(       // 열 우선 저장 (4장 참고)
+    0.5, 0,   0,   0,
+    0,   0.5, 0,   0,
+    0,   0,   0.5, 0,
+    0.5, 0.5, 0.5, 1);
+const shadowMVP = mat4.create();
+mat4.multiply(shadowMVP, biasMatrix, lightMVP);  // 2패스에서 사용</code></pre>
+<h3>그림자 판정 프래그먼트 셰이더</h3>
+<p>본 렌더링의 프래그먼트 셰이더가 그림자 판정의 심장이다. 정점 셰이더에서 각 정점에 <code>shadowMVP</code>를 곱해 빛 좌표를 넘겨받은 뒤, 원근 나눗셈(<code>.xyz / .w</code>)으로 \([0,1]\) 좌표를 완성한다. 이 좌표의 \(xy\)로 깊이맵을 읽으면 "빛에서 가장 가까운 표면의 깊이"가 나오고, \(z\)는 "지금 이 프래그먼트의 빛 기준 깊이"다. 둘을 비교해 그림자를 판정한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-glsl">#version 300 es
+precision mediump float;
+in vec3 vNormal;
+in vec4 vShadowCoord;              // 빛 좌표계의 위치 (bias까지 적용됨)
+uniform sampler2D uDepthMap;       // 1패스가 만든 깊이맵
+uniform vec3 uColor;
+uniform vec3 uLightDir;            // 표면에서 빛을 향하는 방향
+out vec4 fragColor;
+void main() {
+    // 원근 나눗셈으로 [0,1] 좌표 완성
+    vec3 sc = vShadowCoord.xyz / vShadowCoord.w;
+    // 깊이맵에 기록된, 빛에서 가장 가까운 표면의 깊이
+    float nearest = texture(uDepthMap, sc.xy).r;
+    // 내 깊이가 그보다 (bias만큼) 더 멀면 그림자 안이다
+    float shadow = (sc.z - 0.005 &gt; nearest) ? 0.0 : 1.0;
+    // 램버트 확산 조명에 그림자 계수를 곱한다 (7장 조명 참고)
+    float diff = max(dot(normalize(vNormal), uLightDir), 0.0);
+    vec3 color = uColor * (0.35 + 0.65 * diff * shadow);
+    fragColor = vec4(color, 1.0);
+}</code></pre><div class="listing-caption">코드 11.2: 그림자 판정 프래그먼트 셰이더</div></div>
+<h3>섀도 아크네와 bias</h3>
+<p>위 셰이더에서 <code>sc.z</code>와 <code>nearest</code>를 그냥 비교하지 않고 <code>sc.z - 0.005</code>처럼 작은 값을 빼 준 데에 핵심이 숨어 있다. 깊이맵은 해상도가 유한하므로, 빛이 정면으로 비추는 평평한 바닥조차 저장된 깊이와 실제 깊이 사이에 미세한 오차가 생긴다. 이 오차 때문에 표면이 <strong>자기 자신을 그림자로 오판</strong>하여, 밝은 면에 얼룩덜룩한 줄무늬가 생긴다. 이 현상을 <strong class="term-ko">섀도 아크네</strong><sup class="term">shadow acne</sup>라고 한다.</p>
+<p>해법은 비교에 약간의 여유, 즉 <strong class="term-ko">bias</strong><sup class="term">bias</sup>를 두는 것이다. 내 깊이가 깊이맵 값보다 <strong>작은 상수 이상으로</strong> 더 멀 때만 그림자로 판정하면, 표면 자신의 미세한 오차는 무시된다. bias가 너무 작으면 아크네가 남고, 너무 크면 그림자가 물체에서 떨어져 뜨는 <strong class="term-ko">피터 팬 현상</strong><sup class="term">peter panning</sup>이 생긴다. 장면에 맞는 값을 실험으로 찾아야 한다.</p>
+<h3>바닥과 정육면체에 그림자 드리우기</h3>
+<p>원리를 코드로 완성해 보자. 바닥 평면 위에 정육면체를 놓고, 빛의 시점으로 깊이맵을 만든 뒤 그림자를 판정한다. 정육면체 각 면의 법선을 담아 간단한 확산 조명까지 함께 적용한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">// ===== 준비: 컨텍스트와 glMatrix =====
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 1패스: 빛 시점에서 깊이만 기록 =====
+const depthVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+uniform mat4 uLightMVP;
+void main() { gl_Position = uLightMVP * vec4(aPosition, 1.0); }`;
+const depthFS = `#version 300 es
+precision mediump float;
+void main() { }`;    // 색은 없다 — 깊이만 기록된다
+
+// ===== 2패스: 그림자 판정이 들어간 본 렌더링 =====
+const mainVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uMVP;
+uniform mat4 uShadowMVP;
+out vec3 vNormal;
+out vec4 vShadowCoord;
+void main() {
+    gl_Position  = uMVP * vec4(aPosition, 1.0);
+    vNormal      = aNormal;
+    vShadowCoord = uShadowMVP * vec4(aPosition, 1.0);
+}`;
+const mainFS = `#version 300 es
+precision mediump float;
+in vec3 vNormal;
+in vec4 vShadowCoord;
+uniform sampler2D uDepthMap;
+uniform vec3 uColor;
+uniform vec3 uLightDir;
+out vec4 fragColor;
+void main() {
+    vec3 sc = vShadowCoord.xyz / vShadowCoord.w;
+    float nearest = texture(uDepthMap, sc.xy).r;
+    float shadow = (sc.z - 0.005 &gt; nearest) ? 0.0 : 1.0;
+    float diff = max(dot(normalize(vNormal), uLightDir), 0.0);
+    vec3 color = uColor * (0.35 + 0.65 * diff * shadow);
+    fragColor = vec4(color, 1.0);
+}`;
+
+const depthProgram = makeProgram(gl, depthVS, depthFS);
+const mainProgram  = makeProgram(gl, mainVS, mainFS);
+
+// ===== 장면 기하: 바닥 평면 + 정육면체 (위치 3 + 법선 3) =====
+function cubeVertices(cx, cy, cz, half) {
+    const faces = [                        // [법선, 가로축, 세로축]
+        [[0,0, 1],[ 1,0,0],[0,1,0]],  [[0,0,-1],[-1,0,0],[0,1,0]],
+        [[1,0, 0],[ 0,0,-1],[0,1,0]], [[-1,0,0],[ 0,0,1],[0,1,0]],
+        [[0,1, 0],[ 1,0,0],[0,0,-1]], [[0,-1,0],[ 1,0,0],[0,0,1]],
+    ];
+    const v = [];
+    for (const [n, u, w] of faces) {
+        const corner = (a, b) =&gt; v.push(
+            cx + half * (n[0] + a * u[0] + b * w[0]),
+            cy + half * (n[1] + a * u[1] + b * w[1]),
+            cz + half * (n[2] + a * u[2] + b * w[2]),
+            n[0], n[1], n[2]);
+        corner(-1, -1); corner(1, -1); corner(1, 1);   // 삼각형 1
+        corner(-1, -1); corner(1, 1);  corner(-1, 1);  // 삼각형 2
+    }
+    return v;
+}
+const floorVerts = [                       // y = 0 평면, 법선 +y
+    -4, 0, -4,  0, 1, 0,    4, 0, -4,  0, 1, 0,    4, 0, 4,  0, 1, 0,
+    -4, 0, -4,  0, 1, 0,    4, 0,  4,  0, 1, 0,   -4, 0, 4,  0, 1, 0,
+];
+const verts = new Float32Array(
+    [...floorVerts, ...cubeVertices(0, 0.8, 0, 0.8)]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);   // 위치
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);  // 법선
+
+// ===== 깊이맵 FBO: 깊이 텍스처만 부착 =====
+const SHADOW_SIZE = 1024;
+const depthTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, depthTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24,
+              SHADOW_SIZE, SHADOW_SIZE, 0,
+              gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const depthFbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, depthFbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                        gl.TEXTURE_2D, depthTex, 0);
+if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    console.log('framebuffer incomplete');
+
+// ===== 행렬: 빛 시점과 카메라 시점 =====
+const lightPos = [-4, 4, 2];
+const lightView = mat4.create(), lightProj = mat4.create();
+mat4.lookAt(lightView, lightPos, [0, 0, 0], [0, 1, 0]);
+mat4.ortho(lightProj, -8, 8, -8, 8, 1, 20);
+const lightMVP = mat4.create();
+mat4.multiply(lightMVP, lightProj, lightView);
+
+const biasMatrix = mat4.fromValues(        // [-1,1] → [0,1]
+    0.5, 0,   0,   0,    0,   0.5, 0,   0,
+    0,   0,   0.5, 0,    0.5, 0.5, 0.5, 1);
+const shadowMVP = mat4.create();
+mat4.multiply(shadowMVP, biasMatrix, lightMVP);
+
+const proj = mat4.create(), view = mat4.create(), mvp = mat4.create();
+mat4.perspective(proj, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+mat4.lookAt(view, [4, 3.5, 6], [0, 0.5, 0], [0, 1, 0]);
+mat4.multiply(mvp, proj, view);
+
+const lightDir = vec3.create();
+vec3.normalize(lightDir, lightPos);        // 원점 기준 빛 방향
+
+// ===== 1패스: 빛 시점에서 깊이맵을 만든다 =====
+gl.enable(gl.DEPTH_TEST);
+gl.bindFramebuffer(gl.FRAMEBUFFER, depthFbo);
+gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
+gl.clear(gl.DEPTH_BUFFER_BIT);             // 깊이만 지운다
+gl.useProgram(depthProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(depthProgram, 'uLightMVP'),
+                    false, lightMVP);
+gl.bindVertexArray(vao);
+gl.drawArrays(gl.TRIANGLES, 0, 42);        // 바닥 6 + 정육면체 36
+
+// ===== 2패스: 카메라 시점에서 그림자와 함께 그린다 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.viewport(0, 0, canvas.width, canvas.height);
+gl.clearColor(0.75, 0.85, 0.95, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(mainProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(mainProgram, 'uMVP'), false, mvp);
+gl.uniformMatrix4fv(gl.getUniformLocation(mainProgram, 'uShadowMVP'),
+                    false, shadowMVP);
+gl.uniform3fv(gl.getUniformLocation(mainProgram, 'uLightDir'), lightDir);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, depthTex);   // 깊이맵을 입력으로
+gl.uniform1i(gl.getUniformLocation(mainProgram, 'uDepthMap'), 0);
+
+const uColor = gl.getUniformLocation(mainProgram, 'uColor');
+gl.uniform3f(uColor, 0.8, 0.8, 0.8);       // 바닥: 밝은 회색
+gl.drawArrays(gl.TRIANGLES, 0, 6);
+gl.uniform3f(uColor, 1.0, 0.55, 0.2);      // 정육면체: 주황
+gl.drawArrays(gl.TRIANGLES, 6, 36);</code></pre><div class="listing-caption">코드 11.3: 바닥 위 정육면체에 그림자 드리우기</div></div>
+<p>실행하면 주황색 정육면체가 밝은 바닥 위에 앉고, 빛 반대쪽 바닥에 또렷한 그림자가 드리운다. 빛의 위치 <code>lightPos</code>를 바꾸면 그림자의 방향과 길이가 따라 움직인다. bias 상수 <code>0.005</code>를 <code>0.0</code>으로 바꾸어 실행하면, 밝은 바닥에 섀도 아크네 줄무늬가 나타나는 것도 직접 확인할 수 있다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>그림자 매핑은 <strong>1패스</strong>에서 빛 시점의 <strong>깊이맵</strong>(<code>DEPTH_COMPONENT24</code>를 <code>DEPTH_ATTACHMENT</code>에 부착)을 만들고, <strong>2패스</strong>에서 각 프래그먼트를 빛 좌표로 옮겨( <code>bias</code>\(\times\)<code>lightProj</code>\(\times\)<code>lightView</code> ) 깊이맵과 비교한다. 내 깊이가 더 멀면 그림자다. 자기 그림자 얼룩(<strong>섀도 아크네</strong>)은 비교에 작은 <strong>bias</strong>를 두어 막는다.</p></div>
+<h2 id="sec4">11.4 스카이박스와 환경 매핑</h2>
+<h3>큐브맵 텍스처</h3>
+<p>지금까지의 텍스처는 2차원 이미지 한 장이었다. <strong class="term-ko">큐브맵</strong><sup class="term">cube map</sup>은 정육면체의 여섯 면에 각각 이미지를 붙인, 여섯 장짜리 텍스처다. 큐브맵을 샘플링할 때는 \(uv\) 좌표가 아니라 <strong>방향 벡터</strong>를 넘긴다. 큐브맵의 중심에서 그 방향으로 광선을 쏘아, 광선이 부딪히는 면의 픽셀을 읽는 것이다. 사방을 둘러싼 환경  —  하늘, 주변 풍경  —  을 담기에 꼭 맞는 구조다.</p>
+<p>큐브맵 텍스처는 <code>TEXTURE_CUBE_MAP</code>으로 바인딩하고, 여섯 면을 각각의 타깃 상수에 <code>texImage2D</code>로 올린다. 이 예제에서는 이미지 파일 없이, 면마다 다른 색의 그라데이션을 <code>Uint8Array</code>로 절차적으로 만들어 넣는다.</p>
+<pre class="line-numbers"><code class="language-javascript">const faces = [   // [면 타깃, 위쪽 색, 아래쪽 색] — 방향 확인용
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_X, [255,170,100], [190, 70, 40]],  // +x
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_X, [170,130,235], [ 80, 50,150]],  // -x
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Y, [180,215,255], [ 90,150,255]],  // +y(하늘)
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, [ 70, 90, 70], [ 25, 35, 25]],  // -y(바닥)
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Z, [130,220,205], [ 40,120,110]],  // +z
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, [255,225,140], [190,150, 60]],  // -z
+];
+gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
+for (const [target, top, bottom] of faces)
+    gl.texImage2D(target, 0, gl.RGBA, SIZE, SIZE, 0,
+                  gl.RGBA, gl.UNSIGNED_BYTE, makeFace(top, bottom));</code></pre>
+<p>셰이더에서는 2차원 텍스처의 <code>sampler2D</code> 대신 <code>samplerCube</code>를 쓰고, <code>texture()</code>의 둘째 인자로 방향 벡터를 넘긴다.</p>
+<pre class="line-numbers"><code class="language-glsl">uniform samplerCube uSkybox;
+// ...
+fragColor = texture(uSkybox, normalize(vDir));   // 방향으로 샘플링</code></pre>
+<h3>스카이박스  —  카메라를 감싸는 정육면체</h3>
+<p><strong class="term-ko">스카이박스</strong><sup class="term">skybox</sup>는 큐브맵을 배경 하늘로 쓰는 기법이다. 카메라를 감싸는 커다란 정육면체를 그리되, 각 정점의 <strong>위치 자체를 샘플링 방향으로</strong> 삼는다. 정육면체 표면의 한 점을 바라보면 그 방향의 큐브맵 픽셀이 읽히므로, 사방이 환경 이미지로 채워진다.</p>
+<p>여기에 두 가지 요령이 필요하다. 첫째, 스카이박스는 카메라가 어디로 움직이든 <strong>늘 같은 거리에 있는 것처럼</strong> 보여야 한다. 그래서 뷰 행렬에서 <strong>이동 성분을 제거</strong>해 회전만 남긴다. glMatrix의 <code>mat4</code>는 열 우선 저장이므로, 이동 성분은 배열의 <code>[12]</code>, <code>[13]</code>, <code>[14]</code>에 들어 있다(4장). 이 세 칸을 0으로 만들면 된다.</p>
+<pre class="line-numbers"><code class="language-javascript">mat4.lookAt(view, [3, 1.2, 2], [0, 0, 0], [0, 1, 0]);
+view[12] = view[13] = view[14] = 0;   // 이동 성분 제거 → 회전만 남긴다</code></pre>
+<p>둘째, 스카이박스는 장면의 <strong>가장 뒤</strong>에 있어야 한다. 정점 셰이더에서 <code>gl_Position</code>을 <code>pos.xyww</code>로 내보내면, 원근 나눗셈 뒤 깊이가 항상 최댓값 \(1.0\)이 되어 다른 모든 물체 뒤에 놓인다. 이때 깊이 검사를 <code>LEQUAL</code>로 두어야 깊이 \(1.0\)인 스카이박스가 버려지지 않는다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.depthFunc(gl.LEQUAL);   // 깊이 1.0인 스카이박스를 통과시킨다</code></pre>
+<h3>절차적 큐브맵으로 스카이박스 그리기</h3>
+<p>이미지 파일 없이 여섯 면을 서로 다른 색의 그라데이션으로 만들어, 그 안에서 카메라가 비스듬히 바라보는 장면을 완성한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">// ===== 준비: 컨텍스트와 glMatrix =====
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 스카이박스 셰이더 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+uniform mat4 uProj;
+uniform mat4 uViewRot;        // 이동 성분을 제거한 뷰 행렬
+out vec3 vDir;
+void main() {
+    vDir = aPosition;         // 정점 위치가 곧 샘플링 방향
+    vec4 pos = uProj * uViewRot * vec4(aPosition, 1.0);
+    gl_Position = pos.xyww;   // 깊이를 항상 1.0(가장 먼 곳)으로
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vDir;
+uniform samplerCube uSkybox;
+out vec4 fragColor;
+void main() { fragColor = texture(uSkybox, normalize(vDir)); }`;
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 큐브맵 6면을 절차적으로 생성 (이미지 파일 없이) =====
+const SIZE = 64;
+function makeFace(top, bottom) {  // 위→아래 그라데이션 픽셀 데이터
+    const data = new Uint8Array(SIZE * SIZE * 4);
+    for (let y = 0; y &lt; SIZE; y++) {
+        const t = y / (SIZE - 1);          // 0(위) ~ 1(아래)
+        for (let x = 0; x &lt; SIZE; x++) {
+            const i = (y * SIZE + x) * 4;
+            data[i]     = top[0] + (bottom[0] - top[0]) * t;
+            data[i + 1] = top[1] + (bottom[1] - top[1]) * t;
+            data[i + 2] = top[2] + (bottom[2] - top[2]) * t;
+            data[i + 3] = 255;
+        }
+    }
+    return data;
+}
+const faces = [                            // 면마다 다른 색
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_X, [255,170,100], [190, 70, 40]],
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_X, [170,130,235], [ 80, 50,150]],
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Y, [180,215,255], [ 90,150,255]],
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, [ 70, 90, 70], [ 25, 35, 25]],
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Z, [130,220,205], [ 40,120,110]],
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, [255,225,140], [190,150, 60]],
+];
+const cubemap = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
+for (const [target, top, bottom] of faces)
+    gl.texImage2D(target, 0, gl.RGBA, SIZE, SIZE, 0,
+                  gl.RGBA, gl.UNSIGNED_BYTE, makeFace(top, bottom));
+gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+// ===== 카메라를 감싸는 정육면체 (정점 8개 + 인덱스 36개) =====
+const positions = new Float32Array([
+    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,
+    -1, -1, -1,   1, -1, -1,   1,  1, -1,  -1,  1, -1,
+]);
+const indices = new Uint16Array([
+    0, 1, 2,  0, 2, 3,   1, 5, 6,  1, 6, 2,   5, 4, 7,  5, 7, 6,
+    4, 0, 3,  4, 3, 7,   3, 2, 6,  3, 6, 7,   4, 5, 1,  4, 1, 0,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ===== 행렬: 뷰 행렬에서 이동 성분을 제거한다 =====
+const proj = mat4.create(), view = mat4.create();
+mat4.perspective(proj, Math.PI / 3, canvas.width / canvas.height, 0.1, 10);
+mat4.lookAt(view, [3, 1.2, 2], [0, 0, 0], [0, 1, 0]);  // 비스듬한 시선
+view[12] = view[13] = view[14] = 0;    // 이동 성분 제거 → 회전만 남긴다
+
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewRot'), false, view);
+gl.uniform1i(gl.getUniformLocation(program, 'uSkybox'), 0);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
+
+// ===== 그리기: 스카이박스는 깊이 1.0이므로 LEQUAL로 통과 =====
+gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LEQUAL);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);</code></pre><div class="listing-caption">코드 11.4: 절차적 큐브맵 스카이박스</div></div>
+<p>실행하면 여섯 면의 색이 서로 다른 공간 안에 들어와 앉은 듯한 화면이 나온다. 카메라의 <code>lookAt</code> 방향을 바꾸면 배경이 그에 맞춰 회전한다. 마우스 조작(10장)과 결합하면, 사방을 둘러볼 수 있는 파노라마 뷰어가 된다.</p>
+<h3>환경 매핑  —  주변을 되비추기</h3>
+<p>같은 큐브맵을 배경이 아니라 <strong>물체 표면</strong>에 쓰면 <strong class="term-ko">환경 매핑</strong><sup class="term">environment mapping</sup>이 된다. 크롬 도금 구슬이나 잔잔한 수면이 주변 풍경을 비추는 효과다. 원리는 거울과 같다. 카메라에서 표면으로 들어온 시선이 표면 법선에 대해 <strong>반사</strong>된 방향, 그 방향의 큐브맵 픽셀을 표면 색으로 쓴다. GLSL에는 반사 벡터를 구해 주는 <code>reflect</code> 내장 함수가 있다.</p>
+<pre class="line-numbers"><code class="language-glsl">// I: 표면으로 들어오는 시선 방향, N: 표면 법선 (둘 다 정규화)
+vec3 R = reflect(I, normalize(vNormal));   // 반사 벡터
+fragColor = texture(uEnvMap, R);           // 반사 방향의 환경색</code></pre>
+<p>반사 벡터로 큐브맵을 읽는 이 한 줄이면, 물체가 스카이박스의 풍경을 표면에 그대로 되비춘다. 굴절을 흉내 내려면 <code>reflect</code> 대신 <code>refract</code>를 쓰면 유리구슬 효과가 된다.</p>
+<h3>실무에서는 어디에 쓰일까</h3>
+<p>이 장에서 다룬 네 기법은 모두 현대 게임 엔진의 렌더링 파이프라인에 표준으로 자리 잡고 있다. <strong>포스트 프로세싱</strong>은 톤 매핑·블룸·모션 블러·안티에일리어싱(FXAA)으로 확장되어, 게임의 최종 화질을 결정하는 마지막 관문이 된다. <strong>그림자 매핑</strong>은 캐스케이드 섀도맵(CSM) 등으로 발전해 오늘날 거의 모든 실시간 3D의 그림자를 책임진다. <strong>큐브맵</strong>은 스카이박스로 하늘을 그리는 것을 넘어, 물리 기반 렌더링(PBR)에서 주변광을 표현하는 <strong class="term-ko">환경광 프로브</strong><sup class="term">light probe</sup>의 토대가 된다. 이 모든 기법의 뿌리에 "화면 밖에 먼저 그려 텍스처로 손에 쥔다"라는 이 장의 한 가지 발상이 있다. 12장에서 만날 Three.js는 이들을 <code>PostProcessing</code>, <code>ShadowMap</code>, <code>CubeTexture</code> 같은 이름의 부품으로 미리 갖추고 있는데, 그 안에서 벌어지는 일이 바로 우리가 이 장에서 손으로 짠 2패스 렌더링이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p><strong>큐브맵</strong>(<code>TEXTURE_CUBE_MAP</code>, 6면 <code>texImage2D</code>)은 <code>samplerCube</code>에 <strong>방향 벡터</strong>를 넘겨 샘플링한다. <strong>스카이박스</strong>는 카메라를 감싼 정육면체의 정점 위치를 방향으로 삼되, 뷰 행렬의 이동 성분(<code>[12..14]</code>)을 0으로 만들고 깊이를 <code>xyww</code>로 최대화한다. 반사 벡터(<code>reflect</code>)로 큐브맵을 읽으면 <strong>환경 매핑</strong>이 된다.</p></div>
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 11-1</strong>  코드 11.1(포스트 프로세싱)의 흑백 필터를 <strong>색반전</strong>과 <strong>세피아</strong>로 바꾸어 보자. 필터 프래그먼트 셰이더의 마지막 두 줄만 고치면 된다.</p>
+<p><strong>해답</strong>  색반전은 각 채널을 \(1\)에서 빼고, 세피아는 휘도에 갈색조 색을 곱한다.</p>
+<pre class="line-numbers"><code class="language-glsl">// (가) 색반전: 밝은 곳은 어둡게, 어두운 곳은 밝게
+vec4 color = texture(uScene, vTexCoord);
+fragColor = vec4(1.0 - color.rgb, 1.0);
+
+// (나) 세피아: 휘도를 구한 뒤 갈색조를 입힌다
+vec4 color = texture(uScene, vTexCoord);
+float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+fragColor = vec4(lum * vec3(1.0, 0.85, 0.6), 1.0);   // 갈색조</code></pre>
+<p>세피아는 흑백(휘도)을 먼저 구하고, 회색 대신 따뜻한 색 \((1.0, 0.85, 0.6)\)을 곱한 것이다. 흑백 필터의 자연스러운 변주임을 눈여겨보자. 이렇게 2패스 구조를 한 번 갖춰 두면, 필터를 바꾸는 일은 프래그먼트 셰이더 몇 줄을 손보는 것으로 끝난다.</p>
+<p><strong>실습 11-2</strong>  FBO의 해상도를 크게 낮추면 <strong>모자이크(픽셀화)</strong> 효과를 공짜로 얻을 수 있다. 코드 11.1에서 FBO 크기를 600×400에서 60×40으로 줄이고, 필터를 흑백 대신 원본 색 그대로 출력하도록 바꾸어 실행해 보자. 텍스처가 확대될 때 픽셀이 뭉개지지 않도록 확대 필터도 손봐야 한다.</p>
+<p><strong>해답</strong>  낮은 해상도 텍스처가 화면으로 확대되면서 큰 픽셀 블록이 된다. 확대 필터를 <code>LINEAR</code>로 두면 블록 경계가 흐려지므로, 또렷한 모자이크를 원한다면 <code>NEAREST</code>로 바꾼다.</p>
+<pre class="line-numbers"><code class="language-javascript">const FBO_W = 60, FBO_H = 40;                // 해상도를 10분의 1로
+// ... 텍스처 확대 필터를 NEAREST로 (또렷한 픽셀 블록) ...
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);</code></pre>
+<pre class="line-numbers"><code class="language-glsl">// 필터 프래그먼트 셰이더: 흑백 계산 없이 그대로 출력
+fragColor = texture(uScene, vTexCoord);</code></pre>
+<p>렌더링 대상의 해상도만 바꿨을 뿐인데 화질이 계단처럼 거칠어진다. 장면 자체는 그대로 두고 <strong>그리는 텍스처의 크기</strong>만으로 효과를 낸 것이다. 이 발상을 응용하면, 성능이 부족한 기기에서 장면을 낮은 해상도 FBO에 그린 뒤 화면으로 확대해 프레임률을 높이는 최적화(동적 해상도)로도 이어진다.</p>
+<p><strong>실습 11-3</strong>  코드 11.4(스카이박스)에서 여섯 면의 색을 모두 바꾸어, 위쪽(+y)은 하늘색, 아래쪽(-y)은 흙색, 옆면 넷은 지평선 느낌의 색으로 이루어진 <strong>야외 스카이박스</strong>를 만들어 보자.</p>
+<p><strong>해답</strong>  <code>faces</code> 배열의 각 항목 <code>[면 타깃, 위쪽 색, 아래쪽 색]</code>만 바꾸면 된다. 옆면 넷은 위를 하늘색, 아래를 흙색으로 두면 지평선이 이어진 느낌이 난다.</p>
+<pre class="line-numbers"><code class="language-javascript">const sky = [135, 206, 235], ground = [140, 110, 75];  // 하늘색, 흙색
+const faces = [
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_X, sky,          ground],   // +x 옆
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_X, sky,          ground],   // -x 옆
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Y, [80,150,240],  sky],     // +y 하늘
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, ground, [90, 70, 45]],   // -y 바닥
+    [gl.TEXTURE_CUBE_MAP_POSITIVE_Z, sky,          ground],   // +z 옆
+    [gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, sky,          ground],   // -z 옆
+];</code></pre>
+<p>옆면 넷의 위쪽을 하늘색, 아래쪽을 흙색으로 통일했더니 사방으로 지평선이 이어졌다. 큐브맵의 여섯 면이 각각 어느 방향을 향하는지(면 타깃 상수의 이름)를 이해하면, 이렇게 원하는 배경을 손으로 설계할 수 있다.</p></div></p>
+<details class="box summary" id="summary"><summary class="box-head">11장 요약</summary><div class="sum-body"><ul>
+<li>지금까지의 렌더링 목적지는 늘 화면(<strong>기본 프레임버퍼</strong>)이었다. <strong>프레임버퍼 오브젝트</strong>(FBO)는 목적지를 <strong>텍스처</strong>로 바꾸어, 한 번 그린 결과를 입력으로 되먹일 수 있게 한다(오프스크린 렌더링).</li>
+<li>FBO에는 색을 받을 <strong>텍스처</strong>를 <code>COLOR_ATTACHMENT0</code>에, 깊이를 받을 <strong>렌더버퍼</strong>(<code>DEPTH_COMPONENT16</code>)를 <code>DEPTH_ATTACHMENT</code>에 부착하고, <code>checkFramebufferStatus</code>로 완전성을 확인한다. 목적지를 바꿀 때는 <code>viewport</code>도 함께 바꾼다.</li>
+<li><strong>포스트 프로세싱</strong>은 2패스 구조다. 1패스에서 장면을 FBO 텍스처에 담고, 2패스에서 <strong>화면 가득 사각형</strong>(클립 공간 4정점, 행렬 불필요)에 그 텍스처를 입혀 필터를 적용한다. 흑백은 휘도 \(0.299R + 0.587G + 0.114B\), 즉 내적으로 계산한다.</li>
+<li><strong>그림자 매핑</strong>도 2패스다. 1패스에서 빛 시점의 <strong>깊이맵</strong>(<code>DEPTH_COMPONENT24</code>를 <code>DEPTH_ATTACHMENT</code>에 부착)을 만들고, 2패스에서 각 프래그먼트를 <strong>빛 좌표</strong>( bias\(\times\)lightProj\(\times\)lightView )로 변환해 깊이맵과 비교한다. 내 깊이가 더 멀면 그림자다.</li>
+<li>bias 행렬은 클립 공간 \([-1,1]\)을 텍스처 좌표 \([0,1]\)로 옮긴다. 표면이 자기 자신을 그림자로 오판하는 <strong>섀도 아크네</strong>는 깊이 비교에 작은 <strong>bias</strong>를 두어 막는다.</li>
+<li><strong>큐브맵</strong>(<code>TEXTURE_CUBE_MAP</code>, 6면 <code>texImage2D</code>)은 <code>samplerCube</code>에 <strong>방향 벡터</strong>를 넘겨 샘플링한다. 이미지 파일 없이 <code>Uint8Array</code>로 면을 절차 생성할 수도 있다.</li>
+<li><strong>스카이박스</strong>는 카메라를 감싼 정육면체의 정점 위치를 샘플링 방향으로 삼는다. 뷰 행렬의 이동 성분(<code>[12],[13],[14]</code>)을 0으로 만들어 배경이 따라오지 않게 하고, <code>gl_Position</code>을 <code>xyww</code>로 내보내 깊이를 최대로 두며 깊이 검사를 <code>LEQUAL</code>로 한다.</li>
+<li>반사 벡터(<code>reflect</code>)로 큐브맵을 읽으면 물체가 주변을 되비추는 <strong>환경 매핑</strong>이 된다. 이 장의 네 기법은 모두 "화면 밖에 먼저 그린다"라는 한 가지 발상에서 나온, 현대 게임 엔진의 표준 도구다.</li>
+</ul></div></details>
+<details class="box exercise" id="exercises"><summary class="box-head">11장 연습문제</summary><div class="ex-body"><ol>
+<li class="ex-item" data-ex="1"><span class="diff"><span class="d1">★</span></span>  포스트 프로세싱은 왜 <strong>2패스</strong>로 이루어지는가? 각 패스가 그리는 대상(무엇을, 어디에)을 한 문장씩으로 설명하시오.</li>
+<li class="ex-item" data-ex="2"><span class="diff"><span class="d1">★</span></span>  화면 가득 사각형(full-screen quad)에는 모델·뷰·투영 행렬이 필요 없다. 그 까닭을 정점 좌표가 어느 공간의 값인지와 연관지어 설명하시오.</li>
+<li class="ex-item" data-ex="3"><span class="diff"><span class="d1">★</span></span>  다음 색에 대해 흑백 필터의 휘도 \(\text{luminance} = 0.299R + 0.587G + 0.114B\)를 계산하시오. (각 채널은 \(0 \sim 1\))
+<ol type="a">
+<li>순수한 빨강 \((1, 0, 0)\)</li>
+<li>순수한 초록 \((0, 1, 0)\)</li>
+<li>순수한 파랑 \((0, 0, 1)\)</li>
+</ol>
+세 결과를 비교하여, 같은 밝기의 원색이라도 흑백 변환 후 왜 서로 다른 회색이 되는지 설명하시오.</li>
+<li class="ex-item" data-ex="4"><span class="diff"><span class="d2">★★</span></span>  FBO를 사용할 때 <code>bindFramebuffer</code>로 목적지를 바꾼 뒤 <code>gl.viewport</code>를 함께 바꾸지 않으면 어떤 문제가 생기는가? 600×400 화면 프로그램에서 300×300 FBO로 목적지를 바꾸고 뷰포트를 그대로 둔 경우를 예로 들어 설명하시오.</li>
+<li class="ex-item" data-ex="5"><span class="diff"><span class="d2">★★</span></span>  그림자 매핑에서 깊이 비교에 bias를 두지 않으면( <code>sc.z &gt; nearest</code> ) 밝은 표면에 얼룩덜룩한 줄무늬가 생긴다. 이 <strong>섀도 아크네</strong>가 발생하는 근본 원인이 무엇인지, 깊이맵의 성질과 연관지어 설명하시오. 또 bias를 지나치게 크게 하면 어떤 부작용이 생기는가?</li>
+<li class="ex-item" data-ex="6"><span class="diff"><span class="d2">★★</span></span>  큐브맵은 2차원 텍스처와 달리 \(uv\) 좌표가 아니라 <strong>방향 벡터</strong>로 샘플링한다. 스카이박스에서 정육면체의 <strong>정점 위치</strong>를 그대로 샘플링 방향으로 쓸 수 있는 이유를 설명하시오.</li>
+<li class="ex-item" data-ex="7"><span class="diff"><span class="d2">★★</span></span>  스카이박스를 그릴 때 뷰 행렬의 이동 성분을 제거하는 까닭은 무엇인가? glMatrix의 <code>mat4</code> 배열에서 이동 성분이 들어 있는 칸의 인덱스와, 그것을 0으로 만드는 코드를 쓰시오.</li>
+<li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  코드 11.3(그림자 매핑)을 확장하여, 바닥 위에 정육면체를 <strong>두 개</strong> 서로 다른 위치에 놓고 각각 그림자를 드리우게 하려 한다. 장면 기하를 어떻게 구성해야 하는지 서술하고, 1패스와 2패스에서 각각 그리기 명령이 어떻게 바뀌는지 설명하시오. (힌트: 정점 데이터에 두 번째 정육면체를 추가하고 <code>drawArrays</code>의 정점 개수·시작 위치를 조정한다.)</li>
+</ol></div></details>
 <div class="pager-row"><a class="pager prev" href="ch10.html">&larr; 10장</a><a class="pager next" href="ch12.html">12장 &rarr;</a></div>
 </main>
 </div>

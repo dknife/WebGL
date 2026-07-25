@@ -97,6 +97,7 @@
       '  pre#out.err { color: #F87171; }',
       '</style>',
       '<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"><\/script>',
+      '<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"><\/script>',
       '</head><body>',
       '<canvas id="glCanvas" width="600" height="400"></canvas>',
       '<pre id="out"></pre>',

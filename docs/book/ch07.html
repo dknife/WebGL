@@ -39,7 +39,7 @@
 </div>
 <div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
-<div class="nav-secs"></div>
+<div class="nav-secs"><a class="nav-sec" href="ch07.html#sec1">7.1 빛과 재질, 법선 벡터</a><a class="nav-sec" href="ch07.html#sec2">7.2 확산 반사와 램버트 모델</a><a class="nav-sec" href="ch07.html#sec3">7.3 퐁 반사 모델</a><a class="nav-sec" href="ch07.html#sec4">7.4 퍼버텍스 셰이딩과 퍼픽셀 셰이딩</a><a class="nav-sec" href="ch07.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch07.html#summary">7장 요약</a><a class="nav-sec" href="ch07.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
@@ -59,17 +59,625 @@
   <h1>조명과 셰이딩</h1>
 </div>
 <div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><ul>
-<li>법선 벡터의 역할을 이해한다.</li>
-<li>램버트 확산 반사와 퐁 반사 모델을 구현할 수 있다.</li>
-<li>퍼버텍스 셰이딩과 퍼픽셀 셰이딩의 차이를 이해한다.</li>
+<li>물체의 색이 빛과 표면의 상호작용으로 결정됨을 이해하고, 법선 벡터의 역할을 설명할 수 있다.</li>
+<li>법선을 정점 속성으로 전달하고 셰이더에서 올바르게 변환할 수 있다.</li>
+<li>램버트 확산 반사 모델을 GLSL로 구현하여 면마다 밝기가 다른 물체를 그릴 수 있다.</li>
+<li>퐁 반사 모델(주변광 + 확산 + 정반사)로 정반사 하이라이트를 표현할 수 있다.</li>
+<li>퍼버텍스 셰이딩과 퍼픽셀 셰이딩의 차이를 이해하고 매끈한 곡면을 렌더링할 수 있다.</li>
 </ul></div></details></div>
-<div class="box note"><span class="chip">잠깐</span><span class="box-title">집필 예정</span><p>이 장은 집필 예정이다. 다음 절들로 구성될 계획이다.
+<p>여기까지 우리는 물체를 3차원 공간에 놓고(5장), 카메라로 바라보아(6장) 화면에 띄웠다. 그러나 그렇게 그린 정육면체는 어딘가 밋밋하다. 모든 면이 똑같은 색으로 칠해져 입체감이 없고, 회전시켜도 종잇조각을 접어 놓은 것처럼 보인다. 현실의 물체가 입체로 보이는 까닭은 표면의 각 부분이 빛을 받는 정도가 달라 <strong>밝고 어두운 음영</strong>이 생기기 때문이다. 이 음영을 계산해 물체에 생명을 불어넣는 일이 바로 <strong class="term-ko">조명</strong><sup class="term">lighting</sup>과 <strong class="term-ko">셰이딩</strong><sup class="term">shading</sup>이다.</p>
+<p>이 장에서는 빛과 표면이 만나 색이 결정되는 원리를 세우고, 그것을 셰이더로 직접 구현한다. 4장에서 배운 내적과 법선이 여기서 핵심 연장으로 쓰인다. 확산 반사로 면마다 밝기를 다르게 하고, 퐁 반사 모델로 반짝이는 하이라이트를 얹은 뒤, 매끈한 곡면을 그리는 퍼픽셀 셰이딩까지 나아간다. 이 장을 마치면 밋밋하던 정육면체가 빛을 받아 입체로 살아나고, 구는 금속처럼 반짝이게 될 것이다.</p>
+<h2 id="sec1">7.1 빛과 재질, 법선 벡터</h2>
+<h3>물체의 색은 빛과 표면의 상호작용이다</h3>
+<p>우리가 어떤 물체를 "빨갛다"고 말할 때, 그 빨강은 물체가 스스로 내는 색이 아니다. <strong class="term-ko">광원</strong><sup class="term">light source</sup>에서 출발한 빛이 물체 표면에 닿으면, 표면은 그 빛의 일부를 흡수하고 나머지를 반사한다. 반사되어 우리 눈에 도달한 빛이 곧 우리가 인지하는 색이다. 빨간 사과는 빛의 빨강 성분을 주로 반사하고 나머지를 흡수하는 표면을 가진 것이다. 어두운 방에서는 아무리 빨간 사과도 검게 보인다. 빛이 없으면 색도 없다.</p>
+<p>따라서 사실적인 렌더링이란 결국 <strong>광원에서 나온 빛이 표면에서 어떻게 반사되어 눈에 들어오는가</strong>를 계산하는 일이다. 이 계산에 필요한 정보는 세 가지로 정리된다.</p>
 <ul>
-<li>빛과 재질, 법선 벡터</li>
-<li>확산 반사와 램버트 모델</li>
-<li>퐁 조명 모델</li>
-<li>퍼버텍스 vs 퍼픽셀 셰이딩</li>
-</ul></p></div>
+<li><strong>광원</strong>: 빛이 어느 방향에서, 어떤 색과 세기로 오는가.</li>
+<li><strong>재질</strong>: 표면이 빛을 얼마나, 어떤 색으로 반사하는가(<strong class="term-ko">재질</strong><sup class="term">material</sup>).</li>
+<li><strong>표면의 방향</strong>: 표면이 공간에서 어느 쪽을 향하고 있는가.</li>
+</ul>
+<p>이 가운데 앞의 둘은 우리가 값으로 정해 주면 된다. 문제는 셋째, "표면이 어느 쪽을 향하는가"이다. 같은 물체라도 빛을 정면으로 받는 부분은 밝고, 비스듬히 받는 부분은 어두우며, 빛을 등진 부분은 캄캄하다. 이 방향 정보를 담는 것이 바로 법선 벡터이다.</p>
+<h3>법선 벡터  —  표면이 향하는 방향</h3>
+<p><strong class="term-ko">법선</strong><sup class="term">normal</sup>은 표면에 수직인 단위 벡터로, 그 지점의 표면이 어느 쪽을 바라보는지를 나타낸다. 4.2절에서 우리는 이미 법선을 계산해 보았다. 삼각형의 두 변 벡터를 외적하고 정규화하면 그 면에 수직인 법선을 얻는다.
+\[
+\mathbf{n} = \frac{(\mathbf{p}_1 - \mathbf{p}_0) \times (\mathbf{p}_2 - \mathbf{p}_0)}{\lVert (\mathbf{p}_1 - \mathbf{p}_0) \times (\mathbf{p}_2 - \mathbf{p}_0) \rVert}
+\]</p>
+<p>조명 계산에서 법선이 결정적인 이유는, 표면이 빛을 받는 정도가 <strong>법선과 빛 방향이 이루는 각</strong>으로 정해지기 때문이다. 법선이 광원을 정면으로 향하면 표면은 빛을 가장 많이 받아 밝고, 법선이 빛 방향과 직각을 이루면 빛이 스치듯 지나가 어둡다. 이 "각도에 따른 밝기"를 재는 도구가 바로 4장의 내적이다. 다음 절에서 이 관계를 정확한 공식으로 세운다. 지금은 <strong>조명 계산의 주인공이 법선</strong>이라는 사실만 붙들어 두자.</p>
+<h3>법선을 정점 속성으로 전달하기</h3>
+<p>법선은 표면의 정보이지만, WebGL에서 우리가 다루는 것은 정점이다. 그래서 법선도 위치·색과 마찬가지로 <strong>정점 속성</strong>으로 만들어 셰이더에 넘긴다. 3장에서 정점마다 색을 실어 보냈던 것과 똑같은 방식으로, 정점마다 법선 벡터를 실어 보내는 것이다.</p>
+<p>정육면체를 예로 들자. 한 면은 평평하므로 그 면을 이루는 정점들은 모두 같은 법선을 가진다. 앞면(+\(z\) 방향)의 네 정점에는 법선 \((0, 0, 1)\)을, 윗면의 정점들에는 \((0, 1, 0)\)을 부여하는 식이다. 위치 버퍼와 법선 버퍼를 각각 만들어 서로 다른 속성 번호에 연결한다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 0번 속성: 위치, 1번 속성: 법선
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);        // 법선은 1번 속성으로
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);</code></pre>
+<p>정점 셰이더는 이 법선을 받아 프래그먼트 셰이더로 넘겨준다. 이때 주의할 점이 하나 있다. 물체가 회전하면 표면의 방향도 함께 돌아가므로, 법선에도 모델 변환을 적용해야 한다. 그런데 위치에 쓰는 변환을 법선에 그대로 쓰면 안 된다.</p>
+<h3>법선의 변환  —  이동은 빼고 회전만</h3>
+<p>법선은 <strong>방향</strong>이지 위치가 아니다. 4장에서 강조했듯 방향 벡터는 물체가 어디로 이동하든 변하지 않는다. 물체를 오른쪽으로 옮겨도 윗면은 여전히 위를 향한다. 따라서 법선을 변환할 때는 모델 행렬의 <strong>이동 성분을 제외하고 회전 성분만</strong> 적용해야 한다.</p>
+<p>\(4 \times 4\) 모델 행렬에서 이동 정보는 마지막 열에 들어 있고, 회전 정보는 왼쪽 위 \(3 \times 3\) 부분에 담겨 있다. GLSL에서 <code>mat3(uModel)</code>이라고 쓰면 바로 이 \(3 \times 3\) 부분만 꺼내어 법선에 적용할 수 있다.</p>
+<pre class="line-numbers"><code class="language-glsl">#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vNormal;
+void main() {
+    gl_Position = uProj * uView * uModel * vec4(aPosition, 1.0);
+    vNormal = mat3(uModel) * aNormal;   // 회전 성분만 적용 (이동은 제외)
+}</code></pre>
+<p>이 책의 예제는 물체에 회전과 이동만 적용하므로 이 <code>mat3(uModel)</code> 방식으로 충분하다. 그러나 물체를 축마다 다른 비율로 늘이는 <strong>비균등 크기 변환</strong>을 쓰면 이 방식이 깨진다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">비균등 크기 변환과 노멀 행렬</span><p>물체를 \(x\) 방향으로만 두 배 늘이면 표면은 납작해지고, 그 표면의 법선은 원래 방향에서 기울어져야 한다. 그런데 위치와 똑같이 크기 변환을 적용하면 법선은 오히려 반대로 기운다. 이 문제를 바로잡는 올바른 변환은 모델 행렬의 왼쪽 위 \(3 \times 3\) 부분의 <strong>역행렬의 전치</strong>(\(\left(M_{3\times3}\right)^{-1\top}\))이며, 이를 <strong class="term-ko">노멀 행렬</strong><sup class="term">normal matrix</sup>이라고 한다. 회전과 이동만 쓰는 경우에는 이 노멀 행렬이 회전 부분과 같아지므로 <code>mat3(uModel)</code>로 충분하다. 비균등 크기 변환을 섞어 쓰게 되면 그때 노멀 행렬을 따로 계산해 넘겨야 한다는 것만 기억해 두자.</p></div>
+<h3>옛 방식: 고정된 조명, 새 방식: 셰이더로 직접</h3>
+<p>법선과 조명을 다루는 방식은 그래픽스 역사에서 크게 한 번 바뀌었다. 과거의 OpenGL에는 조명이 하드웨어에 <strong>고정 기능</strong>으로 내장되어 있었다. 프로그래머는 조명을 켜고(<code>glEnable(GL_LIGHTING)</code>), 광원 하나를 활성화하고(<code>glEnable(GL_LIGHT0)</code>), 광원과 재질의 색을 함수로 지정하기만 하면 되었다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">옛 OpenGL의 고정 기능 조명</span><p>과거에는 다음과 같은 코드로 조명을 설정했다. 조명 계산 공식 자체는 하드웨어에 박혀 있어 손댈 수 없었다.
+<pre class="line-numbers"><code class="language-javascript">// 옛 OpenGL (데스크톱) — 지금은 쓰지 않는다
+glEnable(GL_LIGHTING);
+glEnable(GL_LIGHT0);                               // 0번 광원 켜기
+glLightfv(GL_LIGHT0, GL_DIFFUSE,  [1, 1, 1, 1]);   // 광원 색
+glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.8, 0.2, 0.2, 1]);  // 재질 색
+glMaterialfv(GL_FRONT, GL_SHININESS, [120]);</code></pre>
+이 방식은 편리했지만 두 가지 큰 제약이 있었다. 첫째, 광원의 개수가 <code>GL_LIGHT0</code>부터 <code>GL_LIGHT7</code>까지 <strong>여덟 개로 제한</strong>되었다. 둘째, 조명을 계산하는 <strong>공식이 고정</strong>되어 있어 프로그래머가 바꿀 수 없었다. 만화풍 음영이나 특수한 반사 같은 표현은 아예 불가능했다.</p>
+<p>현대의 WebGL에는 <code>glEnable(GL_LIGHTING)</code>이 없다. 대신 조명 공식을 <strong>프래그먼트 셰이더에 우리가 직접 작성</strong>한다. 처음에는 번거롭게 느껴지지만, 이 방식이 준 자유는 막대하다. 광원의 개수도 공식도 우리가 정하므로, 사실적인 금속부터 만화풍 렌더링까지 무한한 표현이 열린다. 이 장에서 우리는 그 공식을 밑바닥부터 세워 나간다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>물체의 색은 <strong>광원 \(\times\) 재질 \(\times\) 표면 방향</strong>의 상호작용으로 결정된다. 표면의 방향은 <strong>법선</strong>으로 나타내며, 법선을 정점 속성으로 셰이더에 전달한다. 법선은 방향이므로 모델 행렬의 <strong>회전 성분만</strong>(<code>mat3(uModel)</code>) 적용한다. 옛 OpenGL의 고정 조명과 달리 현대 WebGL은 조명 공식을 셰이더로 직접 작성한다.</p></div>
+<h2 id="sec2">7.2 확산 반사와 램버트 모델</h2>
+<h3>램버트 코사인 법칙</h3>
+<p>종이, 벽, 흙, 나무처럼 광택이 없는 표면을 자세히 보면 미세하게 거칠어서, 들어온 빛을 사방으로 고르게 흩뿌린다. 이런 반사를 <strong class="term-ko">확산 반사</strong><sup class="term">diffuse reflection</sup>라고 한다. 확산 반사의 밝기는 관찰자가 어디에서 보든 똑같고, 오직 <strong>표면이 빛을 얼마나 정면으로 받는가</strong>에만 달려 있다.</p>
+<p>그 "정면으로 받는 정도"를 재는 것이 법선과 빛 방향의 각이다. <strong class="term-ko">빛 방향 벡터</strong><sup class="term">light direction</sup> \(\mathbf{l}\)을 표면의 한 점에서 광원을 향하는 단위 벡터로 정의하자(광원이 오는 방향이 아니라 광원을 <strong>향하는</strong> 방향임에 주의하자). 표면의 법선 \(\mathbf{n}\)과 이 \(\mathbf{l}\)이 이루는 각을 \(\theta\)라 하면, 표면이 받는 빛의 양은 \(\cos\theta\)에 비례한다. 이것이 <strong class="term-ko">램버트 코사인 법칙</strong><sup class="term">Lambert's cosine law</sup>이다.</p>
+<p>법선이 광원을 정면으로 향할 때(\(\theta = 0\)) \(\cos\theta = 1\)로 가장 밝고, 각이 벌어질수록 어두워지다가 빛이 표면과 나란해지면(\(\theta = 90^\circ\)) \(\cos\theta = 0\)이 되어 빛을 받지 못한다. 그런데 4장에서 배웠듯, 두 단위 벡터의 내적이 바로 그 사잇각의 코사인이다. 따라서 확산 반사의 밝기 \(I_d\)는 내적 하나로 계산된다.
+\[
+I_d = \cos\theta = \mathbf{n} \cdot \mathbf{l}
+\]</p>
+<h3>왜 max로 감싸는가</h3>
+<p>한 가지 손질이 필요하다. 표면이 빛을 등지면 사잇각이 \(90^\circ\)를 넘어 내적이 <strong>음수</strong>가 된다. 그러나 빛을 등진 면이 "음의 밝기"를 가질 수는 없다. 물리적으로 이런 면은 그 광원의 빛을 전혀 받지 못하므로 밝기가 0이어야 한다. 그래서 내적을 0으로 바닥을 깔아 준다.
+\[
+I_d = \max(\mathbf{n} \cdot \mathbf{l},\ 0)
+\]</p>
+<p>GLSL에서는 <code>max(dot(N, L), 0.0)</code> 한 줄이다. 이 <code>max</code>를 빠뜨리면 빛을 등진 면에 음수가 곱해져, 뒷면이 검은 것을 넘어 다른 색이 이상하게 어긋나는 버그가 생긴다.</p>
+<h3>주변광  —  그림자 진 면이 완전히 검지 않도록</h3>
+<p>확산 반사만으로 물체를 그리면 빛을 등진 면이 완전히 새까맣게 나온다. 그러나 현실에서는 빛을 등진 면도 어느 정도 보인다. 벽과 바닥, 주변의 다른 물체에 부딪혀 사방으로 흩어진 빛이 그늘진 면까지 희미하게 비추기 때문이다. 이렇게 장면 전체를 떠돌며 모든 표면을 고르게 밝히는 빛을 <strong class="term-ko">주변광</strong><sup class="term">ambient light</sup>이라고 한다.</p>
+<p>주변광은 방향이 없으므로 법선과 무관하게 표면 전체에 일정한 밝기를 더한다. 계산은 재질 색에 작은 상수를 곱하는 것으로 충분하다. 확산 반사에 주변광을 더하면 최종 색은 다음과 같다.
+\[
+\text{색} = k_a\,\mathbf{m} + \max(\mathbf{n} \cdot \mathbf{l},\ 0)\,\mathbf{I}_l \otimes \mathbf{m}
+\]
+여기서 \(\mathbf{m}\)은 재질 색, \(\mathbf{I}_l\)은 광원의 색, \(k_a\)는 주변광 계수(가령 0.2)이며, \(\otimes\)는 4장에서 본 성분별 곱이다. 첫 항이 주변광, 둘째 항이 확산 반사이다. 주변광 덕분에 그늘진 면도 아주 검지는 않게, 물체의 색을 어렴풋이 유지한다.</p>
+<h3>방향광  —  무한히 먼 광원</h3>
+<p>광원의 종류에도 여러 가지가 있다. 이 절에서는 가장 단순한 <strong class="term-ko">방향광</strong><sup class="term">directional light</sup>을 쓴다. 방향광은 태양처럼 아주 멀리 있어서, 장면의 모든 점에 <strong>같은 방향</strong>으로 평행하게 도달하는 빛이다. 위치가 아니라 방향 하나로 정의되므로, 빛 방향 벡터 \(\mathbf{l}\)을 모든 표면에서 같은 값으로 쓸 수 있어 계산이 간단하다. 표면의 위치에 따라 빛 방향이 달라지는 <strong class="term-ko">점광원</strong><sup class="term">point light</sup>은 이 장의 실습에서 다룬다.</p>
+<h3>확산 조명 정육면체</h3>
+<p>이제 개념을 코드로 옮기자. 조명 계산은 프래그먼트 셰이더에서, 즉 픽셀 하나하나마다 수행한다(퍼픽셀 셰이딩). 정점 셰이더는 법선을 넘겨주기만 하고, 실제 밝기 계산은 프래그먼트 셰이더가 맡는다. 정육면체는 여섯 면이 각각 다른 법선을 가지므로, 조명이 제대로 걸리면 면마다 밝기가 확연히 달라 보여야 한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 정점 셰이더: 법선을 프래그먼트로 넘긴다 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vNormal;
+void main() {
+    gl_Position = uProj * uView * uModel * vec4(aPosition, 1.0);
+    vNormal = mat3(uModel) * aNormal;   // 법선은 회전 성분만 적용
+}`;
+
+// ===== 프래그먼트 셰이더: 램버트 확산 + 주변광 =====
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vNormal;
+uniform vec3 uLightDir;     // 표면에서 광원을 향하는 방향 (단위 벡터)
+uniform vec3 uLightColor;   // 광원의 색
+uniform vec3 uMaterial;     // 재질의 색
+out vec4 fragColor;
+void main() {
+    vec3 N = normalize(vNormal);              // 보간된 법선을 다시 정규화
+    float diff = max(dot(N, uLightDir), 0.0); // 램버트 코사인 법칙
+    vec3 ambient = 0.2 * uMaterial;                 // 주변광
+    vec3 diffuse = diff * uLightColor * uMaterial;  // 확산 반사
+    fragColor = vec4(ambient + diffuse, 1.0);
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 정육면체: 면마다 법선을 가진 정점 36개 =====
+function makeCube() {
+    // 각 면 = [법선 n, 면의 가로축 u, 세로축 v]
+    const faces = [
+        [[ 0, 0, 1], [ 1, 0, 0], [0, 1, 0]],   // 앞면 (+z)
+        [[ 0, 0,-1], [-1, 0, 0], [0, 1, 0]],   // 뒷면 (-z)
+        [[ 1, 0, 0], [ 0, 0,-1], [0, 1, 0]],   // 오른쪽 (+x)
+        [[-1, 0, 0], [ 0, 0, 1], [0, 1, 0]],   // 왼쪽 (-x)
+        [[ 0, 1, 0], [ 1, 0, 0], [0, 0,-1]],   // 윗면 (+y)
+        [[ 0,-1, 0], [ 1, 0, 0], [0, 0, 1]],   // 아랫면 (-y)
+    ];
+    const pos = [], nrm = [];
+    for (const [n, u, v] of faces) {
+        // 면 중심 0.5n에서 u, v 방향으로 +-0.5 이동한 꼭짓점
+        const corner = (su, sv) =&gt; {
+            for (let k = 0; k &lt; 3; k++)
+                pos.push(0.5*n[k] + su*0.5*u[k] + sv*0.5*v[k]);
+            nrm.push(n[0], n[1], n[2]);   // 한 면의 정점 6개는 같은 법선
+        };
+        corner(-1,-1); corner(1,-1); corner(1,1);    // 삼각형 1
+        corner(-1,-1); corner(1,1);  corner(-1,1);   // 삼각형 2
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}
+
+// ===== 초기화: 버퍼 2개를 0번(위치)·1번(법선) 속성에 연결 =====
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const cube = makeCube();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.pos, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.nrm, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ===== MVP 행렬 (6장과 같은 구성) =====
+const model = mat4.create();
+const view = mat4.create();
+mat4.lookAt(view, [1.6, 1.4, 2.2], [0, 0, 0], [0, 1, 0]);
+const proj = mat4.create();
+mat4.perspective(proj, Math.PI/4, canvas.width/canvas.height, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+
+// ===== 조명과 재질 =====
+const lightDir = vec3.fromValues(0.5, 0.8, 0.6);   // 광원이 있는 쪽
+vec3.normalize(lightDir, lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), 1.0, 1.0, 1.0);
+gl.uniform3f(gl.getUniformLocation(program, 'uMaterial'), 1.0, 0.5, 0.2);
+
+// ===== 그리기: 깊이 검사를 켜야 앞뒤가 올바르게 가려진다 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코드 7.1: 확산 반사 + 주변광을 받는 정육면체</div></div>
+<p>실행하면 주황색 정육면체가 나타나는데, 위를 향한 윗면이 가장 밝고, 광원을 비스듬히 받는 앞면과 옆면은 저마다 다른 밝기로 칠해진다. 6장까지의 밋밋한 정육면체와 달리, 면마다 음영이 달라 비로소 입체로 보인다. 이 차이가 조명 계산이 하는 일이다.</p>
+<p>빛 방향 <code>uLightDir</code>을 다른 값으로 바꾸어 실행하면 어느 면이 밝아지는지가 달라진다. <code>max(dot(N, L), 0.0)</code>에서 <code>max</code>를 빼고 실행해 보는 것도 좋은 실험이다. 빛을 등진 면의 색이 어긋나는 것을 눈으로 확인할 수 있다.</p>
+<div class="box caution"><span class="chip">주의</span><p>3차원 물체를 그릴 때는 <code>gl.enable(gl.DEPTH_TEST)</code>로 <strong class="term-ko">깊이 검사</strong><sup class="term">depth test</sup>를 반드시 켜야 한다. 이것을 빠뜨리면 뒤에 있어야 할 면이 앞면을 덮어써 물체가 안팎이 뒤집힌 듯 이상하게 그려진다. 화면을 지울 때도 색 버퍼와 함께 <code>gl.DEPTH_BUFFER_BIT</code>로 깊이 버퍼를 지워 주어야 한다. 6장에서 도입한 이 습관을 조명 예제에서도 그대로 지킨다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>확산 반사의 밝기는 램버트 코사인 법칙에 따라 \(\max(\mathbf{n} \cdot \mathbf{l},\ 0)\)으로 계산한다. 내적이 음수인(빛을 등진) 면을 0으로 막기 위해 <code>max</code>가 필요하다. 그늘진 면이 완전히 검지 않도록 <strong>주변광</strong>을 상수로 더한다. 조명은 프래그먼트 셰이더에서 픽셀마다 계산한다.</p></div>
+<h2 id="sec3">7.3 퐁 반사 모델</h2>
+<h3>정반사  —  반짝이는 하이라이트</h3>
+<p>확산 반사만으로 그린 물체는 사과나 벽처럼 광택 없는 표면을 잘 표현한다. 그러나 사과의 매끈한 껍질, 당구공, 금속에는 밝게 빛나는 반점이 맺힌다. 특정 방향에서만 보이는 이 밝은 얼룩을 <strong class="term-ko">하이라이트</strong><sup class="term">highlight</sup>라고 하며, 이를 만드는 반사가 <strong class="term-ko">정반사</strong><sup class="term">specular reflection</sup>이다.</p>
+<p>정반사는 거울처럼 입사한 빛을 반사 방향으로 집중해서 보낸다. 확산 반사와 달리 정반사는 <strong>관찰자가 어디에서 보느냐에 따라</strong> 밝기가 달라진다. 반사된 빛이 곧장 눈으로 들어오는 각도에서만 강하게 빛나고, 조금만 비껴나도 급격히 어두워진다. 그래서 물체를 돌리거나 고개를 움직이면 하이라이트가 표면 위를 미끄러지듯 이동한다.</p>
+<p><strong class="term-ko">퐁 반사 모델</strong><sup class="term">Phong reflection model</sup>은 이 정반사를 다음과 같이 계산한다. 표면에서 광원을 향하는 벡터 \(\mathbf{l}\)이 법선 \(\mathbf{n}\)에 대해 완벽히 반사되는 방향을 <strong class="term-ko">반사 벡터</strong><sup class="term">reflection vector</sup> \(\mathbf{r}\)라 하고, 표면에서 눈을 향하는 <strong class="term-ko">시선 벡터</strong><sup class="term">view vector</sup>를 \(\mathbf{v}\)라 하자. 반사 방향 \(\mathbf{r}\)와 시선 \(\mathbf{v}\)가 가까울수록, 즉 반사된 빛이 눈으로 곧장 올수록 하이라이트가 밝다. 이 "가까운 정도" 역시 두 단위 벡터의 내적 \(\mathbf{r} \cdot \mathbf{v}\)로 잰다.
+\[
+I_s = \max(\mathbf{r} \cdot \mathbf{v},\ 0)^{\alpha}
+\]</p>
+<h3>반질거림 지수  —  하이라이트의 날카로움</h3>
+<p>지수 \(\alpha\)는 <strong class="term-ko">반질거림</strong><sup class="term">shininess</sup>을 조절한다. 내적 \(\mathbf{r} \cdot \mathbf{v}\)는 \(0 \sim 1\) 사이의 값인데, 여기에 큰 지수를 씌우면 1에 아주 가까운 값만 살아남고 나머지는 급격히 0으로 눌린다. 따라서 \(\alpha\)가 클수록 하이라이트가 <strong>작고 날카롭게</strong> 맺혀 금속이나 유리처럼 보이고, \(\alpha\)가 작을수록 하이라이트가 <strong>크고 부드럽게</strong> 퍼져 플라스틱이나 젖은 나무처럼 보인다. 흔히 \(\alpha\)는 8에서 256 사이의 값을 쓴다.</p>
+<h3>퐁 모델의 합성 공식</h3>
+<p>퐁 모델은 지금까지의 세 가지 반사  —  주변광, 확산 반사, 정반사  —  를 각각 계산하여 더한다. 최종 밝기 \(I\)는 다음과 같다.
+\[
+I = k_a I_a + k_d I_l \max(\mathbf{n}\cdot\mathbf{l},\ 0) + k_s I_l \max(\mathbf{r}\cdot\mathbf{v},\ 0)^{\alpha}
+\]</p>
+<p>각 항의 의미를 정리하면 이렇다.</p>
+<div class="table-wrap"><div class="table-caption">표 7.1: 퐁 반사 모델의 세 항</div><table><tr><th>항</th><th>이름</th><th>성격</th></tr><tr><td>\(k_a I_a\)</td><td>주변광</td><td>방향과 무관, 표면 전체에 일정</td></tr><tr><td>\(k_d I_l \max(\mathbf{n}\cdot\mathbf{l}, 0)\)</td><td>확산 반사</td><td>법선과 빛 방향의 각에 의존, 시점 무관</td></tr><tr><td>\(k_s I_l \max(\mathbf{r}\cdot\mathbf{v}, 0)^{\alpha}\)</td><td>정반사</td><td>반사 방향과 시선의 각에 의존, 시점 의존</td></tr></table></div>
+<p>\(k_a\), \(k_d\), \(k_s\)는 각각 주변광·확산·정반사의 반사 계수로, 보통 확산 계수 \(k_d\)에는 재질의 고유색을 쓰고 정반사 계수 \(k_s\)에는 흰색을 쓴다. 하이라이트가 물체 색이 아니라 광원 색(대개 흰색)으로 빛나는 것이 자연스럽기 때문이다.</p>
+<h3>GLSL로 옮기기</h3>
+<p>이 공식을 프래그먼트 셰이더로 옮길 때 반가운 점은, 필요한 벡터 연산이 모두 GLSL 내장 함수로 준비되어 있다는 것이다. 반사 벡터는 <code>reflect()</code>로 구한다. <code>reflect(I, N)</code>은 입사 벡터 <code>I</code>가 법선 <code>N</code>에 반사된 방향을 주는데, 여기서 입사 벡터는 빛이 <strong>들어오는</strong> 방향이므로 광원을 향하는 \(\mathbf{l}\)의 반대인 <code>-L</code>을 넘긴다. 시선 벡터는 표면 위치에서 눈의 위치로 향하는 벡터를 정규화해 얻는다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec3 N = normalize(vNormal);
+vec3 L = normalize(uLightDir);
+vec3 V = normalize(uEyePos - vPosition);   // 표면 -&gt; 눈
+vec3 R = reflect(-L, N);                   // 반사 벡터
+float diff = max(dot(N, L), 0.0);
+float spec = pow(max(dot(R, V), 0.0), uShininess);</code></pre>
+<p>시선 벡터를 계산하려면 표면의 <strong>월드 좌표 위치</strong>가 필요하므로, 정점 셰이더에서 모델 변환을 적용한 위치를 프래그먼트로 함께 넘겨준다. 다음 완성 예제에서 정점 셰이더가 위치와 법선을 모두 넘기는 것을 볼 수 있다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 정점 셰이더: 월드 위치와 법선을 프래그먼트로 넘긴다 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vPosition;
+out vec3 vNormal;
+void main() {
+    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    gl_Position = uProj * uView * worldPos;
+    vPosition = worldPos.xyz;           // 월드 공간의 표면 위치
+    vNormal = mat3(uModel) * aNormal;
+}`;
+
+// ===== 프래그먼트 셰이더: 주변광 + 확산 + 정반사 =====
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vPosition;
+in vec3 vNormal;
+uniform vec3 uLightDir;      // 표면에서 광원을 향하는 방향 L
+uniform vec3 uEyePos;        // 카메라(눈)의 위치
+uniform vec3 uLightColor;    // 광원의 색
+uniform vec3 uMaterial;      // 재질의 색
+uniform float uShininess;    // 반질거림 지수 alpha
+out vec4 fragColor;
+void main() {
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(uLightDir);
+    vec3 V = normalize(uEyePos - vPosition);   // 시선 벡터
+    vec3 R = reflect(-L, N);                   // 반사 벡터
+    float diff = max(dot(N, L), 0.0);
+    float spec = pow(max(dot(R, V), 0.0), uShininess);
+    vec3 color = 0.2 * uMaterial                     // 주변광
+               + diff * uLightColor * uMaterial      // 확산 반사
+               + spec * uLightColor * vec3(1.0);     // 정반사 (흰 하이라이트)
+    fragColor = vec4(color, 1.0);
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 정육면체 정점 36개 (코드 7.1과 동일) =====
+function makeCube() {
+    const faces = [
+        [[ 0, 0, 1], [ 1, 0, 0], [0, 1, 0]],
+        [[ 0, 0,-1], [-1, 0, 0], [0, 1, 0]],
+        [[ 1, 0, 0], [ 0, 0,-1], [0, 1, 0]],
+        [[-1, 0, 0], [ 0, 0, 1], [0, 1, 0]],
+        [[ 0, 1, 0], [ 1, 0, 0], [0, 0,-1]],
+        [[ 0,-1, 0], [ 1, 0, 0], [0, 0, 1]],
+    ];
+    const pos = [], nrm = [];
+    for (const [n, u, v] of faces) {
+        const corner = (su, sv) =&gt; {
+            for (let k = 0; k &lt; 3; k++)
+                pos.push(0.5*n[k] + su*0.5*u[k] + sv*0.5*v[k]);
+            nrm.push(n[0], n[1], n[2]);
+        };
+        corner(-1,-1); corner(1,-1); corner(1,1);
+        corner(-1,-1); corner(1,1);  corner(-1,1);
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}
+
+// ===== 초기화 =====
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const cube = makeCube();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.pos, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.nrm, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ===== MVP 행렬과 uniform =====
+const eye = [1.6, 1.4, 2.2];
+const model = mat4.create();
+const view = mat4.create();
+mat4.lookAt(view, eye, [0, 0, 0], [0, 1, 0]);
+const proj = mat4.create();
+mat4.perspective(proj, Math.PI/4, canvas.width/canvas.height, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+
+const lightDir = vec3.fromValues(-0.55, 0.3, -0.8);   // 살짝 뒤쪽 위 광원
+vec3.normalize(lightDir, lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uEyePos'), eye);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), 1.0, 1.0, 1.0);
+gl.uniform3f(gl.getUniformLocation(program, 'uMaterial'), 0.8, 0.2, 0.2);
+gl.uniform1f(gl.getUniformLocation(program, 'uShininess'), 80.0);   // 바꿔 보자
+
+// ===== 그리기 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코드 7.2: 퐁 반사 모델로 그린 정육면체</div></div>
+<p>실행하면 빨간 정육면체의 윗면에 흰 하이라이트가 맺힌다. 광원을 살짝 뒤쪽에 두어, 카메라를 향한 앞면은 어둡고 윗면에서 반사된 빛이 눈으로 들어오도록 배치했다. 마지막 줄의 <code>uShininess</code> 값을 바꾸어 실행해 보자. 8처럼 작은 값이면 하이라이트가 크고 뭉툭하게 퍼지고, 256처럼 큰 값이면 작고 또렷한 점으로 좁아진다. 같은 물체가 반질거림 지수 하나로 젖은 플라스틱에서 광택 나는 금속까지 달라 보인다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">블린-퐁 모델</span><p>퐁 모델은 프래그먼트마다 반사 벡터 \(\mathbf{r}\)를 계산해야 한다. 블린(Blinn)은 이 계산을 줄이려고 반사 벡터 대신 <strong class="term-ko">반 벡터</strong><sup class="term">halfway vector</sup> \(\mathbf{h}\)를 도입했다. 반 벡터는 빛 방향 \(\mathbf{l}\)과 시선 \(\mathbf{v}\)의 중간 방향으로, \(\mathbf{h} = (\mathbf{l} + \mathbf{v}) / \lVert \mathbf{l} + \mathbf{v} \rVert\)로 구한다. 정반사 항을 \(\max(\mathbf{r}\cdot\mathbf{v},0)^{\alpha}\) 대신 \(\max(\mathbf{n}\cdot\mathbf{h},0)^{\alpha}\)로 계산하는 이 방식을 <strong class="term-ko">블린-퐁 모델</strong><sup class="term">Blinn-Phong model</sup>이라고 하며, 결과가 자연스럽고 계산이 조금 더 싸서 오늘날 널리 쓰인다. 이 장의 실습에서 직접 바꿔 볼 수 있다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>퐁 모델은 <strong>주변광 + 확산 반사 + 정반사</strong>를 더한다. 정반사는 반사 벡터와 시선의 내적을 반질거림 지수로 거듭제곱한 \(\max(\mathbf{r}\cdot\mathbf{v},0)^{\alpha}\)로, 시점에 따라 달라지는 하이라이트를 만든다. GLSL의 <code>reflect()</code>로 반사 벡터를, <code>pow()</code>로 지수를 처리한다. 지수 \(\alpha\)가 클수록 하이라이트가 작고 날카롭다.</p></div>
+<h2 id="sec4">7.4 퍼버텍스 셰이딩과 퍼픽셀 셰이딩</h2>
+<h3>조명을 어디에서 계산할 것인가</h3>
+<p>지금까지의 예제는 조명을 모두 프래그먼트 셰이더에서, 즉 픽셀마다 계산했다. 그런데 조명 계산을 정점 셰이더에서 할 수도 있다. 어느 셰이더에서 조명을 계산하느냐에 따라 셰이딩 방식이 갈린다.</p>
+<ul>
+<li><strong class="term-ko">구로우 셰이딩</strong><sup class="term">Gouraud shading</sup>: <strong>정점 셰이더</strong>에서 각 정점의 색(밝기)을 계산한 뒤, 그 색을 삼각형 내부로 보간한다. 조명 계산이 정점 수만큼만 일어나 빠르다.</li>
+<li><strong class="term-ko">퐁 셰이딩</strong><sup class="term">Phong shading</sup>: 정점 셰이더는 <strong>법선을 보간</strong>해 넘기고, <strong>프래그먼트 셰이더</strong>에서 픽셀마다 조명을 계산한다. 계산량은 많지만 결과가 매끄럽다.</li>
+</ul>
+<div class="box caution"><span class="chip">주의</span><p>이름이 겹쳐 혼동하기 쉽다. <strong>퐁 반사 모델</strong>(7.3절)은 주변광·확산·정반사를 더하는 <strong>조명 공식</strong>이고, <strong>퐁 셰이딩</strong>(이 절)은 그 공식을 <strong>픽셀마다 적용</strong>하는 방식이다. 반사 모델은 "무엇을 계산하는가", 셰이딩 방식은 "어디에서 계산하는가"의 문제로, 서로 다른 층위의 개념이다.</p></div>
+<h3>보간의 대상이 다르다</h3>
+<p>두 방식의 핵심 차이는 3장에서 배운 보간이 <strong>무엇에 적용되는가</strong>에 있다. 래스터화 단계는 정점 셰이더가 내보낸 <code>out</code> 변수를 삼각형 내부의 프래그먼트마다 보간해 준다. 구로우 셰이딩은 정점에서 계산된 <strong>색</strong>을 보간하고, 퐁 셰이딩은 정점의 <strong>법선</strong>을 보간한 뒤 그 보간된 법선으로 프래그먼트에서 조명을 계산한다.</p>
+<div class="table-wrap"><div class="table-caption">표 7.2: 구로우 셰이딩과 퐁 셰이딩의 비교</div><table><tr><th></th><th>구로우 셰이딩</th><th>퐁 셰이딩</th></tr><tr><td>조명 계산 위치</td><td>정점 셰이더</td><td>프래그먼트 셰이더</td></tr><tr><td>보간되는 값</td><td>정점의 색(밝기)</td><td>정점의 법선</td></tr><tr><td>계산 횟수</td><td>정점 수만큼</td><td>픽셀 수만큼</td></tr><tr><td>속도</td><td>빠름</td><td>느림</td></tr><tr><td>하이라이트 품질</td><td>메시가 성기면 깨짐</td><td>매끄러움</td></tr></table></div>
+<p>이 차이가 도드라지는 곳이 바로 정반사 하이라이트이다. 하이라이트는 표면의 좁은 영역에 맺히는데, 구로우 셰이딩에서 하필 그 지점이 정점과 정점 사이에 떨어지면 어느 정점도 하이라이트를 "보지 못한다". 정점에서 계산한 밝기를 보간할 뿐이므로, 삼각형 한가운데 있어야 할 밝은 반점이 통째로 사라지거나 별 모양으로 뭉개진다. 메시가 성길수록 이 결함이 심하다. 퐁 셰이딩은 픽셀마다 법선을 되살려 조명을 계산하므로, 성긴 메시에서도 하이라이트가 제자리에 둥글게 맺힌다. 오늘날 GPU는 충분히 빨라 대부분의 실시간 렌더링이 퐁 셰이딩을 기본으로 쓴다. 이 장의 모든 예제가 퐁 셰이딩인 이유이다.</p>
+<h3>위도-경도 분할로 구 만들기</h3>
+<p>퐁 셰이딩의 진가는 매끈한 곡면에서 드러난다. 곡면의 대표인 <strong>구</strong>를 정점과 법선으로 만들어 보자. 지구본의 위선과 경선을 떠올리면 된다. 북극에서 남극까지의 <strong class="term-ko">위도</strong><sup class="term">latitude</sup> 각과 한 바퀴 도는 <strong class="term-ko">경도</strong><sup class="term">longitude</sup> 각을 잘게 나누어 격자점을 찍고, 이웃한 격자점 넷을 삼각형 둘로 잇는다. 구의 한 점에서 법선은 중심에서 그 점으로 향하는 방향과 정확히 같으므로, 반지름 \(r\)인 구에서는 <strong>위치를 \(r\)로 나눈 것이 곧 법선</strong>이다. 법선을 따로 계산할 필요 없이 위치에서 바로 얻는다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 위도-경도 분할로 구의 정점과 법선 생성
+function makeSphere(r, nLat, nLon) {
+    // 위도 i, 경도 j 격자점의 위치를 구면 좌표로 계산
+    const pt = (i, j) =&gt; {
+        const phi = Math.PI * i / nLat;          // 0(북극) ~ pi(남극)
+        const theta = 2.0 * Math.PI * j / nLon;  // 경도각 (한 바퀴)
+        return [r * Math.sin(phi) * Math.cos(theta),
+                r * Math.cos(phi),
+                r * Math.sin(phi) * Math.sin(theta)];
+    };
+    const pos = [], nrm = [];
+    for (let i = 0; i &lt; nLat; i++) {
+        for (let j = 0; j &lt; nLon; j++) {
+            // 격자 칸 하나를 삼각형 2개로 (정점 6개)
+            const quad = [pt(i, j),   pt(i+1, j), pt(i+1, j+1),
+                          pt(i, j),   pt(i+1, j+1), pt(i, j+1)];
+            for (const p of quad) {
+                pos.push(p[0], p[1], p[2]);
+                nrm.push(p[0]/r, p[1]/r, p[2]/r);   // 구의 법선 = 위치/반지름
+            }
+        }
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}</code></pre>
+<p><code>nLat</code>, <code>nLon</code>은 위도·경도를 몇 등분할지를 정한다. 이 값이 클수록 삼각형이 촘촘해져 구가 매끈해지고, 작을수록 각진 다면체가 된다. 다음 완성 예제는 이 구에 7.3절의 퐁 셰이더를 그대로 씌운다. 셰이더는 정육면체 예제와 똑같고, 정점 데이터를 만드는 함수만 <code>makeCube</code>에서 <code>makeSphere</code>로 바뀌었을 뿐이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 셰이더는 코드 7.2(퐁 정육면체)와 동일 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vPosition;
+out vec3 vNormal;
+void main() {
+    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    gl_Position = uProj * uView * worldPos;
+    vPosition = worldPos.xyz;
+    vNormal = mat3(uModel) * aNormal;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vPosition;
+in vec3 vNormal;
+uniform vec3 uLightDir;
+uniform vec3 uEyePos;
+uniform vec3 uLightColor;
+uniform vec3 uMaterial;
+uniform float uShininess;
+out vec4 fragColor;
+void main() {
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(uLightDir);
+    vec3 V = normalize(uEyePos - vPosition);
+    vec3 R = reflect(-L, N);
+    float diff = max(dot(N, L), 0.0);
+    float spec = pow(max(dot(R, V), 0.0), uShininess);
+    vec3 color = 0.2 * uMaterial
+               + diff * uLightColor * uMaterial
+               + spec * uLightColor * vec3(1.0);
+    fragColor = vec4(color, 1.0);
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 위도-경도 분할로 구 만들기 =====
+function makeSphere(r, nLat, nLon) {
+    const pt = (i, j) =&gt; {
+        const phi = Math.PI * i / nLat;
+        const theta = 2.0 * Math.PI * j / nLon;
+        return [r * Math.sin(phi) * Math.cos(theta),
+                r * Math.cos(phi),
+                r * Math.sin(phi) * Math.sin(theta)];
+    };
+    const pos = [], nrm = [];
+    for (let i = 0; i &lt; nLat; i++) {
+        for (let j = 0; j &lt; nLon; j++) {
+            const quad = [pt(i, j),   pt(i+1, j), pt(i+1, j+1),
+                          pt(i, j),   pt(i+1, j+1), pt(i, j+1)];
+            for (const p of quad) {
+                pos.push(p[0], p[1], p[2]);
+                nrm.push(p[0]/r, p[1]/r, p[2]/r);
+            }
+        }
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}
+
+// ===== 초기화 =====
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const sphere = makeSphere(0.9, 24, 48);
+const vertexCount = sphere.pos.length / 3;
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, sphere.pos, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, sphere.nrm, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ===== MVP 행렬과 uniform =====
+const eye = [0.0, 0.8, 2.6];
+const model = mat4.create();
+const view = mat4.create();
+mat4.lookAt(view, eye, [0, 0, 0], [0, 1, 0]);
+const proj = mat4.create();
+mat4.perspective(proj, Math.PI/4, canvas.width/canvas.height, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+
+const lightDir = vec3.fromValues(0.7, 0.9, 0.8);
+vec3.normalize(lightDir, lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uEyePos'), eye);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), 1.0, 1.0, 1.0);
+gl.uniform3f(gl.getUniformLocation(program, 'uMaterial'), 0.2, 0.5, 0.9);
+gl.uniform1f(gl.getUniformLocation(program, 'uShininess'), 64.0);
+
+// ===== 그리기 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, vertexCount);</code></pre><div class="listing-caption">코드 7.3: 퐁 셰이딩을 받는 매끈한 구</div></div>
+<p>실행하면 파란 구가 나타나고, 광원 쪽 표면에 흰 하이라이트가 둥글게 맺힌다. 구를 이루는 삼각형은 수천 개에 불과하지만, 퐁 셰이딩이 픽셀마다 법선을 보간해 조명을 계산하므로 표면이 매끄러운 곡면으로 보인다. <code>makeSphere</code>의 인자 <code>24</code>, <code>48</code>을 각각 <code>6</code>, <code>8</code>처럼 작은 값으로 줄여 실행하면 윤곽선은 각지지만 표면 음영은 여전히 부드럽다. 이것이 법선 보간의 힘이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p><strong>구로우 셰이딩</strong>은 정점에서 색을 계산해 보간하고, <strong>퐁 셰이딩</strong>은 법선을 보간해 픽셀마다 조명을 계산한다. 구로우 방식은 하이라이트가 정점 사이에 떨어지면 깨지지만, 퐁 방식은 성긴 메시에서도 하이라이트가 제자리에 맺힌다. 구는 위도-경도 분할로 정점을 찍고, 위치를 반지름으로 나누어 법선을 얻는다.</p></div>
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 7-1</strong>  코드 7.1(확산 조명 정육면체)에서 빛 방향을 바꾸어 보자. 광원을 왼쪽 위 앞쪽에 두어 왼쪽 면이 가장 밝아지도록 <code>uLightDir</code>을 \((-0.8,\ 0.3,\ 0.4)\)로 바꾸고, 어느 면이 밝아지는지 확인한다.</p>
+<p><strong>해답</strong>  코드 7.1에서 빛 방향을 지정하는 한 줄만 바꾸면 된다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 광원을 왼쪽 위 앞쪽으로: 왼쪽 면과 윗면이 밝아진다
+const lightDir = vec3.fromValues(-0.8, 0.3, 0.4);
+vec3.normalize(lightDir, lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);</code></pre>
+<p>빛 방향의 부호를 이리저리 바꾸며 실행해 보면, 밝아지는 면이 광원을 향한 쪽으로 옮겨 다니는 것을 볼 수 있다. 확산 반사의 밝기가 오직 법선과 빛 방향의 내적으로 정해진다는 사실을 눈으로 확인하는 실습이다.</p>
+<p><strong>실습 7-2</strong>  반질거림 지수가 하이라이트에 미치는 영향을 나란히 비교해 보자. 코드 7.3(퐁 셰이딩 구)을 고쳐, 같은 구를 좌우로 나란히 두 번 그리되 왼쪽은 <code>uShininess = 8</code>, 오른쪽은 <code>uShininess = 128</code>로 그린다. (힌트: <code>uModel</code>을 <code>mat4.fromTranslation</code>으로 좌우로 옮기고, <code>uShininess</code>만 바꾸어 <code>drawArrays</code>를 두 번 호출한다. 두 구가 화면에 들어오도록 카메라를 뒤로 물린다.)</p>
+<p><strong>해답</strong>  코드 7.3의 카메라 위치를 뒤로 물리고, 그리기 부분을 두 번 호출로 바꾼다.</p>
+<pre class="line-numbers"><code class="language-javascript">const eye = [0.0, 0.9, 4.2];        // 두 구가 보이도록 카메라를 뒤로
+
+// ... (셰이더·구 생성·행렬 설정은 코드 7.3과 동일) ...
+
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uShinLoc  = gl.getUniformLocation(program, 'uShininess');
+
+mat4.fromTranslation(model, [-1.05, 0, 0]);   // 왼쪽: 무딘 광택
+gl.uniformMatrix4fv(uModelLoc, false, model);
+gl.uniform1f(uShinLoc, 8.0);
+gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+
+mat4.fromTranslation(model, [1.05, 0, 0]);    // 오른쪽: 날카로운 광택
+gl.uniformMatrix4fv(uModelLoc, false, model);
+gl.uniform1f(uShinLoc, 128.0);
+gl.drawArrays(gl.TRIANGLES, 0, vertexCount);</code></pre>
+<p>왼쪽 구는 하이라이트가 크고 뭉툭하게 퍼져 젖은 플라스틱처럼 보이고, 오른쪽 구는 작고 또렷한 점으로 맺혀 광택 나는 금속처럼 보인다. 같은 형상과 같은 재질색이라도 반질거림 지수 하나로 물성이 달라진다.</p>
+<p><strong>실습 7-3</strong>  이 장의 예제는 모두 방향광을 썼다. 이번에는 <strong class="term-ko">점광원</strong><sup class="term">point light</sup>으로 바꾸어 보자. 방향광은 모든 표면에서 빛 방향이 같지만, 점광원은 정해진 위치에 있어 표면점마다 광원을 향하는 방향이 다르다. 코드 7.1의 셰이더를 고쳐, 고정된 <code>uLightDir</code> 대신 점광원 위치 <code>uLightPos</code>에서 빛 방향을 프래그먼트마다 계산한다.</p>
+<p><strong>해답</strong>  정점 셰이더가 월드 위치를 넘기도록 하고(코드 7.2 방식), 프래그먼트 셰이더에서 빛 방향을 표면점마다 구한다.</p>
+<pre class="line-numbers"><code class="language-glsl">// 정점 셰이더: 월드 위치를 함께 넘긴다
+out vec3 vPosition;
+out vec3 vNormal;
+void main() {
+    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    gl_Position = uProj * uView * worldPos;
+    vPosition = worldPos.xyz;
+    vNormal = mat3(uModel) * aNormal;
+}</code></pre>
+<pre class="line-numbers"><code class="language-glsl">// 프래그먼트 셰이더: 점광원 위치에서 빛 방향을 계산
+uniform vec3 uLightPos;     // 점광원의 위치
+void main() {
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(uLightPos - vPosition);   // 표면점 -&gt; 광원
+    float diff = max(dot(N, L), 0.0);
+    vec3 color = 0.2 * uMaterial + diff * uLightColor * uMaterial;
+    fragColor = vec4(color, 1.0);
+}</code></pre>
+<pre class="line-numbers"><code class="language-javascript">// uLightDir 대신 점광원 위치를 넘긴다
+gl.uniform3f(gl.getUniformLocation(program, 'uLightPos'), 0.9, 1.1, 1.2);</code></pre>
+<p>점광원을 물체 가까이 두면, 방향광일 때보다 광원을 마주한 부분과 먼 부분의 밝기 차이가 뚜렷해진다. 실제 장면에서는 점광원까지의 거리에 따라 빛이 약해지는 <strong class="term-ko">감쇠</strong><sup class="term">attenuation</sup>까지 더하면 더 사실적이지만, 여기서는 방향 계산이 표면점마다 달라진다는 핵심만 확인하면 충분하다.</p></div></p>
+<details class="box summary" id="summary"><summary class="box-head">7장 요약</summary><div class="sum-body"><ul>
+<li>물체의 색은 <strong>광원 \(\times\) 재질 \(\times\) 표면 방향</strong>의 상호작용으로 결정된다. 빛이 없으면 색도 없다.</li>
+<li><strong>법선</strong>은 표면에 수직인 단위 벡터로, 표면이 향하는 방향을 나타내며 조명 계산의 주인공이다. 법선을 정점 속성으로 셰이더에 전달한다.</li>
+<li>법선은 방향이므로 모델 행렬의 <strong>회전 성분만</strong>(<code>mat3(uModel)</code>) 적용한다. 비균등 크기 변환을 쓰면 <strong>노멀 행렬</strong>(\(\left(M_{3\times3}\right)^{-1\top}\))이 필요하지만, 회전·이동만 쓰면 회전 부분과 같아진다.</li>
+<li><strong>확산 반사</strong>는 광택 없는 표면의 반사로, 밝기가 램버트 코사인 법칙에 따라 \(\max(\mathbf{n}\cdot\mathbf{l},\ 0)\)으로 정해진다. 빛을 등진 면(내적 음수)을 막기 위해 <code>max</code>가 필요하다.</li>
+<li><strong>주변광</strong>은 방향 없이 표면 전체를 고르게 밝혀, 그늘진 면이 완전히 검지 않게 한다.</li>
+<li><strong>퐁 반사 모델</strong>은 주변광 + 확산 + 정반사를 더한다.
+    \[
+    I = k_a I_a + k_d I_l \max(\mathbf{n}\cdot\mathbf{l},0) + k_s I_l \max(\mathbf{r}\cdot\mathbf{v},0)^{\alpha}
+    \]</li>
+<li><strong>정반사</strong>는 반사 벡터 \(\mathbf{r}\)(GLSL <code>reflect(-L, N)</code>)와 시선 \(\mathbf{v}\)의 내적을 반질거림 지수 \(\alpha\)로 거듭제곱해 하이라이트를 만든다. \(\alpha\)가 클수록 하이라이트가 작고 날카롭다. 정반사는 <strong>시점에 의존</strong>한다.</li>
+<li><strong>구로우 셰이딩</strong>은 정점에서 색을 계산해 보간하고, <strong>퐁 셰이딩</strong>은 법선을 보간해 픽셀마다 조명을 계산한다. 퐁 셰이딩은 성긴 메시에서도 하이라이트가 제자리에 맺힌다.</li>
+<li>옛 OpenGL의 고정 조명(<code>glEnable(GL_LIGHTING)</code>, 광원 8개 제한, 고정 공식)과 달리, 현대 WebGL은 조명 공식을 셰이더로 직접 작성해 무한한 표현이 가능하다.</li>
+<li>3차원 물체를 그릴 때는 <code>gl.enable(gl.DEPTH_TEST)</code>로 깊이 검사를 켜야 한다.</li>
+</ul></div></details>
+<details class="box exercise" id="exercises"><summary class="box-head">7장 연습문제</summary><div class="ex-body"><ol>
+<li class="ex-item" data-ex="1"><span class="diff"><span class="d1">★</span></span>  표면의 법선이 \(\mathbf{n} = (0, 1, 0)\)이고, 표면에서 광원을 향하는 빛 방향이 \(\mathbf{l} = (0, 1, 0)\)일 때와 \(\mathbf{l} = \left(\tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}, 0\right)\)일 때의 확산 반사 밝기 \(\max(\mathbf{n}\cdot\mathbf{l}, 0)\)을 각각 구하시오.</li>
+<li class="ex-item" data-ex="2"><span class="diff"><span class="d1">★</span></span>  확산 반사 공식에서 내적을 그냥 \(\mathbf{n}\cdot\mathbf{l}\)로 쓰지 않고 \(\max(\mathbf{n}\cdot\mathbf{l},\ 0)\)으로 감싸는 이유를 설명하시오. <code>max</code>를 빼면 어떤 면에서 무슨 문제가 생기는가?</li>
+<li class="ex-item" data-ex="3"><span class="diff"><span class="d1">★</span></span>  다음 빈칸을 채우시오. 퐁 반사 모델의 세 항은 (a), (b), (c)이며, 이 가운데 관찰자의 위치(시점)에 따라 밝기가 달라지는 항은 ()이다.</li>
+<li class="ex-item" data-ex="4"><span class="diff"><span class="d2">★★</span></span>  법선 \(\mathbf{n} = (0, 0, 1)\)인 평평한 표면에, 빛 방향 \(\mathbf{l} = (0, 0, 1)\)로 빛이 정면에서 들어온다. 반사 벡터 \(\mathbf{r} = \texttt{reflect}(-\mathbf{l}, \mathbf{n})\)을 구하고, 시선 벡터가 \(\mathbf{v} = (0, 0, 1)\)일 때 정반사 밑값 \(\max(\mathbf{r}\cdot\mathbf{v}, 0)\)이 얼마인지 구하시오. 이때 반질거림 지수 \(\alpha\)가 4든 128이든 정반사 값이 같은 이유는 무엇인가?</li>
+<li class="ex-item" data-ex="5"><span class="diff"><span class="d2">★★</span></span>  물체를 \(x\)축 둘레로 회전시키는 모델 행렬을 적용할 때, 정점 위치에는 <code>uModel</code>(4\(\times\)4)을, 법선에는 <code>mat3(uModel)</code>을 적용한다. 법선에 이동 성분을 포함한 4\(\times\)4 행렬을 그대로 쓰면 안 되는 이유를 방향과 위치의 차이로 설명하시오.</li>
+<li class="ex-item" data-ex="6"><span class="diff"><span class="d2">★★</span></span>  어떤 저해상도 메시로 구를 만들어 구로우 셰이딩(정점에서 조명 계산 후 색 보간)으로 그렸더니, 정반사 하이라이트가 별 모양으로 뭉개지거나 사라져 보였다. 왜 이런 일이 생기는지, 퐁 셰이딩(법선 보간 후 프래그먼트에서 조명 계산)으로 바꾸면 왜 해결되는지 설명하시오.</li>
+<li class="ex-item" data-ex="7"><span class="diff"><span class="d2">★★</span></span>  코드 7.2(퐁 정육면체)의 정반사 항 <code>spec * uLightColor * vec3(1.0)</code>에서, 마지막 <code>vec3(1.0)</code>을 <code>uMaterial</code>로 바꾸면 하이라이트의 색이 어떻게 달라지는가? 실제 금속과 플라스틱 중 어느 쪽이 재질색으로 물든 하이라이트를 갖는지 조사하여 설명하시오.</li>
+<li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  7.3절의 notebox에서 소개한 <strong>블린-퐁 모델</strong>로 코드 7.3(퐁 셰이딩 구)의 프래그먼트 셰이더를 고치시오. 반사 벡터 \(\mathbf{r}\) 대신 반 벡터 \(\mathbf{h} = (\mathbf{l}+\mathbf{v})/\lVert\mathbf{l}+\mathbf{v}\rVert\)를 구하여 정반사 항을 \(\max(\mathbf{n}\cdot\mathbf{h}, 0)^{\alpha}\)로 계산한다. (힌트: <code>vec3 H = normalize(L + V);</code>) 퐁 모델과 하이라이트 모양을 비교해 보시오.</li>
+</ol></div></details>
 <div class="pager-row"><a class="pager prev" href="ch06.html">&larr; 6장</a><a class="pager next" href="ch08.html">8장 &rarr;</a></div>
 </main>
 </div>

@@ -41,7 +41,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
-<div class="nav-secs"></div>
+<div class="nav-secs"><a class="nav-sec" href="ch08.html#sec1">8.1 텍스처와 텍스처 좌표</a><a class="nav-sec" href="ch08.html#sec2">8.2 텍스처 로딩과 샘플링</a><a class="nav-sec" href="ch08.html#sec3">8.3 필터링과 밉맵</a><a class="nav-sec" href="ch08.html#sec4">8.4 래핑 모드</a><a class="nav-sec" href="ch08.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch08.html#summary">8장 요약</a><a class="nav-sec" href="ch08.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
@@ -59,17 +59,617 @@
   <h1>텍스처 매핑</h1>
 </div>
 <div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><ul>
-<li>텍스처 좌표의 개념을 이해한다.</li>
-<li>이미지를 텍스처로 로딩하여 물체 표면에 입힐 수 있다.</li>
-<li>필터링과 밉맵, 래핑 모드를 적절히 설정할 수 있다.</li>
+<li>텍스처 매핑의 개념과 텍스처 좌표 \((s, t)\)의 역할을 설명할 수 있다.</li>
+<li>텍스처 객체를 만들고 이미지 데이터를 GPU에 올려, 셰이더에서 샘플링할 수 있다.</li>
+<li>확대·축소 필터와 밉맵을 상황에 맞게 설정할 수 있다.</li>
+<li>래핑 모드를 이용해 \(0 \sim 1\) 밖의 텍스처 좌표로 타일링을 구현할 수 있다.</li>
 </ul></div></details></div>
-<div class="box note"><span class="chip">잠깐</span><span class="box-title">집필 예정</span><p>이 장은 집필 예정이다. 다음 절들로 구성될 계획이다.
+<p>7장에서 우리는 조명 계산으로 물체에 입체감을 불어넣었다. 그러나 조명만으로 만든 화면 속 물체들은 여전히 어딘가 허전하다. 표면 전체가 매끈한 단색이기 때문이다. 현실의 물체는 그렇지 않다. 나무 탁자에는 나뭇결이, 벽돌담에는 벽돌 무늬가, 지구본에는 대륙과 바다가 그려져 있다. 이런 세밀한 무늬를 전부 폴리곤으로 만들려면 정점이 천문학적으로 필요하겠지만, 그래픽스에는 훨씬 영리한 방법이 있다. 표면에 <strong>이미지를 입히는</strong> 것이다.</p>
+<p>이 기법이 <strong>텍스처 매핑</strong>이다. 벽지를 벽에 바르듯 이미지를 폴리곤 표면에 발라 붙이는 이 기법은, 적은 정점으로 풍부한 시각적 세부를 얻는 실시간 그래픽스의 핵심 무기이다. 이 장에서는 이미지와 표면을 이어 주는 텍스처 좌표에서 출발하여, 텍스처를 GPU에 올리고 셰이더에서 읽어 오는 방법, 그리고 텍스처가 늘어나고 줄어들 때 품질을 지키는 필터링·밉맵·래핑 설정까지, 텍스처 매핑의 전 과정을 익힌다.</p>
+<h2 id="sec1">8.1 텍스처와 텍스처 좌표</h2>
+<h3>표면에 이미지를 입힌다</h3>
+<p><strong class="term-ko">텍스처 매핑</strong><sup class="term">texture mapping</sup>은 물체의 표면에 이미지가 담은 색상이나 재질감을 입히는 작업이다. 이때 표면에 입히는 이미지를 <strong class="term-ko">텍스처</strong><sup class="term">texture</sup>라고 부른다. 원단에 무늬를 뜻하는 영어 단어 그대로, 텍스처는 3차원 모델이라는 "옷감"에 인쇄되는 "무늬"이다. 이미지 한 장이면 삼각형 두 개짜리 사각형이 벽돌담이 되고, 구 하나가 지구본이 된다. 정점을 늘리지 않고 표면의 세부를 얻는, 실시간 그래픽스에서 가장 가성비 좋은 기법이다.</p>
+<p>넓은 의미의 텍스처 매핑에는 여러 갈래가 있다. 가장 기본이 되는 것은 이미지의 색을 표면에 그대로 입히는 <strong>컬러 매핑</strong>이다. 이미지를 색이 아니라 표면의 요철 정보로 해석하여 굴곡이 있는 것처럼 보이게 하는 <strong class="term-ko">범프 매핑</strong><sup class="term">bump mapping</sup>, 주변 풍경이 물체에 비쳐 반사되는 것처럼 입히는 <strong class="term-ko">환경 매핑</strong><sup class="term">environment mapping</sup>도 있다(11장에서 맛본다). 이 장에서는 모든 매핑의 기초가 되는 컬러 매핑을 다룬다.</p>
+<h3>텍셀과 텍스처 좌표</h3>
+<p>텍스처는 결국 색 값이 격자로 늘어선 이미지이다. 화면 이미지의 한 칸을 픽셀이라 부르듯, 텍스처 이미지의 한 칸은 <strong class="term-ko">텍셀</strong><sup class="term">texel</sup>(texture element)이라고 부른다. 둘을 구분하는 이유는 명확하다. 텍스처의 텍셀 하나가 화면의 픽셀 하나에 정확히 일대일로 옮겨지는 경우는 거의 없기 때문이다. 표면이 가까이 보이면 텍셀 하나가 여러 픽셀을 덮고, 멀어지면 여러 텍셀이 픽셀 하나에 몰린다. 이 어긋남을 다루는 것이 8.3절의 필터링이다.</p>
+<p>텍스처 위의 위치는 <strong class="term-ko">텍스처 좌표</strong><sup class="term">texture coordinates</sup>로 가리킨다. WebGL은 텍스처의 가로 방향을 \(s\)축, 세로 방향을 \(t\)축이라 부르고, 텍스처의 실제 해상도와 무관하게 두 축 모두 \(0 \sim 1\) 범위로 <strong>정규화</strong>하여 사용한다. \((0, 0)\)은 텍스처의 왼쪽 아래 구석, \((1, 1)\)은 오른쪽 위 구석이며, \((0.5, 0.5)\)는 언제나 텍스처의 한복판이다. 텍스처가 \(8 \times 8\)이든 \(4096 \times 4096\)이든 좌표 체계가 같으므로, 텍스처를 고해상도로 교체해도 좌표는 손댈 필요가 없다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">\((u, v)\)인가 \((s, t)\)인가</span><p>많은 그래픽스 문헌과 모델링 도구는 텍스처 좌표를 \((u, v)\)라고 부르며, 모델 표면에 텍스처 좌표를 배정하는 작업을 "UV 매핑", 그 결과물을 "UV 맵"이라고 한다. OpenGL 계열인 WebGL은 같은 좌표를 전통적으로 \((s, t)\)라고 표기한다. 이름만 다를 뿐 완전히 같은 개념이다. 이 책은 WebGL API와 만나는 코드에서는 \((s, t)\)를, 일반적인 논의에서는 관용에 따라 uv라는 표현도 함께 쓴다.</p></div>
+<h3>정점에 텍스처 좌표를 배정한다</h3>
+<p>그렇다면 텍스처와 표면은 어떻게 이어 붙일까? 답은 이미 우리에게 익숙한 방식이다. 3장에서 정점마다 색 속성을 배정했듯이, <strong>정점마다 텍스처 좌표를 속성으로 배정</strong>한다. "이 정점은 텍스처의 이 지점에 해당한다"라는 대응 관계를 정점 단위로 지정하는 것이다. 정점 4개짜리 사각형에 텍스처 한 장을 통째로 입히려면 네 모서리에 텍스처의 네 구석을 짝지어 주면 된다.</p>
+<div class="table-wrap"><div class="table-caption">표 8.1: 사각형 정점과 텍스처 좌표의 대응</div><table><tr><th>정점</th><th>위치 \((x, y)\)</th><th>텍스처 좌표 \((s, t)\)</th></tr><tr><td>왼쪽 아래</td><td>\((-0.5, -0.5)\)</td><td>\((0, 0)\)</td></tr><tr><td>오른쪽 아래</td><td>\((0.5, -0.5)\)</td><td>\((1, 0)\)</td></tr><tr><td>왼쪽 위</td><td>\((-0.5, 0.5)\)</td><td>\((0, 1)\)</td></tr><tr><td>오른쪽 위</td><td>\((0.5, 0.5)\)</td><td>\((1, 1)\)</td></tr></table></div>
+<p>사각형의 왼쪽 아래 모서리에는 텍스처의 왼쪽 아래 \((0,0)\)이, 오른쪽 위 모서리에는 텍스처의 오른쪽 위 \((1,1)\)이 붙는다. 마치 벽에 벽지를 바를 때 벽지의 네 귀퉁이를 벽면의 네 귀퉁이에 핀으로 고정하는 것과 같다. 네 귀퉁이만 고정하면 벽지의 나머지 부분은 자연스럽게 펴져 벽면을 덮는다.</p>
+<p>그래픽스 파이프라인에서 "나머지 부분을 펴는" 일을 맡는 것이 바로 <strong>래스터화의 보간</strong>이다. 3장에서 정점 색이 삼각형 내부에서 부드럽게 보간되는 것을 보았다. 텍스처 좌표도 정점 셰이더의 <code>out</code> 변수로 내보내면 완전히 같은 방식으로 보간된다. 삼각형 내부의 모든 프래그먼트는 자신의 위치에 맞게 보간된 텍스처 좌표를 받게 되고, 프래그먼트 셰이더는 그 좌표로 텍스처에서 색을 읽어 와 칠한다. 예를 들어 사각형 정중앙의 프래그먼트는 보간된 좌표 \((0.5, 0.5)\)를 받아 텍스처 한복판의 색을 읽는다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">프래그먼트가 텍스처를 "역방향으로" 조회한다</span><p>텍스처 매핑을 순진하게 구현한다면 텍셀을 하나씩 꺼내 "이 텍셀은 화면 어디에 찍힐까"를 계산해 옮겨 그리는 방법(전방 매핑)을 떠올릴 수 있다. 그러나 이 방식은 텍셀들이 옮겨 간 자리 사이에 아무도 칠하지 않는 구멍이 생기는 문제가 있다. 그래서 실제 그래픽스 하드웨어는 반대로 계산한다. 화면에 칠할 프래그먼트를 기준으로 "이 프래그먼트는 텍스처 어디에 해당할까"를 구해 색을 <strong>읽어 오는</strong> 것이다(후방 매핑). 프래그먼트마다 보간된 텍스처 좌표가 주어지는 지금의 파이프라인 구조가 바로 이 후방 매핑을 하드웨어로 구현한 것이며, 모든 프래그먼트가 빠짐없이 색을 받으므로 구멍이 생길 일이 없다.</p></div>
+<p>정리하면 텍스처 매핑의 골격은 세 문장으로 요약된다. 정점에 텍스처 좌표를 배정한다. 래스터화가 그 좌표를 프래그먼트마다 보간한다. 프래그먼트 셰이더가 보간된 좌표로 텍스처의 색을 읽어 칠한다. 다음 절에서 이 골격을 실제 코드로 옮긴다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>텍스처는 표면에 입히는 이미지이고, 그 한 칸을 <strong>텍셀</strong>이라 한다. 텍스처 위의 위치는 해상도와 무관한 \(0 \sim 1\) 정규화 좌표 \((s, t)\)로 가리키며, 정점마다 <strong>속성으로 배정된 텍스처 좌표가 래스터화 과정에서 보간</strong>되어 프래그먼트 셰이더에 전달된다.</p></div>
+<h2 id="sec2">8.2 텍스처 로딩과 샘플링</h2>
+<p>WebGL에서 텍스처를 사용하는 과정은 크게 세 단계이다. 첫째, 텍스처 객체를 만들어 이미지 데이터를 GPU에 올린다. 둘째, 정점에 텍스처 좌표를 배정한다(앞 절에서 배웠다). 셋째, 필터링·래핑 같은 텍스처 파라미터를 설정한다(다음 두 절의 주제이다). 이 절에서는 첫 단계와, 올려 둔 텍스처를 셰이더에서 읽어 오는 <strong class="term-ko">샘플링</strong><sup class="term">sampling</sup>을 익힌다.</p>
+<h3>텍스처 객체 만들기와 데이터 올리기</h3>
+<p>텍스처도 버퍼나 셰이더처럼 GPU 쪽에 만들어지는 객체이다. 생성과 바인딩의 요령은 2장의 버퍼와 똑같다. <code>createTexture()</code>로 객체를 만들고, <code>bindTexture()</code>로 "지금부터 다룰 텍스처"로 지정한다.</p>
+<pre class="line-numbers"><code class="language-javascript">const texture = gl.createTexture();          // 텍스처 객체 생성
+gl.bindTexture(gl.TEXTURE_2D, texture);      // 2차원 텍스처로 바인딩</code></pre>
+<p>첫 인자 <code>gl.TEXTURE_2D</code>는 텍스처의 종류이다. 우리가 다루는 보통의 이미지 텍스처는 2차원 텍스처이며, 이 밖에 3차원 텍스처나 입방체 텍스처(11장의 환경 매핑에 쓰인다) 같은 종류도 있다.</p>
+<p>바인딩된 텍스처에 이미지 데이터를 올리는 함수가 <code>texImage2D()</code>이다. 인자가 많지만 하나씩 보면 어렵지 않다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.texImage2D(gl.TEXTURE_2D,   // 대상: 현재 바인딩된 2차원 텍스처
+    0,                         // 밉맵 레벨 (기본 이미지는 0, 8.3절)
+    gl.RGBA,                   // GPU에 저장할 형식
+    width, height,             // 텍스처의 가로·세로 텍셀 수
+    0,                         // 테두리 (항상 0)
+    gl.RGBA,                   // 넘겨주는 데이터의 형식
+    gl.UNSIGNED_BYTE,          // 채널당 부호 없는 1바이트 (0~255)
+    pixels);                   // 데이터가 담긴 typed array</code></pre>
+<p>마지막 인자 <code>pixels</code>에는 텍셀들의 색 값을 담은 typed array를 넘긴다. <code>gl.RGBA</code>와 <code>gl.UNSIGNED_BYTE</code> 조합이라면 텍셀 하나가 R, G, B, A 각 1바이트씩 4바이트이므로, 전체 데이터는 길이가 \(\text{가로} \times \text{세로} \times 4\)인 <code>Uint8Array</code>가 된다. 데이터는 텍스처의 <strong>아래쪽 행부터</strong> 왼쪽에서 오른쪽 순서로 채워진다. 즉 배열의 첫 텍셀이 텍스처 좌표 \((0, 0)\) 구석이다.</p>
+<p>배열을 코드로 직접 채워 만든 텍스처를 <strong>절차 생성</strong>(procedural) 텍스처라고 한다. 이미지 파일 없이도 텍스처를 실험할 수 있어 학습에 안성맞춤이고, 격자무늬나 그라데이션처럼 규칙적인 무늬라면 실전에서도 파일보다 간편하다.</p>
+<div class="box caution"><span class="chip">주의</span><p>WebGL은 텍스처 데이터의 각 행이 기본적으로 4바이트 단위로 시작한다고 가정한다(<code>UNPACK_ALIGNMENT</code> 기본값 4). <code>gl.RGBA</code>는 텍셀이 4바이트라 아무 문제가 없지만, <code>gl.RGB</code>(텍셀당 3바이트)처럼 행의 길이가 4의 배수가 아닐 수 있는 형식을 쓰면 행 경계가 어긋나 무늬가 비스듬히 뭉개지거나 오류가 난다. 이런 형식을 쓸 때는 <code>gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)</code>로 정렬 단위를 1바이트로 바꿔 주어야 한다. RGBA만 쓰더라도 습관처럼 넣어 두면 안전하다.</p></div>
+<h3>셰이더에서 텍스처 읽기  —  샘플러</h3>
+<p>GPU에 올라간 텍스처는 프래그먼트 셰이더에서 읽는다. 셰이더에서 텍스처를 대표하는 변수가 <strong class="term-ko">샘플러</strong><sup class="term">sampler</sup>로, 2차원 텍스처용 타입은 <code>sampler2D</code>이다. 샘플러는 uniform으로 선언하며, 내장 함수 <code>texture()</code>에 샘플러와 텍스처 좌표를 넘기면 그 좌표의 색이 <code>vec4</code>로 반환된다.</p>
+<pre class="line-numbers"><code class="language-glsl">#version 300 es
+precision mediump float;
+in vec2 vTexCoord;               // 보간되어 도착한 텍스처 좌표
+uniform sampler2D uSampler;      // 텍스처를 대표하는 샘플러
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);   // 텍스처 조회
+}</code></pre>
+<p>정점 셰이더는 텍스처 좌표 속성을 받아 <code>out</code> 변수로 넘겨 주기만 하면 된다. 3장에서 정점 색을 보간해 넘기던 구조에서 <code>vec3</code> 색이 <code>vec2</code> 텍스처 좌표로 바뀌었을 뿐이다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">옛 OpenGL의 텍스처 사용법</span><p>고정 기능 파이프라인 시절에는 셰이더가 없었으므로 <code>glEnable(GL_TEXTURE_2D)</code>로 "텍스처 기능"을 켜면 파이프라인이 알아서 텍스처 색을 입혀 주었고, 텍스처와 조명 색을 섞는 방식도 <code>GL_TEXTURE_ENV</code>라는 별도 상태로 지정했다. 현대 방식에서는 이런 스위치가 모두 사라졌다. 텍스처를 입힐지 말지, 읽어 온 색을 조명과 어떻게 조합할지는 전적으로 <strong>프래그먼트 셰이더 코드가 결정</strong>한다. 예를 들어 7장의 조명 결과에 텍스처 색을 곱하고 싶다면 <code>fragColor = vec4(lighting, 1.0) * texture(uSampler, vTexCoord);</code>처럼 한 줄로 쓰면 된다. 상태 스위치 대신 코드로 표현하는 것, 이것이 셰이더 기반 파이프라인의 철학이다.</p></div>
+<h3>텍스처 유닛  —  샘플러와 텍스처의 연결</h3>
+<p>마지막 남은 고리는 "샘플러 uniform이 <strong>어느</strong> 텍스처를 읽는가"이다. 여기에는 <strong class="term-ko">텍스처 유닛</strong><sup class="term">texture unit</sup>이라는 중간 다리가 있다. GPU에는 텍스처를 꽂아 두는 슬롯이 여러 개 있는데(WebGL 2.0은 최소 32개), 이 슬롯이 텍스처 유닛이다. 연결은 두 단계로 이루어진다.</p>
 <ul>
-<li>텍스처와 텍스처 좌표</li>
-<li>텍스처 로딩과 샘플링</li>
-<li>필터링과 밉맵</li>
-<li>래핑 모드와 활용</li>
-</ul></p></div>
+<li>텍스처를 유닛에 꽂는다: <code>gl.activeTexture(gl.TEXTURE0)</code>으로 작업 대상 유닛을 고른 뒤 <code>bindTexture()</code>를 호출하면, 그 텍스처가 0번 유닛에 바인딩된다.</li>
+<li>샘플러에 유닛 번호를 알린다: 샘플러 uniform에 <code>gl.uniform1i(위치, 0)</code>으로 <strong>유닛 번호</strong>를 넣는다.</li>
+</ul>
+<pre class="line-numbers"><code class="language-javascript">gl.activeTexture(gl.TEXTURE0);               // 0번 유닛을 작업 대상으로
+gl.bindTexture(gl.TEXTURE_2D, texture);      // 텍스처를 0번 유닛에 바인딩
+gl.uniform1i(samplerLoc, 0);                 // 샘플러는 0번 유닛을 읽어라</code></pre>
+<p>샘플러 uniform에는 텍스처 객체가 아니라 <strong>정수 유닛 번호</strong>를 넣는다는 점에 주의하자(그래서 <code>uniform1i</code>이다). <code>gl.TEXTURE0</code>을 넣는 것도 아니다. 텍스처를 하나만 쓸 때는 활성 유닛이 기본값 0번이고 샘플러 uniform의 초깃값도 0이라 이 연결을 생략해도 동작하지만, 벽돌 색 텍스처와 요철 텍스처를 동시에 읽는 식으로 텍스처 여러 장을 쓰는 순간부터는 유닛 배정이 필수가 된다. 처음부터 명시적으로 쓰는 습관을 들이자.</p>
+<h3>완성 예제  —  체커보드 입히기</h3>
+<p>이제 전 과정을 하나로 모으자. 코드 8.1은 \(8 \times 8\) 체커보드 텍스처를 절차 생성하여 <code>TRIANGLE_STRIP</code> 사각형에 입히는 완성 프로그램이다. 셰이더 컴파일·링크는 2장의 도우미를 압축한 형태의 <code>makeProgram()</code> 함수로 처리한다. 필터는 텍셀 경계가 또렷이 보이도록 <code>NEAREST</code>(8.3절)로 지정했다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+// ===== 셰이더: 텍스처 좌표를 보간해 넘기고, 텍스처를 샘플링 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;           // 래스터화 과정에서 보간된다
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);   // 텍스처 조회
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 8x8 체커보드 텍스처를 절차 생성 =====
+const SIZE = 8;
+const pixels = new Uint8Array(SIZE * SIZE * 4);   // 텍셀당 RGBA 4바이트
+for (let row = 0; row &lt; SIZE; row++) {
+    for (let col = 0; col &lt; SIZE; col++) {
+        const c = (row + col) % 2 === 0 ? 230 : 40;  // 밝은 칸 / 어두운 칸
+        const i = (row * SIZE + col) * 4;
+        pixels[i] = c;      pixels[i + 1] = c;       // R, G
+        pixels[i + 2] = c;  pixels[i + 3] = 255;     // B, A(불투명)
+    }
+}
+
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);       // 행 정렬을 1바이트 단위로
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+// ===== 사각형: 위치 + 텍스처 좌표 (TRIANGLE_STRIP 순서) =====
+const positions = new Float32Array([
+    -0.5, -0.75,    0.5, -0.75,    -0.5, 0.75,    0.5, 0.75,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,      1.0, 0.0,       0.0, 1.0,     1.0, 1.0,
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+// ===== 텍스처를 0번 유닛에 연결하고 그리기 =====
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.1: 체커보드 텍스처 입히기 (완성 프로그램)</div></div>
+<p>실행하면 짙은 남색 배경 위에 흑백 체커보드가 입혀진 사각형이 나타난다. 텍스처는 겨우 \(8 \times 8\), 즉 텍셀 64개짜리이지만 사각형 표면을 빈틈없이 덮는다. 텍스처 좌표가 정규화되어 있고, 프래그먼트마다 보간된 좌표로 색을 읽어 오기 때문이다. 사각형의 위치 범위(\(x\)는 \(\pm 0.5\), \(y\)는 \(\pm 0.75\))는 \(600 \times 400\) 캔버스에서 화면에 정사각형으로 보이도록 고른 값이다.</p>
+<h3>이미지 파일을 텍스처로 로딩하기</h3>
+<p>실전에서는 대부분 이미지 파일을 텍스처로 쓴다. 브라우저 환경답게, 파일 해석은 <code>Image</code> 객체(HTML의 <code>&lt;img&gt;</code>에 해당)에 맡기고 로드가 끝난 이미지를 <code>texImage2D()</code>에 그대로 넘기면 된다. 이때는 이미지가 크기 정보를 품고 있으므로 가로·세로 인자가 생략된 간략한 형태를 쓴다.</p>
+<pre class="line-numbers"><code class="language-javascript">const texture = gl.createTexture();
+const image = new Image();
+image.src = 'brick.png';                  // 같은 서버에 있는 이미지 파일
+image.onload = () =&gt; {                    // 로드가 끝나면 호출된다
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);    // 상하 뒤집어 올리기
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+                  gl.RGBA, gl.UNSIGNED_BYTE, image); // 크기는 자동
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    render();                             // 텍스처가 준비된 뒤 다시 그린다
+};</code></pre>
+<p>여기서 주의할 점은 이미지 로드가 <strong>비동기</strong>라는 것이다. <code>image.src</code>에 주소를 넣는 순간 다운로드가 시작될 뿐, 다음 줄이 실행되는 시점에는 아직 데이터가 없다. 그래서 텍스처 업로드와 다시 그리기는 반드시 <code>onload</code> 콜백 안에서 해야 한다. 로드가 끝나기 전에 첫 화면을 그려야 한다면, 텍스처에 \(1 \times 1\)짜리 단색 텍셀을 임시로 올려 두었다가 <code>onload</code>에서 진짜 이미지로 교체하는 것이 상용 코드의 관례이다.</p>
+<p>한 줄 끼어든 <code>UNPACK_FLIP_Y_WEBGL</code> 설정도 실전 필수 항목이다. 이미지 파일은 위쪽 행부터 저장되는 반면 WebGL 텍스처는 첫 행이 \(t = 0\), 즉 아래쪽이므로, 그냥 올리면 텍스처가 상하로 뒤집혀 보인다. 옛 데스크톱 강의에서 영화 자막 이미지를 입혔더니 거꾸로 흐르던 바로 그 현상으로, WebGL에서는 이 한 줄로 업로드 시점에 행 순서를 뒤집어 해결한다.</p>
+<div class="box caution"><span class="chip">주의</span><p>브라우저의 보안 정책(CORS) 때문에, 웹 페이지와 <strong>다른 출처</strong>(도메인)에서 가져온 이미지는 원칙적으로 WebGL 텍스처로 쓸 수 없다. 허용 헤더를 보내 주는 서버라면 <code>image.crossOrigin = 'anonymous'</code>를 지정해 우회할 수 있지만, 기본 원칙은 "텍스처 이미지는 내 페이지와 같은 서버에서 제공한다"이다. 로컬에서 <code>file://</code>로 연 HTML도 같은 제약에 걸리므로, 이미지 텍스처를 실험할 때는 간단한 로컬 웹 서버를 띄우는 것이 좋다.</p></div>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">이 책의 실습은 절차 생성 텍스처로</span><p>이 책의 웹 에디션 실행 창은 격리된 환경이라 외부 이미지 파일을 불러올 수 없다. 그래서 이 장의 실행 예제와 실습은 모두 typed array로 무늬를 만들어 올리는 <strong>절차 생성 텍스처</strong>를 사용한다. 필터링·래핑 같은 텍스처의 핵심 개념은 텍스처가 어디서 왔는지와 무관하므로 학습에는 아무 지장이 없다. 이미지 파일 로딩은 위의 코드 조각을 자신의 웹 서버 환경에서 직접 시험해 보자.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>텍스처는 <code>createTexture()</code> \(\to\) <code>bindTexture()</code> \(\to\) <code>texImage2D()</code> 순서로 GPU에 올린다. 셰이더에서는 <code>uniform sampler2D</code>와 <code>texture(샘플러, 좌표)</code> 함수로 색을 읽으며, 샘플러 uniform에는 텍스처 객체가 아니라 <strong>텍스처 유닛 번호</strong>를 <code>uniform1i</code>로 넣는다. 이미지 파일 로딩은 비동기이므로 업로드와 그리기는 <code>onload</code> 안에서 한다.</p></div>
+<h2 id="sec3">8.3 필터링과 밉맵</h2>
+<h3>텍셀과 픽셀은 어긋난다</h3>
+<p>8.1절에서 예고했듯이 텍셀과 픽셀이 일대일로 만나는 일은 거의 없다. 코드 8.1의 체커보드가 좋은 예이다. \(8 \times 8\) 텍스처가 화면에서 300픽셀 폭의 사각형을 덮었으니, 텍셀 하나가 픽셀 약 \(37 \times 37\)개로 <strong>확대</strong>(magnification)된 셈이다. 반대로 큰 텍스처를 입힌 물체가 저 멀리 작게 보인다면 픽셀 하나에 텍셀 수백 개가 몰리는 <strong>축소</strong>(minification)가 일어난다.</p>
+<p>어느 쪽이든 프래그먼트가 받은 텍스처 좌표는 텍셀 격자의 한가운데에 정확히 떨어지지 않는다. "정수 격자 사이의 좌표에서 무슨 색을 읽을 것인가"를 정하는 규칙이 <strong class="term-ko">필터링</strong><sup class="term">filtering</sup>이다. WebGL은 확대와 축소에 각각 별도의 필터를 두며, <code>texParameteri()</code>로 설정한다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 확대(MAG) 필터와 축소(MIN) 필터를 각각 설정한다
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);</code></pre>
+<h3>NEAREST와 LINEAR</h3>
+<p>필터의 기본 선택지는 두 가지이다.</p>
+<ul>
+<li><code>gl.NEAREST</code>  —  <strong>최근접 텍셀 선택</strong>. 주어진 좌표에서 가장 가까운 텍셀 하나의 색을 그대로 쓴다. 계산이 가장 싸고 텍셀의 색이 조금도 섞이지 않지만, 확대하면 텍셀들이 네모난 계단 모양으로 도드라진다.</li>
+<li><code>gl.LINEAR</code>  —  <strong class="term-ko">이중선형 보간</strong><sup class="term">bilinear interpolation</sup>. 좌표를 둘러싼 텍셀 4개의 색을 거리에 따라 가중 평균한다. 확대해도 색이 부드럽게 이어지는 대신, 또렷해야 할 경계가 뿌옇게 흐려질 수 있다.</li>
+</ul>
+<p>어느 쪽이 "좋다"고 잘라 말할 수는 없다. 사진처럼 연속적인 이미지에는 <code>LINEAR</code>가 자연스럽지만, 도트 하나하나가 살아 있어야 하는 픽셀 아트나 체커보드 같은 무늬에는 <code>NEAREST</code>가 정답이다. 코드 8.2로 두 필터를 나란히 놓고 비교해 보자. 같은 \(8 \times 8\) 체커보드를 두 개의 텍스처 객체에 올리되 왼쪽은 <code>NEAREST</code>, 오른쪽은 <code>LINEAR</code>로 설정하고, <code>uOffset</code> uniform으로 사각형을 옮겨 가며 두 번 그린다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+uniform vec2 uOffset;            // 사각형을 옮겨 두 번 그리기 위한 이동량
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition + uOffset, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);
+}`;
+
+// 셰이더 도우미 (2장의 도우미 압축형)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 같은 체커보드를 필터만 다르게 설정해 텍스처 2개 생성 -----
+function makeCheckerTexture(gl, filter) {
+    const SIZE = 8;
+    const pixels = new Uint8Array(SIZE * SIZE * 4);
+    for (let row = 0; row &lt; SIZE; row++) {
+        for (let col = 0; col &lt; SIZE; col++) {
+            const c = (row + col) % 2 === 0 ? 230 : 40;
+            const i = (row * SIZE + col) * 4;
+            pixels[i] = c;      pixels[i + 1] = c;
+            pixels[i + 2] = c;  pixels[i + 3] = 255;
+        }
+    }
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+                  gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    return tex;
+}
+const texNearest = makeCheckerTexture(gl, gl.NEAREST);
+const texLinear  = makeCheckerTexture(gl, gl.LINEAR);
+
+// ----- 사각형 (화면에서 정사각형으로 보이는 크기) -----
+const positions = new Float32Array([
+    -0.4, -0.6,    0.4, -0.6,    -0.4, 0.6,    0.4, 0.6,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,     1.0, 0.0,      0.0, 1.0,    1.0, 1.0,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+// ----- 0번 유닛의 텍스처를 갈아 끼우며 좌우로 두 번 그린다 -----
+const uOffsetLoc = gl.getUniformLocation(program, 'uOffset');
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+gl.activeTexture(gl.TEXTURE0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+gl.bindTexture(gl.TEXTURE_2D, texNearest);   // 왼쪽: NEAREST
+gl.uniform2f(uOffsetLoc, -0.45, 0.0);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+gl.bindTexture(gl.TEXTURE_2D, texLinear);    // 오른쪽: LINEAR
+gl.uniform2f(uOffsetLoc, 0.45, 0.0);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.2: NEAREST와 LINEAR 확대 필터 비교</div></div>
+<p>실행 결과의 대비는 극적이다. 왼쪽(<code>NEAREST</code>)은 흑백 칸의 경계가 자로 잰 듯 또렷한 반면, 오른쪽(<code>LINEAR</code>)은 칸과 칸 사이가 넓은 회색 띠로 부드럽게 이어진다. \(8 \times 8\)처럼 극단적으로 작은 텍스처를 크게 확대했기에 차이가 과장되어 보이는 것이며, 해상도가 충분한 텍스처라면 <code>LINEAR</code>의 흐려짐은 거의 눈에 띄지 않는다. 필터는 텍스처 객체마다 저장되는 상태라서, 같은 무늬라도 필터를 달리하려면 이렇게 별도의 텍스처 객체가 필요하다는 점도 눈여겨보자.</p>
+<h3>축소와 앨리어싱, 그리고 밉맵</h3>
+<p>확대는 필터로 충분히 다스려지지만, <strong>축소</strong>는 사정이 더 고약하다. 텍스처를 입힌 넓은 바닥이 저 멀리까지 이어지는 장면을 상상하자. 먼 곳의 바닥은 화면에서 몇 픽셀에 불과한데, 그 몇 픽셀 안에 텍셀 수천 개가 우겨 들어야 한다. 프래그먼트 하나가 대표로 읽는 것은 그중 한 좌표의 색뿐이므로(<code>LINEAR</code>라 해도 텍셀 4개), 나머지 수천 텍셀의 정보는 통째로 버려진다. 어떤 텍셀이 "당첨"될지는 카메라가 조금만 움직여도 뒤바뀌고, 그 결과 먼 곳의 무늬가 자글자글 끓거나 반짝이는 <strong class="term-ko">앨리어싱</strong><sup class="term">aliasing</sup> 현상이 나타난다. 표본을 너무 성기게 뽑아서 원본 신호를 왜곡하는, 신호 처리에서 말하는 그 앨리어싱이다.</p>
+<p>해결책은 발상의 전환이다. 그리는 순간에 수천 텍셀을 평균할 수 없다면, <strong>평균을 미리 계산해 두면</strong> 된다. 원본 텍스처를 절반 크기로 줄인 이미지, 다시 그 절반 크기 이미지, … 이렇게 \(1 \times 1\)이 될 때까지 미리 축소해 둔 이미지 사다리를 <strong class="term-ko">밉맵</strong><sup class="term">mipmap</sup>이라고 한다. 예컨대 \(256 \times 256\) 텍스처의 밉맵은 \(128 \times 128\), \(64 \times 64\), …, \(1 \times 1\)의 8단계로 이어지며, 원본이 레벨 0, 아래로 갈수록 레벨 번호가 커진다. 각 레벨의 텍셀은 윗 레벨 텍셀 4개의 평균이므로, 레벨 \(n\)의 텍셀 하나에는 원본 텍셀 \(4^n\)개의 정보가 압축되어 있다.</p>
+<p>렌더링할 때 GPU는 프래그먼트가 화면에서 텍스처를 얼마나 축소해 보고 있는지 계산하여, <strong>알맞은 크기의 밉맵 레벨에서</strong> 색을 읽는다. 먼 바닥은 저해상도 레벨에서 읽으므로 수천 텍셀의 평균이 반영된 안정된 색을 얻고, 반짝임은 사라진다. 밉맵 전 레벨의 메모리를 다 합해도 원본의 \(1/3\)만 추가될 뿐이니(등비급수 \(\frac{1}{4} + \frac{1}{16} + \cdots = \frac{1}{3}\)), 품질 대비 매우 싼 값이다.</p>
+<p>밉맵 생성은 한 줄이면 된다. 원본(레벨 0)을 올린 뒤 호출하면 WebGL이 사다리 전체를 자동으로 만들어 준다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.texImage2D(/* ... 레벨 0 원본 업로드 ... */);
+gl.generateMipmap(gl.TEXTURE_2D);     // 밉맵 사다리 자동 생성</code></pre>
+<h3>밉맵 필터와 삼선형 필터링</h3>
+<p>밉맵을 만들었으면 축소 필터에게 "밉맵을 사용하라"고 알려야 한다. <code>MIN_FILTER</code>에는 기본 두 값 외에 밉맵용 값 4가지가 더 있다. 이름은 <code>A_MIPMAP_B</code> 꼴로 읽는데, <code>A</code>는 한 레벨 안에서 텍셀을 읽는 방식, <code>B</code>는 레벨을 고르는 방식이다.</p>
+<div class="table-wrap"><div class="table-caption">표 8.2: <code>MIN_FILTER</code>에 지정할 수 있는 값</div><table><tr><th>값</th><th>동작</th></tr><tr><td><code>NEAREST</code></td><td>밉맵 없이 최근접 텍셀 1개</td></tr><tr><td><code>LINEAR</code></td><td>밉맵 없이 텍셀 4개 이중선형 보간</td></tr><tr><td><code>NEAREST_MIPMAP_NEAREST</code></td><td>가장 가까운 레벨 1개에서 최근접 텍셀</td></tr><tr><td><code>LINEAR_MIPMAP_NEAREST</code></td><td>가장 가까운 레벨 1개에서 이중선형 보간</td></tr><tr><td><code>NEAREST_MIPMAP_LINEAR</code></td><td>인접 레벨 2개에서 최근접, 레벨 간 보간 (기본값)</td></tr><tr><td><code>LINEAR_MIPMAP_LINEAR</code></td><td>인접 레벨 2개에서 이중선형, 레벨 간 보간</td></tr></table></div>
+<p>품질이 가장 좋은 것은 마지막의 <code>LINEAR_MIPMAP_LINEAR</code>이다. 두 인접 레벨에서 각각 이중선형 보간(텍셀 4개)을 하고 그 두 결과를 다시 레벨 사이에서 보간하므로, 모두 세 방향의 선형 보간이 이루어진다. 그래서 <strong class="term-ko">삼선형 필터링</strong><sup class="term">trilinear filtering</sup>이라고 부른다. 오늘날의 GPU에서는 비용도 부담스럽지 않아, 축소가 일어나는 텍스처의 표준 설정으로 통한다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 축소 품질의 표준 설정: 밉맵 + 삼선형 필터링
+gl.generateMipmap(gl.TEXTURE_2D);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+                 gl.LINEAR_MIPMAP_LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);</code></pre>
+<p>확대에는 밉맵이 소용없으므로(원본보다 큰 레벨은 없다) <code>MAG_FILTER</code>에는 <code>NEAREST</code>와 <code>LINEAR</code>만 지정할 수 있다.</p>
+<div class="box caution"><span class="chip">주의</span><p><code>MIN_FILTER</code>의 <strong>기본값이 밉맵을 요구하는</strong> <code>NEAREST_MIPMAP_LINEAR</code>라는 사실을 꼭 기억하자. 텍스처를 올리고 필터 설정을 잊으면, WebGL은 존재하지 않는 밉맵을 읽어야 하는 "불완전한 텍스처" 상태가 되어 샘플링 결과가 전부 검은색이 된다. <strong>텍스처를 입혔는데 물체가 새까맣게 나온다면</strong> 십중팔구 이 문제이다. <code>generateMipmap()</code>을 호출하든가, 밉맵을 쓰지 않을 텍스처라면 <code>MIN_FILTER</code>를 <code>NEAREST</code>나 <code>LINEAR</code>로 명시하여 해결한다. 코드 8.1이 <code>MIN_FILTER</code>까지 굳이 설정한 이유가 바로 이것이다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>텍셀 격자 사이의 좌표에서 색을 정하는 규칙이 <strong>필터링</strong>이다. 확대 필터는 또렷한 <code>NEAREST</code>와 부드러운 <code>LINEAR</code> 중에서 고르고, 축소 시의 앨리어싱(먼 무늬의 반짝임)은 미리 줄여 둔 이미지 사다리인 <strong>밉맵</strong>으로 해결한다. <code>generateMipmap()</code> + <code>LINEAR_MIPMAP_LINEAR</code>(삼선형)가 축소 품질의 표준 설정이다.</p></div>
+<h2 id="sec4">8.4 래핑 모드</h2>
+<h3>텍스처 좌표가 1을 넘어서면</h3>
+<p>텍스처 좌표가 반드시 \(0 \sim 1\) 안에 있어야 하는 것은 아니다. 사각형의 오른쪽 위 정점에 \((4, 4)\) 같은 좌표를 주면, 보간된 좌표는 사각형을 가로지르며 \(0\)에서 \(4\)까지 변한다. \(1\)을 넘어선 좌표에서 무엇을 읽을지는 우리가 정할 수 있는데, 이 규칙이 <strong class="term-ko">래핑 모드</strong><sup class="term">wrapping mode</sup>이다. 필터와 마찬가지로 <code>texParameteri()</code>로 설정하며, \(s\)축과 \(t\)축을 따로 지정한다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);</code></pre>
+<p>WebGL 2.0이 제공하는 래핑 모드는 세 가지이다.</p>
+<div class="table-wrap"><div class="table-caption">표 8.3: 래핑 모드 세 가지</div><table><tr><th>값</th><th>동작</th><th>좌표 \(1.3\)의 실제 조회 위치</th></tr><tr><td><code>REPEAT</code></td><td>소수 부분만 사용하여 무한 반복</td><td>\(0.3\)</td></tr><tr><td><code>MIRRORED_REPEAT</code></td><td>한 번 넘어갈 때마다 뒤집으며 반복</td><td>\(0.7\)</td></tr><tr><td><code>CLAMP_TO_EDGE</code></td><td>\(0 \sim 1\)로 잘라 가장자리 텍셀 연장</td><td>\(1.0\) (가장자리)</td></tr></table></div>
+<ul>
+<li><code>REPEAT</code>(기본값)는 좌표의 정수 부분을 버린다. \(1.3\)도 \(2.3\)도 \(-0.7\)도 모두 \(0.3\)과 같은 위치를 읽으므로, 텍스처가 같은 방향으로 끝없이 이어 붙는다. 같은 무늬를 반복해 넓은 면을 채우는 <strong>타일링</strong>(tiling)의 표준 수단이다.</li>
+<li><code>MIRRORED_REPEAT</code>도 반복하되, \(1\)을 넘어갈 때마다 텍스처를 거울처럼 뒤집는다. \(0 \to 1\) 구간이 정방향이면 \(1 \to 2\) 구간은 역방향이다. 반복 경계에서 색이 거울 대칭으로 만나므로, 이음매가 어긋나 보이는 텍스처도 매끄럽게 이어 붙일 수 있다.</li>
+<li><code>CLAMP_TO_EDGE</code>는 좌표를 \(0 \sim 1\)로 강제로 자른다. 범위를 벗어난 영역은 텍스처의 가장자리 텍셀 색이 그대로 길게 늘어난 모습이 된다. 반복이 필요 없고, 텍스처 경계 밖의 색이 새어 들어오면 곤란한 경우(스프라이트, UI 요소 등)에 쓴다.</li>
+</ul>
+<h3>타일링 예제  —  좌표를 0에서 4까지</h3>
+<p>래핑의 효과는 반복해 보아야 실감이 난다. 코드 8.3은 \(8 \times 8\) 그라데이션 텍스처(가로 방향으로는 붉은 기가, 세로 방향으로는 초록 기가 짙어져 네 구석의 색이 서로 다른 무늬)를 만들고, 텍스처 좌표를 \(0 \sim 4\)로 주어 <code>REPEAT</code> 모드로 사각형을 채운다. 이렇게 방향이 뚜렷한 무늬를 쓰면 반복의 경계가 한눈에 드러나기 때문이다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);
+}`;
+
+// 셰이더 도우미 (2장의 도우미 압축형)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 8x8 그라데이션 텍스처: 축 방향이 보이는 무늬 -----
+const SIZE = 8;
+const pixels = new Uint8Array(SIZE * SIZE * 4);
+for (let row = 0; row &lt; SIZE; row++) {
+    for (let col = 0; col &lt; SIZE; col++) {
+        const i = (row * SIZE + col) * 4;
+        pixels[i]     = 40 + col * 30;    // R: 오른쪽으로 갈수록 붉게
+        pixels[i + 1] = 40 + row * 30;    // G: 위로 갈수록 밝게
+        pixels[i + 2] = 150;              // B: 고정
+        pixels[i + 3] = 255;
+    }
+}
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+// 래핑 모드: 다른 값으로 바꿔 결과를 비교해 보자
+// (gl.MIRRORED_REPEAT, gl.CLAMP_TO_EDGE)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+// ----- 사각형: 텍스처 좌표를 0 ~ 4로 준다 -----
+const positions = new Float32Array([
+    -0.6, -0.9,    0.6, -0.9,    -0.6, 0.9,    0.6, 0.9,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,     4.0, 0.0,      0.0, 4.0,    4.0, 4.0,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.3: REPEAT 래핑으로 텍스처 타일링</div></div>
+<p>실행하면 텍스처 한 장이 \(4 \times 4 = 16\)장으로 반복되어 사각형을 타일처럼 채운다. 텍스처 좌표가 \(1\)을 넘어설 때마다 무늬가 처음부터 다시 시작되는 것이다. 이제 래핑 설정 두 줄의 값을 바꾸어 다시 실행해 보자. <code>gl.MIRRORED_REPEAT</code>로 바꾸면 이웃한 타일이 거울 대칭으로 뒤집혀 그라데이션이 지그재그로 오르내리고, 반복 경계의 색 단절이 사라진다. <code>gl.CLAMP_TO_EDGE</code>로 바꾸면 반복이 사라지고, 왼쪽 아래 구석의 한 장을 제외한 나머지 영역은 가장자리 텍셀 색이 죽 늘어난 줄무늬가 된다. \(s\)축은 <code>REPEAT</code>, \(t\)축은 <code>CLAMP_TO_EDGE</code>처럼 두 축을 다르게 섞어 보는 것도 좋은 실험이다.</p>
+<p>실전에서 이 기법의 쓰임새는 무궁무진하다. 바닥의 타일, 벽의 벽돌, 잔디밭, 철판 무늬처럼 작은 무늬가 반복되는 표면은 모두 "작은 텍스처 + 큰 텍스처 좌표 + <code>REPEAT</code>"로 만든다. \(512 \times 512\) 벽돌 텍스처 한 장이면 좌표를 \(0 \sim 50\)으로 주는 것만으로 벽돌 5만 장짜리 담벼락을 채울 수 있다. 다만 멀리서 보면 반복 주기가 눈에 띄어 인위적으로 보일 수 있는데, 이를 감추는 기법들은 11장에서 다시 만난다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">2의 거듭제곱 제약은 옛말</span><p>초기 GPU들은 텍스처의 가로·세로가 \(2\)의 거듭제곱(\(64\), \(128\), \(256\), …)일 때만 온전히 동작했고, WebGL 1.0도 이 제약을 물려받아 <strong>2의 거듭제곱이 아닌</strong>(NPOT, non-power-of-two) 텍스처에는 <code>REPEAT</code> 래핑과 밉맵을 허용하지 않았다. 옛 자료들이 텍스처 크기를 한사코 \(2\)의 거듭제곱으로 맞추는 것은 이 때문이다. <strong>WebGL 2.0에서는 이 제약이 완전히 사라져서</strong>, \(600 \times 400\) 같은 임의 크기의 텍스처에도 밉맵과 모든 래핑 모드를 쓸 수 있다. 다만 밉맵 각 레벨의 크기가 절반씩 깔끔하게 떨어지는 2의 거듭제곱 텍스처는 여전히 GPU에 다루기 편한 크기라, 실무에서는 지금도 즐겨 쓰인다.</p></div>
+<div class="box keypoint"><span class="chip">요점</span><p>\(0 \sim 1\) 밖의 텍스처 좌표를 어떻게 읽을지는 <strong>래핑 모드</strong>가 정한다. <code>REPEAT</code>는 무한 반복(타일링), <code>MIRRORED_REPEAT</code>는 뒤집으며 반복, <code>CLAMP_TO_EDGE</code>는 가장자리 연장이며, \(s\)·\(t\)축을 따로 설정할 수 있다. 작은 텍스처를 큰 좌표로 반복시키는 타일링은 넓은 표면을 채우는 표준 기법이다.</p></div>
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 8-1</strong>  코드 8.1의 체커보드를 취향대로 바꿔 보자. 격자를 \(16 \times 16\)으로 촘촘하게 만들고, 흑백 대신 주황과 남색이 교차하도록 수정한다.</p>
+<p><strong>해답</strong>  텍스처 생성 부분만 바꾸면 된다. 두 색을 배열로 준비해 두고 칸마다 골라 쓴다.</p>
+<pre class="line-numbers"><code class="language-javascript">const SIZE = 16;                          // 8 → 16: 격자가 촘촘해진다
+const pixels = new Uint8Array(SIZE * SIZE * 4);
+const orange = [255, 140, 40], navy = [30, 45, 90];
+for (let row = 0; row &lt; SIZE; row++) {
+    for (let col = 0; col &lt; SIZE; col++) {
+        const c = (row + col) % 2 === 0 ? orange : navy;
+        const i = (row * SIZE + col) * 4;
+        pixels[i] = c[0];      pixels[i + 1] = c[1];
+        pixels[i + 2] = c[2];  pixels[i + 3] = 255;
+    }
+}</code></pre>
+<p><code>SIZE</code>만 바꾸면 나머지 코드(<code>texImage2D</code>의 크기 인자 포함)가 그대로 따라오도록 상수를 한 곳에서 관리한 덕을 보는 것도 확인하자.</p>
+<p><strong>실습 8-2</strong>  절차 생성의 힘을 좀 더 느껴 보자. 폭 1, 높이 64짜리 세로 그라데이션 텍스처를 만들어 화면 전체를 덮는 사각형에 입히면, 아래는 노을빛 주황에서 위는 밤하늘 남색으로 물드는 하늘 배경이 된다. 필터는 <code>LINEAR</code>로 하여 띠가 지지 않게 한다.</p>
+<p><strong>해답</strong>  코드 8.1에서 텍스처 생성부와 사각형 좌표를 다음으로 바꾼다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 1 x 64 그라데이션: 아래(주황) → 위(남색)를 선형 보간으로 채운다
+const H = 64;
+const pixels = new Uint8Array(H * 4);
+const lo = [255, 160, 60], hi = [40, 60, 160];   // 아래 노을빛, 위 밤하늘빛
+for (let row = 0; row &lt; H; row++) {
+    const t = row / (H - 1);              // 아래 0.0 ~ 위 1.0
+    for (let k = 0; k &lt; 3; k++)
+        pixels[row * 4 + k] = Math.round(lo[k] * (1 - t) + hi[k] * t);
+    pixels[row * 4 + 3] = 255;
+}
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, H, 0,   // 폭 1, 높이 64
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+// 사각형은 클립 공간 전체(-1 ~ 1)를 덮는다
+const positions = new Float32Array([
+    -1.0, -1.0,    1.0, -1.0,    -1.0, 1.0,    1.0, 1.0,
+]);</code></pre>
+<p>64단짜리 계단 데이터인데도 <code>LINEAR</code> 필터의 보간 덕에 매끄러운 그라데이션이 된다. <code>gl.NEAREST</code>로 바꾸어 띠가 드러나는 것과 비교해 보자. 색 값이 세로로만 변하므로 폭은 1텍셀이면 충분하다는 점이 이 실습의 요령이다.</p>
+<p><strong>실습 8-3</strong>  텍스처를 3차원으로 데려가 보자. 6장에서 만든 것과 같은 정육면체의 여섯 면 각각에 코드 8.1의 체커보드 텍스처를 통째로 입히고, 원근 투영 카메라로 비스듬히 바라본다. (힌트: 면마다 정점 4개에 텍스처 좌표 \((0,0)\), \((1,0)\), \((1,1)\), \((0,1)\)을 배정하고 삼각형 2개로 쪼갠다. 위치와 텍스처 좌표를 한 버퍼에 섞어 담을 때는 <code>vertexAttribPointer</code>의 스트라이드 인자를 활용한다.)</p>
+<p><strong>해답</strong></p>
+<pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+uniform mat4 uMVP;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = uMVP * vec4(aPosition, 1.0);
+    vTexCoord = aTexCoord;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);
+}`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 체커보드 텍스처 (코드 8.1과 동일) -----
+const SIZE = 8;
+const pixels = new Uint8Array(SIZE * SIZE * 4);
+for (let row = 0; row &lt; SIZE; row++) {
+    for (let col = 0; col &lt; SIZE; col++) {
+        const c = (row + col) % 2 === 0 ? 230 : 40;
+        const i = (row * SIZE + col) * 4;
+        pixels[i] = c;      pixels[i + 1] = c;
+        pixels[i + 2] = c;  pixels[i + 3] = 255;
+    }
+}
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+// ----- 정육면체: 면마다 모서리 4개를 반시계 방향으로 정의 -----
+const faces = [
+    [[-1,-1, 1], [ 1,-1, 1], [ 1, 1, 1], [-1, 1, 1]],   // 앞  (+z)
+    [[ 1,-1,-1], [-1,-1,-1], [-1, 1,-1], [ 1, 1,-1]],   // 뒤  (-z)
+    [[ 1,-1, 1], [ 1,-1,-1], [ 1, 1,-1], [ 1, 1, 1]],   // 오른쪽(+x)
+    [[-1,-1,-1], [-1,-1, 1], [-1, 1, 1], [-1, 1,-1]],   // 왼쪽 (-x)
+    [[-1, 1, 1], [ 1, 1, 1], [ 1, 1,-1], [-1, 1,-1]],   // 위  (+y)
+    [[-1,-1,-1], [ 1,-1,-1], [ 1,-1, 1], [-1,-1, 1]],   // 아래 (-y)
+];
+const uv = [[0, 0], [1, 0], [1, 1], [0, 1]];   // 면마다 같은 대응
+const verts = [];
+faces.forEach((c) =&gt; {
+    // 사각형 면을 삼각형 2개(0-1-2, 0-2-3)로 쪼갠다
+    [0, 1, 2, 0, 2, 3].forEach((k) =&gt; verts.push(...c[k], ...uv[k]));
+});
+
+// 위치 3개 + 텍스처 좌표 2개를 한 버퍼에 섞어 담는다 (한 정점 = 20바이트)
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);    // 위치
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 20, 12);   // 텍스처 좌표
+
+// ----- 원근 투영 카메라로 비스듬히 바라본다 -----
+const proj = mat4.create(), view = mat4.create(), mvp = mat4.create();
+mat4.perspective(proj, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+mat4.lookAt(view, [2.6, 2.0, 3.4], [0, 0, 0], [0, 1, 0]);
+mat4.multiply(mvp, proj, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uMVP'), false, mvp);
+
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.enable(gl.DEPTH_TEST);                 // 3차원이므로 깊이 판정 필수
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 36);       // 6면 x 삼각형 2개 x 정점 3개</code></pre>
+<p>체커보드가 입혀진 정육면체의 세 면이 보인다. 텍스처 좌표는 면 위에서 정의되는 값이므로, 물체가 3차원 공간에서 어떤 변환을 거치든 무늬는 표면에 "붙은 채로" 따라간다는 것이 이 실습의 핵심 관찰이다. 6장의 회전 애니메이션을 결합해 정육면체를 돌려 보면 더욱 실감 난다.</p></div></p>
+<details class="box summary" id="summary"><summary class="box-head">8장 요약</summary><div class="sum-body"><ul>
+<li><strong>텍스처 매핑</strong>은 표면에 이미지를 입혀 적은 정점으로 풍부한 세부를 얻는 기법이다. 텍스처의 한 칸은 <strong>텍셀</strong>이며, 화면의 픽셀과 일대일로 만나지 않는다.</li>
+<li>텍스처 위의 위치는 해상도와 무관한 \(0 \sim 1\) 정규화 좌표 \((s, t)\)로 가리킨다(\((0,0)\)은 왼쪽 아래). 흔히 \((u, v)\)로도 부른다.</li>
+<li>정점마다 <strong>텍스처 좌표를 속성으로 배정</strong>하면, 래스터화 과정에서 프래그먼트마다 좌표가 <strong>보간</strong>되어 전달된다. 프래그먼트 셰이더는 이 좌표로 텍스처 색을 읽어 칠한다(후방 매핑).</li>
+<li>텍스처는 <code>createTexture()</code> \(\to\) <code>bindTexture()</code> \(\to\) <code>texImage2D()</code> 순서로 GPU에 올린다. typed array를 직접 채워 만드는 <strong>절차 생성</strong> 텍스처로 이미지 파일 없이 실험할 수 있으며, <code>gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)</code>로 행 정렬 문제를 예방한다.</li>
+<li>셰이더에서는 <code>uniform sampler2D</code>와 <code>texture(샘플러, 좌표)</code>로 색을 읽는다. 샘플러 uniform에는 텍스처 객체가 아니라 <strong>텍스처 유닛 번호</strong>를 <code>uniform1i</code>로 넣으며, <code>activeTexture</code> + <code>bindTexture</code>로 텍스처를 유닛에 꽂는다.</li>
+<li>이미지 파일 로딩은 <code>Image</code> 객체로 하되 <strong>비동기</strong>이므로 업로드와 그리기는 <code>onload</code> 콜백 안에서 한다. <code>UNPACK_FLIP_Y_WEBGL</code>로 상하 뒤집힘을, CORS 정책으로 외부 이미지 제약을 유의한다.</li>
+<li><strong>필터링</strong>은 텍셀 격자 사이 좌표의 색을 정한다. 확대 필터는 또렷한 <code>NEAREST</code>와 부드러운 <code>LINEAR</code> 중에 고른다.</li>
+<li>축소 시의 반짝임(<strong>앨리어싱</strong>)은 미리 절반씩 줄여 둔 이미지 사다리인 <strong>밉맵</strong>으로 해결한다. <code>generateMipmap()</code> 후 <code>LINEAR_MIPMAP_LINEAR</code>(삼선형 필터링)가 표준 설정이다. <code>MIN_FILTER</code> 기본값이 밉맵을 요구하므로, 밉맵 없이 필터 설정을 빠뜨리면 텍스처가 검게 나온다.</li>
+<li><strong>래핑 모드</strong>는 \(0 \sim 1\) 밖의 좌표 처리를 정한다. <code>REPEAT</code>(무한 반복=타일링), <code>MIRRORED_REPEAT</code>(뒤집으며 반복), <code>CLAMP_TO_EDGE</code>(가장자리 연장)를 \(s\)·\(t\)축별로 설정한다.</li>
+<li>WebGL 1.0의 <strong>2의 거듭제곱(NPOT) 제약</strong>은 WebGL 2.0에서 사라져, 임의 크기 텍스처에도 밉맵과 모든 래핑 모드를 쓸 수 있다.</li>
+</ul></div></details>
+<details class="box exercise" id="exercises"><summary class="box-head">8장 연습문제</summary><div class="ex-body"><ol>
+<li class="ex-item" data-ex="1"><span class="diff"><span class="d1">★</span></span>  텍스처 좌표 \((s, t)\)에 대한 다음 물음에 답하시오.
+<ol type="a">
+<li>좌표 \((0, 0)\)과 \((1, 1)\)은 각각 텍스처의 어느 구석을 가리키는가?</li>
+<li>\(256 \times 256\) 텍스처를 \(1024 \times 1024\)로 교체하면, 정점에 배정한 텍스처 좌표는 어떻게 바꾸어야 하는가?</li>
+</ol></li>
+<li class="ex-item" data-ex="2"><span class="diff"><span class="d1">★</span></span>  삼각형의 세 정점에 텍스처 좌표 \((0, 0)\), \((1, 0)\), \((0.5, 1)\)이 배정되어 있다. 세 정점의 한가운데(무게중심)에 해당하는 프래그먼트가 받게 될 보간된 텍스처 좌표를 구하시오.</li>
+<li class="ex-item" data-ex="3"><span class="diff"><span class="d1">★</span></span>  다음 중 확대 필터(<code>MAG_FILTER</code>)로 지정할 수 <strong>없는</strong> 값을 모두 고르고, 그 이유를 설명하시오.
+\[
+\texttt{NEAREST}, \quad \texttt{LINEAR}, \quad \texttt{LINEAR\_MIPMAP\_LINEAR}
+\]</li>
+<li class="ex-item" data-ex="4"><span class="diff"><span class="d2">★★</span></span>  다음 두 상황에서 확대 필터로 <code>NEAREST</code>와 <code>LINEAR</code> 중 무엇이 더 적절한지 고르고 까닭을 쓰시오.
+<ol type="a">
+<li>도트 하나하나가 살아 있어야 하는 8비트 감성의 픽셀 아트 캐릭터</li>
+<li>벽에 크게 확대해 붙일 인물 사진</li>
+</ol></li>
+<li class="ex-item" data-ex="5"><span class="diff"><span class="d2">★★</span></span>  텍스처를 입힌 사각형에 정점 텍스처 좌표를 \((0,0)\), \((3,0)\), \((0,3)\), \((3,3)\)으로 주었다. 래핑 모드가 다음과 같을 때 사각형에 나타나는 결과를 각각 말로 묘사하시오.
+<ol type="a">
+<li>\(s\)·\(t\)축 모두 <code>REPEAT</code></li>
+<li>\(s\)·\(t\)축 모두 <code>CLAMP_TO_EDGE</code></li>
+<li>\(s\)축 <code>REPEAT</code>, \(t\)축 <code>MIRRORED_REPEAT</code></li>
+</ol></li>
+<li class="ex-item" data-ex="6"><span class="diff"><span class="d2">★★</span></span>  텍스처를 정상적으로 올리고 셰이더도 옳게 작성했는데, 물체가 화면에 온통 <strong>새까맣게</strong> 나온다. 밉맵을 만들지 않았다면 가장 의심스러운 원인은 무엇이며, 두 가지 해결 방법을 제시하시오.</li>
+<li class="ex-item" data-ex="7"><span class="diff"><span class="d2">★★</span></span>  멀리 뻗은 바닥에 세밀한 무늬 텍스처를 입혔더니 먼 곳이 자글자글 끓듯 반짝인다. 이 현상의 이름은 무엇이며, 왜 생기는지 "픽셀 하나가 대표하는 텍셀 수"의 관점에서 설명하시오. 또한 밉맵이 이 문제를 어떻게 완화하는지 서술하시오.</li>
+<li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  코드 8.1의 프래그먼트 셰이더를 다음과 같이 바꾸면 화면에 어떤 변화가 나타나겠는가? 이때 정점에 배정된 텍스처 좌표는 그대로라고 가정한다.
+<pre class="line-numbers"><code class="language-javascript">void main() {
+    fragColor = texture(uSampler, vTexCoord * 2.0);
+}</code></pre>
+또한 이렇게 셰이더 안에서 좌표에 \(2.0\)을 곱하는 방식과, 정점 텍스처 좌표 자체를 \(0 \sim 2\)로 주는 방식은 결과가 같은가? 두 방식의 차이를 생각해 보시오.</li>
+</ol></div></details>
 <div class="pager-row"><a class="pager prev" href="ch07.html">&larr; 7장</a><a class="pager next" href="ch09.html">9장 &rarr;</a></div>
 </main>
 </div>

@@ -32,7 +32,7 @@
 </div>
 <div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
-<div class="nav-secs"></div>
+<div class="nav-secs"><a class="nav-sec" href="ch04.html#sec1">4.1 벡터와 좌표계</a><a class="nav-sec" href="ch04.html#sec2">4.2 내적과 외적</a><a class="nav-sec" href="ch04.html#sec3">4.3 행렬과 행렬 곱</a><a class="nav-sec" href="ch04.html#sec4">4.4 glMatrix 라이브러리</a><a class="nav-sec" href="ch04.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch04.html#summary">4장 요약</a><a class="nav-sec" href="ch04.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
@@ -59,17 +59,305 @@
   <h1>그래픽스를 위한 벡터와 행렬</h1>
 </div>
 <div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><ul>
-<li>벡터의 연산(덧셈, 스칼라 곱, 내적, 외적)을 그래픽스 관점에서 이해한다.</li>
-<li>행렬 곱의 의미와 성질을 이해한다.</li>
-<li>glMatrix 라이브러리로 벡터·행렬 연산을 수행할 수 있다.</li>
+<li>점과 벡터를 구분하고, 벡터의 덧셈·뺄셈·스칼라 곱을 기하학적으로 해석할 수 있다.</li>
+<li>벡터의 크기를 구하고 단위 벡터로 정규화할 수 있다.</li>
+<li>내적과 외적을 계산하고 그래픽스에서의 쓰임새를 설명할 수 있다.</li>
+<li>행렬과 벡터의 곱, 행렬끼리의 곱을 계산할 수 있다.</li>
+<li>glMatrix 라이브러리로 벡터·행렬 연산을 코드로 수행할 수 있다.</li>
 </ul></div></details></div>
-<div class="box note"><span class="chip">잠깐</span><span class="box-title">집필 예정</span><p>이 장은 집필 예정이다. 다음 절들로 구성될 계획이다.
+<p>지금까지 우리는 삼각형을 화면의 고정된 자리에 그렸다. 물체를 움직이고, 회전시키고, 카메라로 바라보려면 정점의 좌표를 자유자재로 변환할 수 있어야 하는데, 이 변환의 언어가 바로 <strong>벡터와 행렬</strong>이다. 3차원 그래픽스에서 선형대수는 배경 지식이 아니라 매일 쓰는 연장이다. 물체의 위치와 방향은 벡터로 표현되고, 모든 변환은 행렬 곱으로 실행되며, 빛의 밝기 계산조차 내적 하나로 귀결된다.</p>
+<p>다행히 그래픽스에 필요한 선형대수는 그리 많지 않다. 이 장에서는 앞으로의 장들이 요구하는 최소한의 도구  —  벡터 연산, 내적과 외적, 행렬 곱  —  를 기하학적 의미 중심으로 정리하고, 이 연산들을 자바스크립트에서 대신해 줄 glMatrix 라이브러리의 사용법을 익힌다. 수학이 부담스러운 독자도 걱정할 필요 없다. 모든 개념은 "화면 위에서 무슨 일이 일어나는가"와 연결하여 설명할 것이다.</p>
+<h2 id="sec1">4.1 벡터와 좌표계</h2>
+<h3>점과 벡터</h3>
+<p>3차원 공간의 <strong class="term-ko">점</strong><sup class="term">point</sup>은 공간의 한 <strong>위치</strong>이다. 원점을 기준으로 세 축을 따라 얼마나 떨어져 있는지를 나타내는 세 수 \((x, y, z)\)로 표현한다. 한편 <strong class="term-ko">벡터</strong><sup class="term">vector</sup>는 <strong>방향과 크기</strong>를 가진 양으로, 물체가 이동한 변위, 빛이 나아가는 방향, 면이 향하는 방향 등을 나타낸다. 벡터도 세 수로 표현하므로 겉모습은 점과 같지만 의미가 다르다. 점 \((1, 2, 0)\)은 "그 자리"를 뜻하고, 벡터 \((1, 2, 0)\)은 "\(x\)로 1, \(y\)로 2만큼 가는 움직임"을 뜻한다. 벡터는 시작 위치와 무관하다.</p>
+<p>이 책에서 벡터는 굵은 글씨로 쓴다.
+\[
+\mathbf{a} = (a_x,\ a_y,\ a_z)
+\]</p>
+<p>두 표현은 서로를 만들어 낸다. 점 \(Q\)에서 점 \(P\)를 뺀 것은 \(P\)에서 \(Q\)로 가는 벡터이다.
+\[
+\mathbf{v} = Q - P \quad (\text{$P$에서 $Q$로 향하는 방향과 거리})
+\]
+반대로 점 \(P\)에 벡터 \(\mathbf{v}\)를 더하면 \(\mathbf{v}\)만큼 이동한 새 점 \(P + \mathbf{v}\)가 된다. "두 점의 차는 벡터, 점과 벡터의 합은 점"이라는 이 관계는 앞으로 카메라 방향(6장), 빛 방향(7장)을 계산할 때 계속 쓰인다.</p>
+<h3>벡터의 덧셈과 스칼라 곱</h3>
+<p>벡터 연산은 성분별로 이루어진다.
+\[
+\mathbf{a} + \mathbf{b} = (a_x + b_x,\ a_y + b_y,\ a_z + b_z), \qquad
+k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
+\]</p>
+<p>기하학적 의미가 중요하다. \(\mathbf{a} + \mathbf{b}\)는 "\(\mathbf{a}\)만큼 이동한 뒤 이어서 \(\mathbf{b}\)만큼 이동"한 결과와 같다(평행사변형 법칙). 스칼라 곱 \(k\,\mathbf{a}\)는 방향은 그대로 두고 크기만 \(k\)배 하는 것이며, \(k\)가 음수면 방향이 반대가 된다. 뺄셈 \(\mathbf{a} - \mathbf{b}\)는 \(\mathbf{a} + (-1)\mathbf{b}\)이다.</p>
+<h3>벡터의 크기와 정규화</h3>
+<p>벡터 \(\mathbf{a}\)의 <strong class="term-ko">크기</strong><sup class="term">magnitude</sup>(길이)는 피타고라스 정리의 3차원 확장으로 구한다.
+\[
+\lVert \mathbf{a} \rVert = \sqrt{a_x^2 + a_y^2 + a_z^2}
+\]</p>
+<p>크기가 1인 벡터를 <strong class="term-ko">단위 벡터</strong><sup class="term">unit vector</sup>라고 한다. 방향만 중요하고 크기는 무의미한 경우  —  빛의 방향, 면의 방향(법선), 카메라가 바라보는 방향  —  에는 항상 단위 벡터를 쓴다. 벡터를 자신의 크기로 나누어 단위 벡터로 만드는 일을 <strong class="term-ko">정규화</strong><sup class="term">normalization</sup>라고 한다.
+\[
+\hat{\mathbf{a}} = \frac{\mathbf{a}}{\lVert \mathbf{a} \rVert}
+\]</p>
+<p>GLSL의 <code>normalize()</code>, <code>length()</code> 함수가 바로 이 계산이다. 앞으로 "방향 벡터"라고 하면 정규화된 단위 벡터를 뜻한다고 약속하자.</p>
+<div class="box caution"><span class="chip">주의</span><p>크기가 0인 벡터 \((0,0,0)\)은 정규화할 수 없다(0으로 나누기). 두 점이 같은 위치일 때 그 차를 정규화하는 코드는 NaN을 만들어 화면이 통째로 사라지는 버그로 이어지곤 한다. 방향 벡터를 계산할 때는 두 점이 겹칠 가능성을 항상 염두에 두자.</p></div>
+<h3>WebGL의 좌표계는 오른손 좌표계</h3>
+<p>세 축의 방향을 정하는 방식에는 두 가지 관례가 있다. 오른손을 펴서 엄지를 \(x\)축(+), 검지를 \(y\)축(+)에 맞추었을 때 중지가 가리키는 방향이 \(z\)축(+)이면 <strong class="term-ko">오른손 좌표계</strong><sup class="term">right-handed coordinate system</sup>, 왼손으로 같은 일을 하면 왼손 좌표계이다. WebGL을 포함한 OpenGL 계열은 관례적으로 <strong>오른손 좌표계</strong>를 사용한다. 화면 오른쪽이 \(+x\), 위쪽이 \(+y\)일 때, \(+z\)는 <strong>화면에서 나와 우리 눈을 향하는 방향</strong>이다. 즉 물체가 카메라에서 멀어질수록 \(z\) 값은 작아진다(음수가 된다). 6장에서 카메라와 투영을 다룰 때 이 관례가 전면에 등장한다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>점은 위치, 벡터는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터이며, 방향만 필요한 벡터는 <strong>정규화</strong>하여 단위 벡터로 만들어 쓴다. WebGL은 \(+z\)가 화면 밖(관찰자 쪽)을 향하는 <strong>오른손 좌표계</strong>를 관례로 한다.</p></div>
+<h2 id="sec2">4.2 내적과 외적</h2>
+<p>벡터 두 개를 결합하는 곱셈에는 두 종류가 있다. 결과가 수 하나인 <strong>내적</strong>과, 결과가 새로운 벡터인 <strong>외적</strong>이다. 이 두 연산은 그래픽스 수학의 양대 기둥이므로 계산법과 기하학적 의미를 모두 확실히 익혀 두자.</p>
+<h3>내적  —  두 벡터가 얼마나 같은 방향인가</h3>
+<p><strong class="term-ko">내적</strong><sup class="term">dot product</sup>은 대응 성분끼리 곱해 모두 더한 값이다.
+\[
+\mathbf{a} \cdot \mathbf{b} = a_x b_x + a_y b_y + a_z b_z
+\]</p>
+<p>내적의 진짜 힘은 다음 기하학적 등식에서 나온다. 두 벡터 사이의 각을 \(\theta\)라 할 때,
+\[
+\mathbf{a} \cdot \mathbf{b} = \lVert \mathbf{a} \rVert \, \lVert \mathbf{b} \rVert \cos\theta
+\]</p>
+<p>즉 내적은 "두 벡터가 얼마나 같은 방향을 향하는가"를 재는 척도이다. 두 벡터가 모두 단위 벡터라면 내적은 곧 \(\cos\theta\)이다. 부호만으로도 유용한 판정이 가능하다.</p>
 <ul>
-<li>벡터와 좌표계</li>
-<li>내적과 외적</li>
-<li>행렬과 행렬 곱</li>
-<li>glMatrix 라이브러리</li>
-</ul></p></div>
+<li>\(\mathbf{a} \cdot \mathbf{b} > 0\)  —  두 벡터의 사잇각이 예각 (대체로 같은 방향)</li>
+<li>\(\mathbf{a} \cdot \mathbf{b} = 0\)  —  두 벡터가 서로 <strong>수직</strong></li>
+<li>\(\mathbf{a} \cdot \mathbf{b} < 0\)  —  사잇각이 둔각 (대체로 반대 방향)</li>
+</ul>
+<p>그래픽스에서 내적이 활약하는 대표적인 무대는 <strong>조명 계산</strong>이다. 면이 향하는 방향(법선 \(\mathbf{n}\))과 빛이 오는 방향(\(\mathbf{l}\))이 이루는 각이 작을수록 면은 빛을 정면으로 받아 밝아진다. 7장에서 배울 확산 반사의 밝기가 정확히 \(\mathbf{n} \cdot \mathbf{l}\) (두 단위 벡터의 내적)으로 계산된다. GLSL 내장 함수 <code>dot()</code>이 이 연산이다.</p>
+<h3>외적  —  두 벡터에 수직인 벡터 만들기</h3>
+<p><strong class="term-ko">외적</strong><sup class="term">cross product</sup>은 3차원 벡터에서만 정의되는 연산으로, 결과는 벡터이다.
+\[
+\mathbf{a} \times \mathbf{b} =
+(a_y b_z - a_z b_y,\ \ a_z b_x - a_x b_z,\ \ a_x b_y - a_y b_x)
+\]</p>
+<p>성분 공식은 외우기 번거롭지만(각 성분은 나머지 두 축 성분의 교차 곱), 기하학적 성질은 명쾌하다.</p>
+<ul>
+<li>\(\mathbf{a} \times \mathbf{b}\)는 \(\mathbf{a}\)와 \(\mathbf{b}\) <strong>모두에 수직</strong>이다.</li>
+<li>방향은 <strong class="term-ko">오른손 법칙</strong><sup class="term">right-hand rule</sup>을 따른다: 오른손 네 손가락을 \(\mathbf{a}\)에서 \(\mathbf{b}\)로 감아쥘 때 엄지가 가리키는 쪽이다. 따라서 \(\mathbf{b} \times \mathbf{a} = -(\mathbf{a} \times \mathbf{b})\)로, 순서를 바꾸면 방향이 반대가 된다.</li>
+<li>크기는 \(\lVert \mathbf{a} \times \mathbf{b} \rVert = \lVert \mathbf{a} \rVert \lVert \mathbf{b} \rVert \sin\theta\)로, 두 벡터가 만드는 평행사변형의 넓이와 같다. 두 벡터가 평행이면 외적은 영벡터이다.</li>
+</ul>
+<p>그래픽스에서 외적의 대표 용도는 <strong>법선 벡터 계산</strong>이다. 삼각형의 세 정점 \(A\), \(B\), \(C\)가 있을 때, 두 변 벡터의 외적을 정규화하면 삼각형 면에 수직인 <strong class="term-ko">법선</strong><sup class="term">normal</sup>을 얻는다.
+\[
+\mathbf{n} = \frac{(B - A) \times (C - A)}{\lVert (B - A) \times (C - A) \rVert}
+\]</p>
+<p>정점 순서 \(A \to B \to C\)가 반시계 방향일 때 법선은 관찰자 쪽(면의 앞면)을 향한다. WebGL이 삼각형의 앞면을 반시계 방향 정점 순서로 판정하는 것도 이 관례와 맞물려 있다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">내적과 외적, 언제 무엇을 쓰나</span><p>목적이 <strong>수치</strong>(각도, 밝기, 닮은 정도)라면 내적, 목적이 <strong>수직 방향</strong>(법선, 회전축)이라면 외적이다. 앞으로 등장하는 공식이 낯설게 느껴질 때 이 기준으로 돌아오면 대부분 풀린다. GLSL과 glMatrix 모두 <code>dot</code>, <code>cross</code>라는 이름으로 두 연산을 제공한다.</p></div>
+<h2 id="sec3">4.3 행렬과 행렬 곱</h2>
+<h3>행렬은 변환을 담는 그릇이다</h3>
+<p><strong class="term-ko">행렬</strong><sup class="term">matrix</sup>은 수를 직사각형으로 배열한 것이다. 그래픽스에서 행렬이 중요한 이유는 단 하나  —  <strong>행렬이 기하 변환을 표현하기 때문</strong>이다. 회전, 크기 조절, 이동, 투영 같은 변환 하나하나가 행렬 하나에 대응하고, 벡터에 행렬을 곱하는 것이 곧 그 변환을 적용하는 것이다. 5장과 6장의 주인공인 \(4 \times 4\) 행렬로 가기 전에, 이 절에서 행렬 곱셈의 규칙을 익혀 두자.</p>
+<p>행과 열의 수가 같은 정사각 행렬을 주로 쓴다. 예를 들어 \(2 \times 2\) 행렬과 2차원 벡터의 곱은 다음과 같이 계산한다. 결과 벡터의 각 성분은 <strong>행렬의 행과 벡터의 내적</strong>이다.
+\[
+\begin{pmatrix} a & b \\ c & d \end{pmatrix}
+\begin{pmatrix} x \\ y \end{pmatrix}
+=
+\begin{pmatrix} ax + by \\ cx + dy \end{pmatrix}
+\]</p>
+<p>간단한 예로 다음 행렬은 2차원 벡터를 반시계 방향으로 \(90^\circ\) 회전시킨다. \((1, 0)\)을 곱하면 \((0, 1)\)이 되는 것을 확인해 보자.
+\[
+R = \begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}, \qquad
+R \begin{pmatrix} 1 \\ 0 \end{pmatrix} = \begin{pmatrix} 0 \\ 1 \end{pmatrix}
+\]</p>
+<h3>행렬끼리의 곱  —  변환의 연결</h3>
+<p>행렬 \(A\)와 \(B\)의 곱 \(AB\)에서, 결과의 \(i\)행 \(j\)열 성분은 <strong>\(A\)의 \(i\)행과 \(B\)의 \(j\)열의 내적</strong>이다.
+\[
+\begin{pmatrix} a & b \\ c & d \end{pmatrix}
+\begin{pmatrix} p & q \\ r & s \end{pmatrix}
+=
+\begin{pmatrix} ap + br & aq + bs \\ cp + dr & cq + ds \end{pmatrix}
+\]</p>
+<p>행렬 곱의 의미는 <strong>변환의 연결</strong>이다. 벡터에 \(B\)를 먼저 적용하고 그 결과에 \(A\)를 적용하는 것은, 곱해 둔 행렬 \(AB\)를 한 번 적용하는 것과 같다.
+\[
+A(B\mathbf{v}) = (AB)\mathbf{v}
+\]
+변환이 아무리 여러 개라도 미리 곱해 하나의 행렬로 만들어 두면 정점마다 곱셈 한 번으로 끝난다. 정점이 수백만 개인 그래픽스에서 이 성질은 곧 성능이다.</p>
+<p>주의할 점은 행렬 곱에 <strong>교환법칙이 성립하지 않는다</strong>는 것이다. 일반적으로 \(AB \neq BA\)이다. "회전 후 이동"과 "이동 후 회전"의 결과가 다르다는 것을 생각하면 당연한 일인데, 이 순서 문제는 5장에서 변환을 합성할 때 결정적으로 중요해진다.</p>
+<p>두 가지 특별한 행렬도 기억해 두자. <strong class="term-ko">단위 행렬</strong><sup class="term">identity matrix</sup> \(I\)는 대각선만 1이고 나머지가 0인 행렬로, 어떤 벡터를 곱해도 그대로 두는 "아무 일도 하지 않는 변환"이다. <strong class="term-ko">역행렬</strong><sup class="term">inverse matrix</sup> \(A^{-1}\)은 \(A^{-1}A = I\)를 만족하는 행렬로, \(A\)가 한 일을 되돌리는 변환이다.</p>
+<h3>열 우선 저장  —  WebGL의 행렬 메모리 배치</h3>
+<p>수학 표기와 코드 사이에는 함정이 하나 있다. 행렬을 1차원 배열로 저장할 때, 행부터 채우는 <strong class="term-ko">행 우선</strong><sup class="term">row-major</sup> 방식과 열부터 채우는 <strong class="term-ko">열 우선</strong><sup class="term">column-major</sup> 방식이 있는데, <strong>WebGL과 glMatrix는 열 우선</strong>을 사용한다. \(4 \times 4\) 행렬이 16칸 배열에 저장될 때 배열의 처음 네 칸 <code>m[0..3]</code>은 첫 <strong>행</strong>이 아니라 첫 <strong>열</strong>이다.</p>
+\[
+M = \begin{pmatrix}
+m_0 & m_4 & m_8    & m_{12} \\
+m_1 & m_5 & m_9    & m_{13} \\
+m_2 & m_6 & m_{10} & m_{14} \\
+m_3 & m_7 & m_{11} & m_{15}
+\end{pmatrix}
+\qquad (\text{첨자는 배열 인덱스})
+\]
+<p>glMatrix를 통해서만 행렬을 다룬다면 이 배치를 직접 신경 쓸 일은 드물다. 그러나 행렬 배열을 손으로 채우거나 디버깅으로 출력해 볼 때, 수학책의 표기와 배열 순서가 "가로세로가 뒤집혀" 보인다는 사실을 모르면 크게 헤매게 된다. 5장에서 이동 행렬을 만들 때 이 배치를 다시 확인할 것이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>행렬은 변환이고, <strong>행렬 \(\times\) 벡터</strong>는 변환의 적용이며, <strong>행렬 \(\times\) 행렬</strong>은 변환의 연결이다. 행렬 곱은 교환되지 않으므로(\(AB \neq BA\)) 변환의 순서가 결과를 바꾼다. WebGL과 glMatrix는 행렬을 <strong>열 우선</strong>으로 저장한다.</p></div>
+<h2 id="sec4">4.4 glMatrix 라이브러리</h2>
+<p>자바스크립트에는 벡터·행렬 자료형이 없다. 물론 방금 배운 공식들을 직접 함수로 만들 수도 있지만, 그래픽스 수학은 검증된 라이브러리를 쓰는 것이 관례이다. 이 책은 WebGL 진영에서 가장 널리 쓰이는 <strong>glMatrix</strong>를 사용한다. glMatrix는 벡터(<code>vec2</code>, <code>vec3</code>, <code>vec4</code>)와 행렬(<code>mat3</code>, <code>mat4</code>) 모듈을 제공하며, 모든 데이터를 WebGL에 바로 넘길 수 있는 <code>Float32Array</code>로 다룬다.</p>
+<p>HTML 파일에서는 다음 한 줄로 라이브러리를 불러온다. 이 책의 웹 에디션 실행 창에는 glMatrix가 <strong>미리 로드되어 있으므로</strong> 예제를 바로 실행할 수 있다.</p>
+<pre class="line-numbers"><code class="language-html">&lt;script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"&gt;
+&lt;/script&gt;</code></pre>
+<p>로드하면 전역 객체 <code>glMatrix</code> 아래에 각 모듈이 들어 있다. 매번 <code>glMatrix.vec3</code>라고 쓰는 대신, 프로그램 첫머리에서 꺼내 두고 쓰면 편리하다.</p>
+<pre class="line-numbers"><code class="language-javascript">const { vec3, mat4 } = glMatrix;    // 자주 쓰는 모듈을 꺼내 둔다</code></pre>
+<h3>out 인자  —  glMatrix의 호출 규약</h3>
+<p>glMatrix 함수들은 독특한 호출 규약을 가지고 있다. 연산 결과를 반환값으로 돌려주는 대신, <strong>첫 인자로 받은 벡터(행렬)에 결과를 채워 넣는다</strong>. 이 첫 인자를 <code>out</code> 인자라고 부른다.</p>
+<pre class="line-numbers"><code class="language-javascript">const a = vec3.fromValues(1, 2, 0);     // 벡터 생성: (1, 2, 0)
+const b = vec3.fromValues(3, -1, 0);
+const sum = vec3.create();              // 결과를 담을 그릇: (0, 0, 0)
+
+vec3.add(sum, a, b);                    // sum ← a + b</code></pre>
+<p>매번 새 객체를 만들어 반환하면 실시간 렌더링 중에 쓰레기 수집(garbage collection)이 일어나 화면이 순간적으로 멈출 수 있기 때문에, 그릇을 재사용하도록 설계된 것이다. 초당 60번씩 수백 개의 벡터 연산을 하는 그래픽스 프로그램다운 규약이다.</p>
+<h3>벡터 연산 실습</h3>
+<p>이 장에서 배운 연산들을 glMatrix로 직접 확인해 보자. 그래픽 출력이 없는 계산 프로그램이므로 결과는 콘솔로 출력한다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
+
+// ----- 덧셈, 스칼라 곱 -----
+const a = vec3.fromValues(1, 2, 0);
+const b = vec3.fromValues(3, -1, 0);
+const tmp = vec3.create();
+
+vec3.add(tmp, a, b);
+console.log('a + b        =', tmp);            // (4, 1, 0)
+vec3.scale(tmp, a, 2.0);
+console.log('2a           =', tmp);            // (2, 4, 0)
+
+// ----- 크기와 정규화 -----
+const v = vec3.fromValues(3, 0, 4);
+console.log('|v|          =', vec3.length(v)); // 5
+vec3.normalize(tmp, v);
+console.log('normalize(v) =', tmp);            // (0.6, 0, 0.8)
+
+// ----- 내적: 수직 판정 -----
+const right = vec3.fromValues(1, 0, 0);
+const up    = vec3.fromValues(0, 1, 0);
+console.log('right . up   =', vec3.dot(right, up));   // 0 (수직)
+
+// ----- 외적: 두 벡터에 수직인 벡터 -----
+vec3.cross(tmp, right, up);
+console.log('right x up   =', tmp);            // (0, 0, 1) — +z 방향
+
+// ----- 삼각형 법선 계산 -----
+const A = vec3.fromValues(0, 0, 0);
+const B = vec3.fromValues(1, 0, 0);
+const C = vec3.fromValues(0, 1, 0);
+const AB = vec3.create(), AC = vec3.create();
+const n  = vec3.create();
+vec3.subtract(AB, B, A);           // 변 벡터 B - A
+vec3.subtract(AC, C, A);           // 변 벡터 C - A
+vec3.cross(n, AB, AC);             // 두 변의 외적
+vec3.normalize(n, n);              // 정규화 → 법선
+console.log('삼각형 법선  =', n);   // (0, 0, 1)</code></pre><div class="listing-caption">코드 4.1: glMatrix로 벡터 연산 확인하기</div></div>
+<p>마지막 예를 눈여겨보자. \(xy\) 평면 위에 반시계 방향으로 놓인 삼각형의 법선이 \(+z\), 즉 관찰자를 향하는 방향으로 나왔다. 4.2절에서 설명한 외적의 오른손 법칙 그대로이다. 정점 순서를 \(A, C, B\)로 바꾸어 실행하면 법선이 \((0, 0, -1)\)로 뒤집히는 것도 확인해 보자.</p>
+<div class="table-wrap"><div class="table-caption">표 4.1: 자주 쓰는 glMatrix 함수 (vec3 기준)</div><table><tr><th>함수</th><th>기능</th></tr><tr><td><code>vec3.create()</code></td><td>영벡터 \((0,0,0)\) 생성</td></tr><tr><td><code>vec3.fromValues(x, y, z)</code></td><td>값을 지정해 생성</td></tr><tr><td><code>vec3.add(out, a, b)</code> / <code>subtract</code></td><td>덧셈 / 뺄셈</td></tr><tr><td><code>vec3.scale(out, a, k)</code></td><td>스칼라 곱</td></tr><tr><td><code>vec3.length(a)</code> / <code>distance(a, b)</code></td><td>크기 / 두 점 사이 거리</td></tr><tr><td><code>vec3.normalize(out, a)</code></td><td>정규화</td></tr><tr><td><code>vec3.dot(a, b)</code></td><td>내적 (수를 반환)</td></tr><tr><td><code>vec3.cross(out, a, b)</code></td><td>외적</td></tr><tr><td><code>mat4.create()</code></td><td>\(4{\times}4\) 단위 행렬 생성</td></tr><tr><td><code>mat4.multiply(out, a, b)</code></td><td>행렬 곱 \(ab\)</td></tr></table></div>
+<p>행렬 모듈 <code>mat4</code>에는 이 밖에도 이동·회전·크기 변환 행렬을 만들어 주는 함수들이 준비되어 있는데, 이들이 바로 다음 장의 주인공이다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>glMatrix는 <code>Float32Array</code> 기반의 벡터·행렬 라이브러리로, 연산 결과를 <strong>첫 번째 <code>out</code> 인자</strong>에 채워 넣는 규약을 쓴다. <code>vec3.dot</code>·<code>vec3.cross</code>·<code>vec3.normalize</code>·<code>mat4.multiply</code>만 알아도 이 책의 수학 코드 대부분을 읽을 수 있다.</p></div>
+<p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 4-1</strong>  점 \(P = (1, 2, 3)\)에서 점 \(Q = (4, 6, 3)\)을 바라보는 단위 방향 벡터를 glMatrix로 계산하고, 두 점 사이의 거리도 출력해 보자.</p>
+<p><strong>해답</strong></p>
+<pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
+
+const P = vec3.fromValues(1, 2, 3);
+const Q = vec3.fromValues(4, 6, 3);
+
+const dir = vec3.create();
+vec3.subtract(dir, Q, P);            // Q - P = (3, 4, 0)
+console.log('거리 =', vec3.length(dir));      // 5
+vec3.normalize(dir, dir);
+console.log('방향 =', dir);                   // (0.6, 0.8, 0)
+// vec3.distance(P, Q)로 거리를 바로 구할 수도 있다</code></pre>
+<p><strong>실습 4-2</strong>  내적 공식 \(\mathbf{a} \cdot \mathbf{b} = \lVert\mathbf{a}\rVert \lVert\mathbf{b}\rVert \cos\theta\)를 거꾸로 이용하면 두 벡터의 사잇각을 구할 수 있다. 벡터 \((1, 0, 0)\)과 \((1, 1, 0)\)의 사잇각을 도(degree) 단위로 계산해 보자.</p>
+<p><strong>해답</strong></p>
+<pre class="line-numbers"><code class="language-javascript">const { vec3 } = glMatrix;
+
+const a = vec3.fromValues(1, 0, 0);
+const b = vec3.fromValues(1, 1, 0);
+
+// 각 벡터를 정규화하면 내적이 곧 cos(theta)가 된다
+const an = vec3.create(), bn = vec3.create();
+vec3.normalize(an, a);
+vec3.normalize(bn, b);
+const cos = vec3.dot(an, bn);
+
+const rad = Math.acos(cos);               // 라디안
+const deg = rad * 180 / Math.PI;          // 도 단위로 변환
+console.log('사잇각 =', deg, '도');        // 45도</code></pre>
+<p><strong>실습 4-3</strong>  벡터 덧셈의 평행사변형 법칙을 화면으로 확인해 보자. 원점에서 뻗어 나가는 벡터 \(\mathbf{a} = (0.6, 0.2)\), \(\mathbf{b} = (0.2, 0.6)\), 그리고 \(\mathbf{a} + \mathbf{b}\)를 각각 다른 색의 선분(<code>LINES</code>)으로 그린다. (힌트: 3장의 uniform 색 프로그램에 선분마다 <code>uniform4f</code>로 색을 바꾸며 <code>drawArrays</code>를 세 번 호출한다.)</p>
+<p><strong>해답</strong></p>
+<pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() { gl_Position = aPosition; }`;
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec4 uColor;
+out vec4 fragColor;
+void main() { fragColor = uColor; }`;
+
+function makeShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    return shader;
+}
+const program = gl.createProgram();
+gl.attachShader(program, makeShader(gl, gl.VERTEX_SHADER, vsSource));
+gl.attachShader(program, makeShader(gl, gl.FRAGMENT_SHADER, fsSource));
+gl.linkProgram(program);
+gl.useProgram(program);
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
+
+// 선분 3개: 원점→a, 원점→b, 원점→a+b (정점 2개씩)
+const a = [0.6, 0.2], b = [0.2, 0.6];
+const sum = [a[0] + b[0], a[1] + b[1]];
+const vertices = new Float32Array([
+    0, 0,  a[0], a[1],        // 벡터 a
+    0, 0,  b[0], b[1],        // 벡터 b
+    0, 0,  sum[0], sum[1],    // 벡터 a + b
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// 선분마다 색을 바꾸어 그린다: a는 빨강, b는 초록, a+b는 노랑
+gl.uniform4f(uColorLoc, 1.0, 0.3, 0.3, 1.0);
+gl.drawArrays(gl.LINES, 0, 2);
+gl.uniform4f(uColorLoc, 0.3, 1.0, 0.3, 1.0);
+gl.drawArrays(gl.LINES, 2, 2);
+gl.uniform4f(uColorLoc, 1.0, 1.0, 0.3, 1.0);
+gl.drawArrays(gl.LINES, 4, 2);</code></pre>
+<p>노란 선분(\(\mathbf{a}+\mathbf{b}\))이 빨강과 초록 선분이 만드는 평행사변형의 대각선이 되는 것을 확인하자. <code>drawArrays</code>의 둘째 인자 <code>first</code>를 이용해 한 버퍼의 서로 다른 구간을 그린 점도 눈여겨보자.</p></div></p>
+<details class="box summary" id="summary"><summary class="box-head">4장 요약</summary><div class="sum-body"><ul>
+<li><strong>점</strong>은 위치, <strong>벡터</strong>는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터가 된다.</li>
+<li>벡터의 덧셈·뺄셈·스칼라 곱은 성분별로 계산한다. 크기는 \(\lVert\mathbf{a}\rVert = \sqrt{a_x^2 + a_y^2 + a_z^2}\)이고, 벡터를 크기로 나누어 크기 1로 만드는 것이 <strong>정규화</strong>이다. 방향만 나타내는 벡터(법선, 빛 방향)는 항상 단위 벡터로 쓴다.</li>
+<li>WebGL은 \(+z\)축이 화면에서 관찰자 쪽으로 나오는 <strong>오른손 좌표계</strong>를 관례로 한다.</li>
+<li><strong>내적</strong> \(\mathbf{a}\cdot\mathbf{b} = a_xb_x + a_yb_y + a_zb_z = \lVert\mathbf{a}\rVert\lVert\mathbf{b}\rVert\cos\theta\)는 두 벡터가 같은 방향인 정도를 재는 수이다. 0이면 수직이며, 조명 계산(7장)의 핵심 연산이다.</li>
+<li><strong>외적</strong> \(\mathbf{a}\times\mathbf{b}\)는 두 벡터 모두에 수직인 벡터로, 방향은 오른손 법칙을 따르고 순서를 바꾸면 반대가 된다. 삼각형의 두 변 벡터를 외적하고 정규화하면 <strong>법선</strong>을 얻는다.</li>
+<li>행렬은 <strong>변환</strong>을 표현한다. 행렬\(\times\)벡터는 변환의 적용, 행렬\(\times\)행렬은 변환의 연결이며, \(A(B\mathbf{v}) = (AB)\mathbf{v}\)이므로 여러 변환을 하나의 행렬로 미리 합칠 수 있다. 행렬 곱은 \(AB \neq BA\)로 순서에 민감하다.</li>
+<li><strong>단위 행렬</strong> \(I\)는 아무 일도 하지 않는 변환, <strong>역행렬</strong> \(A^{-1}\)은 \(A\)를 되돌리는 변환이다.</li>
+<li>WebGL과 glMatrix는 행렬을 <strong>열 우선</strong>(column-major)으로 저장한다. 16칸 배열의 <code>m[0..3]</code>은 첫 번째 열이다.</li>
+<li>glMatrix는 <code>Float32Array</code> 기반 벡터·행렬 라이브러리로, 결과를 반환하지 않고 <strong>첫 번째 <code>out</code> 인자에 채워 넣는</strong> 규약을 쓴다 (쓰레기 수집 회피).</li>
+</ul></div></details>
+<details class="box exercise" id="exercises"><summary class="box-head">4장 연습문제</summary><div class="ex-body"><ol>
+<li class="ex-item" data-ex="1"><span class="diff"><span class="d1">★</span></span>  \(\mathbf{a} = (2, -1, 3)\), \(\mathbf{b} = (1, 4, -2)\)일 때 다음을 계산하시오.
+<ol type="a">
+<li>\(\mathbf{a} + \mathbf{b}\)</li>
+<li>\(3\mathbf{a} - \mathbf{b}\)</li>
+<li>\(\mathbf{a} \cdot \mathbf{b}\)</li>
+</ol></li>
+<li class="ex-item" data-ex="2"><span class="diff"><span class="d1">★</span></span>  벡터 \((2, 3, 6)\)의 크기를 구하고, 이 벡터를 정규화한 단위 벡터를 구하시오.</li>
+<li class="ex-item" data-ex="3"><span class="diff"><span class="d1">★</span></span>  카메라가 점 \(E = (0, 2, 5)\)에 있고 점 \(T = (0, 0, 0)\)을 바라본다. 카메라의 시선 방향 벡터(정규화 전)를 점의 연산으로 표현하고 그 값을 구하시오.</li>
+<li class="ex-item" data-ex="4"><span class="diff"><span class="d2">★★</span></span>  두 벡터 \((1, 2, 0)\)과 \((x, 4, 0)\)이 서로 수직이 되도록 하는 \(x\) 값을 구하시오.</li>
+<li class="ex-item" data-ex="5"><span class="diff"><span class="d2">★★</span></span>  \(\mathbf{a} = (1, 0, 0)\), \(\mathbf{b} = (0, 0, 1)\)에 대해 \(\mathbf{a} \times \mathbf{b}\)와 \(\mathbf{b} \times \mathbf{a}\)를 각각 계산하고, 오른손 법칙으로 결과의 방향이 맞는지 확인하시오.</li>
+<li class="ex-item" data-ex="6"><span class="diff"><span class="d2">★★</span></span>  삼각형의 세 정점이 \(A = (0,0,0)\), \(B = (2,0,0)\), \(C = (0,0,-2)\)이다 (바닥에 놓인 삼각형).
+<ol type="a">
+<li>법선 \(\mathbf{n} = \dfrac{(B-A)\times(C-A)}{\lVert(B-A)\times(C-A)\rVert}\)을 계산하시오.</li>
+<li>이 법선은 위(\(+y\))와 아래(\(-y\)) 중 어느 쪽을 향하는가? 위를 향하게 하려면 정점 순서를 어떻게 바꾸어야 하는가?</li>
+</ol></li>
+<li class="ex-item" data-ex="7"><span class="diff"><span class="d2">★★</span></span>  다음 두 행렬의 곱 \(AB\)와 \(BA\)를 계산하여 서로 다름을 확인하시오.
+\[
+A = \begin{pmatrix} 1 & 1 \\ 0 & 1 \end{pmatrix}, \qquad
+B = \begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}
+\]</li>
+<li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  glMatrix에서 <code>mat4</code> 배열 <code>m</code>의 값이 다음과 같다.
+<pre class="line-numbers"><code class="language-javascript">m = [1, 0, 0, 0,   0, 1, 0, 0,   0, 0, 1, 0,   5, 7, 9, 1]</code></pre>
+열 우선 저장 규칙에 따라 이 행렬을 수학 표기(\(4 \times 4\))로 쓰고, 이 행렬에 벡터 \((x, y, z, 1)\)을 곱한 결과를 계산하시오. 이 행렬은 어떤 변환을 하는 행렬이라고 추측되는가?</li>
+</ol></div></details>
 <div class="pager-row"><a class="pager prev" href="ch03.html">&larr; 3장</a><a class="pager next" href="ch05.html">5장 &rarr;</a></div>
 </main>
 </div>
