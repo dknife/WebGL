@@ -23,21 +23,18 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
@@ -45,7 +42,6 @@
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -404,7 +400,7 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);</code></pre>
 <p>그림 8.3은 세 모드가 \(0\sim1\) 밖 영역을 어떻게 채우는지 비교한다. 진한 테두리로 표시한 것이 기준 타일(\(0\sim1\) 구간)이다. <code>REPEAT</code>는 같은 타일을 같은 방향으로 반복하고, <code>MIRRORED_REPEAT</code>는 경계마다 뒤집어 이음매의 색을 잇는다. <code>CLAMP_TO_EDGE</code>는 기준 타일 한 장만 남기고 나머지 영역을 가장자리 텍셀 색으로 길게 늘인다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch08/ch08_fig03.svg" alt="figure">
-<p><figcaption>그림 8.3: \(0\sim1\) 밖 좌표를 채우는 세 가지 래핑 모드. 진한 테두리가 기준 타일이다.</figcaption></figure></p>
+<p><figcaption>그림 8.3: \(0\sim1\) 밖 좌표를 채우는 세 가지 래핑 모드</figcaption></figure></p>
 <h3>타일링 예제  —  좌표를 0에서 4까지</h3>
 <p>래핑의 효과는 반복해 보아야 실감이 난다. 코드 8.3은 \(8 \times 8\) 그라데이션 텍스처(가로 방향으로는 붉은 기가, 세로 방향으로는 초록 기가 짙어져 네 구석의 색이 서로 다른 무늬)를 만들고, 텍스처 좌표를 \(0 \sim 4\)로 주어 <code>REPEAT</code> 모드로 사각형을 채운다. 이렇게 방향이 뚜렷한 무늬를 쓰면 반복의 경계가 한눈에 드러나기 때문이다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -515,7 +511,7 @@ gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);</code></pre>
 <p>그림 8.4은 알파 0.55짜리 색 사각형 넷을 겹쳐 그린 것이다. 겹친 영역에서 색이 섞여 새 색이 나타난다  —  빨강과 초록이 겹쳐 노랑기가 돌고, 파랑이 더해지며 다시 어우러진다.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch08/ch08_img01.png" alt="figure">
-<p><figcaption>그림 8.4: 알파 블렌딩. 반투명(알파 0.55) 사각형 넷을 겹쳐 그리면 겹친 영역에서 소스 — 데스티네이션 색이 섞인다.</figcaption></figure></p>
+<p><figcaption>그림 8.4: 알파 블렌딩</figcaption></figure></p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const gl = glCanvas.getContext('webgl2', { antialias: true });
 const vs = `#version 300 es
 layout(location=0) in vec2 p; uniform vec2 uOff; uniform float uAspect;
@@ -585,7 +581,7 @@ vec3 normal = normalize(TBN * nTan);   // 이 법선을 조명에 사용</code><
 <p>그림 8.5은 같은 평면을 왼쪽은 색만, 오른쪽은 절차적으로 만든 벽돌 노멀 맵과 함께 렌더한 것이다. 왼쪽은 벽돌 무늬가 그려져 있을 뿐 평평하지만, 오른쪽은 같은 방향의 빛에서 줄눈이 파이고 벽돌이 도드라진다  —  지오메트리는 똑같이 평평한 사각형 하나인데도. 아래 예제는 이미지 파일 없이 셰이더 안에서 벽돌 높이로부터 법선을 만들어 쓴다.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch08/ch08_img02.png" alt="figure">
-<p><figcaption>그림 8.5: 노멀 매핑. 왼쪽은 색만 입힌 평면, 오른쪽은 같은 평면에 절차 벽돌 노멀 맵을 더한 것. 지오메트리는 둘 다 평평한 사각형이지만, 법선을 흔들면 빛이 요철을 만든다.</figcaption></figure></p>
+<p><figcaption>그림 8.5: 노멀 매핑</figcaption></figure></p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const gl = glCanvas.getContext('webgl2', { antialias: true });
 const vs = `#version 300 es
 layout(location=0) in vec2 aP; out vec2 vUV;

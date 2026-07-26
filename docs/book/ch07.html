@@ -23,21 +23,18 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 <div class="nav-secs"><a class="nav-sec" href="ch07.html#sec1">7.1 빛과 재질, 법선 벡터</a><a class="nav-sec" href="ch07.html#sec2">7.2 확산 반사와 램버트 모델</a><a class="nav-sec" href="ch07.html#sec3">7.3 퐁 반사 모델</a><a class="nav-sec" href="ch07.html#sec4">7.4 퍼버텍스 셰이딩과 퍼픽셀 셰이딩</a><a class="nav-sec" href="ch07.html#sec5">7.5 선형 색공간과 감마 보정</a><a class="nav-sec" href="ch07.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch07.html#summary">7장 요약</a><a class="nav-sec" href="ch07.html#exercises">연습문제</a></div>
 </div>
@@ -45,7 +42,6 @@
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -146,7 +142,7 @@ I_d = \cos\theta = \mathbf{n} \cdot \mathbf{l}
 <p>그림 7.1은 같은 크기의 표면이 빛을 받는 각도에 따라 밝기가 어떻게 달라지는지 보여 준다. 위에서 평행하게 쏟아지는 빛을 법선이 정면으로 받을 때(\(\theta=0\)) 표면은 가장 밝고, 표면이 비스듬해질수록 같은 빛이 더 넓은 면적에 퍼져 밝기가 \(\cos\theta\)에 비례해 줄어든다. 빛과 나란해지면 거의 어두워진다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch07/ch07_fig02.svg" alt="figure">
-<p><figcaption>그림 7.1: 빛을 받는 각도에 따른 밝기 변화(램버트 코사인 법칙). 법선 \(\mathbf{n}\)과 빛 방향 \(\mathbf{l}\)의 각 \(\theta\)가 벌어질수록 \(\mathbf{n}\cdot\mathbf{l}=\cos\theta\)가 작아져 표면이 어두워진다.</figcaption></figure></p>
+<p><figcaption>그림 7.1: 빛을 받는 각도에 따른 밝기 변화(램버트 코사인 법칙)</figcaption></figure></p>
 <h3>왜 max로 감싸는가</h3>
 <p>한 가지 손질이 필요하다. 표면이 빛을 등지면 사잇각이 \(90^\circ\)를 넘어 내적이 <strong>음수</strong>가 된다. 그러나 빛을 등진 면이 "음의 밝기"를 가질 수는 없다. 물리적으로 이런 면은 그 광원의 빛을 전혀 받지 못하므로 밝기가 0이어야 한다. 그래서 내적을 0으로 바닥을 깔아 준다.
 \[
@@ -296,7 +292,7 @@ I_s = \max(\mathbf{r} \cdot \mathbf{v},\ 0)^{\alpha}
 <p>그림 7.2은 표면 한 점에서 이 네 벡터가 이루는 관계를 보여 준다. 빛 방향 \(\mathbf{l}\)이 법선 \(\mathbf{n}\)에 대해 거울처럼 반사된 방향이 \(\mathbf{r}\)이며, 이때 입사각과 반사각이 같다(\(\theta_i = \theta_r\)). 반사 방향 \(\mathbf{r}\)가 시선 \(\mathbf{v}\)에 가까울수록 반사된 빛이 눈으로 곧장 들어와 하이라이트가 밝게 맺힌다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch07/ch07_fig03.svg" alt="figure">
-<p><figcaption>그림 7.2: 퐁 반사 모델의 네 벡터. 법선 \(\mathbf{n}\), 빛 방향 \(\mathbf{l}\), 반사 벡터 \(\mathbf{r}\), 시선 벡터 \(\mathbf{v}\)이며 입사각과 반사각이 같다. 정반사 밝기는 \(\mathbf{r}\)와 \(\mathbf{v}\)가 가까운 정도로 정해진다.</figcaption></figure></p>
+<p><figcaption>그림 7.2: 퐁 반사 모델의 네 벡터</figcaption></figure></p>
 <h3>반질거림 지수  —  하이라이트의 날카로움</h3>
 <p>지수 \(\alpha\)는 <strong class="term-ko">반질거림</strong><sup class="term">shininess</sup>을 조절한다. 내적 \(\mathbf{r} \cdot \mathbf{v}\)는 \(0 \sim 1\) 사이의 값인데, 여기에 큰 지수를 씌우면 1에 아주 가까운 값만 살아남고 나머지는 급격히 0으로 눌린다. 따라서 \(\alpha\)가 클수록 하이라이트가 <strong>작고 날카롭게</strong> 맺혀 금속이나 유리처럼 보이고, \(\alpha\)가 작을수록 하이라이트가 <strong>크고 부드럽게</strong> 퍼져 플라스틱이나 젖은 나무처럼 보인다. 흔히 \(\alpha\)는 8에서 256 사이의 값을 쓴다.</p>
 <h3>퐁 모델의 합성 공식</h3>
@@ -461,7 +457,7 @@ gl.drawArrays(gl.TRIANGLES, 0, 36);</code></pre><div class="listing-caption">코
 <p>이 차이가 도드라지는 곳이 바로 정반사 하이라이트이다. 그림 7.3이 두 방식의 차이를 나타낸다. 하이라이트는 표면의 좁은 영역에 맺히는데, 구로우 셰이딩에서 하필 그 지점이 정점과 정점 사이에 떨어지면 어느 정점도 하이라이트를 "보지 못한다". 정점에서 계산한 밝기를 보간할 뿐이므로, 삼각형 한가운데 있어야 할 밝은 반점이 통째로 사라지거나 별 모양으로 뭉개진다. 메시가 성길수록 이 결함이 심하다. 퐁 셰이딩은 정점의 법선을 프래그먼트마다 보간해 조명을 다시 계산하므로, 성긴 메시에서도 하이라이트가 제자리에 둥글게 맺힌다. 오늘날 GPU는 충분히 빨라 대부분의 실시간 렌더링이 퐁 셰이딩을 기본으로 쓴다. 이 장의 모든 예제가 퐁 셰이딩인 이유이다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch07/ch07_fig01.svg" alt="figure">
-<p><figcaption>그림 7.3: 구로우 셰이딩과 퐁 셰이딩의 차이. 구로우는 정점에서 계산한 색을 삼각형 내부로 보간해, 정점 사이에 맺혀야 할 하이라이트를 놓칠 수 있다. 퐁은 정점의 법선을 보간한 뒤 프래그먼트마다 조명을 계산해 하이라이트를 제자리에 맺는다.</figcaption></figure></p>
+<p><figcaption>그림 7.3: 구로우 셰이딩과 퐁 셰이딩의 차이</figcaption></figure></p>
 <h3>위도-경도 분할로 구 만들기</h3>
 <p>퐁 셰이딩의 진가는 매끈한 곡면에서 드러난다. 곡면의 대표인 <strong>구</strong>를 정점과 법선으로 만들어 보자. 지구본의 위선과 경선을 떠올리면 된다. 북극에서 남극까지의 <strong class="term-ko">위도</strong><sup class="term">latitude</sup> 각과 한 바퀴 도는 <strong class="term-ko">경도</strong><sup class="term">longitude</sup> 각을 잘게 나누어 격자점을 찍고, 이웃한 격자점 넷을 삼각형 둘로 잇는다. 구의 한 점에서 법선은 중심에서 그 점으로 향하는 방향과 정확히 같으므로, 반지름 \(r\)인 구에서는 <strong>위치를 \(r\)로 나눈 것이 곧 법선</strong>이다. 법선을 따로 계산할 필요 없이 위치에서 바로 얻는다.</p>
 <pre class="line-numbers"><code class="language-javascript">// 위도-경도 분할로 구의 정점과 법선 생성

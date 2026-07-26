@@ -23,14 +23,12 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 <div class="nav-secs"><a class="nav-sec" href="ch04.html#sec1">4.1 벡터와 좌표계</a><a class="nav-sec" href="ch04.html#sec2">4.2 내적과 외적</a><a class="nav-sec" href="ch04.html#sec3">4.3 행렬과 행렬 곱</a><a class="nav-sec" href="ch04.html#sec4">4.4 glMatrix 라이브러리</a><a class="nav-sec" href="ch04.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch04.html#summary">4장 요약</a><a class="nav-sec" href="ch04.html#exercises">연습문제</a></div>
 </div>
@@ -38,14 +36,12 @@
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -96,7 +92,7 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 <p>그림 4.1은 평행사변형 법칙을 보여 준다. \(\mathbf{a}\)의 끝에서 \(\mathbf{b}\)만큼(또는 \(\mathbf{b}\)의 끝에서 \(\mathbf{a}\)만큼) 이동하면 두 경로가 같은 점에 도달하며, 원점에서 그 점으로 향하는 대각선이 곧 \(\mathbf{a} + \mathbf{b}\)이다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch04/ch04_fig04.svg" alt="figure">
-<p><figcaption>그림 4.1: 벡터 덧셈의 평행사변형 법칙. 두 벡터를 두 변으로 하는 평행사변형의 대각선이 합 벡터가 된다.</figcaption></figure></p>
+<p><figcaption>그림 4.1: 벡터 덧셈의 평행사변형 법칙</figcaption></figure></p>
 <h3>벡터의 크기와 정규화</h3>
 <p>벡터 \(\mathbf{a}\)의 <strong class="term-ko">크기</strong><sup class="term">magnitude</sup>(길이)는 피타고라스 정리의 3차원 확장으로 구한다.
 \[
@@ -112,7 +108,7 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 <p>세 축의 방향을 정하는 방식에는 두 가지 관례가 있다. 오른손을 펴서 엄지를 \(x\)축(+), 검지를 \(y\)축(+)에 맞추었을 때 중지가 가리키는 방향이 \(z\)축(+)이면 <strong class="term-ko">오른손 좌표계</strong><sup class="term">right-handed coordinate system</sup>, 왼손으로 같은 일을 하면 왼손 좌표계이다. WebGL을 포함한 OpenGL 계열은 관례적으로 <strong>오른손 좌표계</strong>를 사용한다. 화면 오른쪽이 \(+x\), 위쪽이 \(+y\)일 때, \(+z\)는 <strong>화면에서 나와 우리 눈을 향하는 방향</strong>이다(그림 4.2). 즉 물체가 카메라에서 멀어질수록 \(z\) 값은 작아진다(음수가 된다). 6장에서 카메라와 투영을 다룰 때 이 관례가 전면에 등장한다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch04/ch04_fig03.svg" alt="figure">
-<p><figcaption>그림 4.2: WebGL의 오른손 좌표계. \(+x\)는 오른쪽, \(+y\)는 위, \(+z\)는 화면에서 나와 관찰자를 향한다.</figcaption></figure></p>
+<p><figcaption>그림 4.2: WebGL의 오른손 좌표계</figcaption></figure></p>
 <div class="box keypoint"><span class="chip">요점</span><p>점은 위치, 벡터는 방향과 크기이다. 두 점의 차 \(Q - P\)는 \(P\)에서 \(Q\)로 향하는 벡터이며, 방향만 필요한 벡터는 <strong>정규화</strong>하여 단위 벡터로 만들어 쓴다. WebGL은 \(+z\)가 화면 밖(관찰자 쪽)을 향하는 <strong>오른손 좌표계</strong>를 관례로 한다.</p></div>
 <h2 id="sec2">4.2 내적과 외적</h2>
 <p>벡터 두 개를 결합하는 곱셈에는 두 종류가 있다. 결과가 수 하나인 <strong>내적</strong>과, 결과가 새로운 벡터인 <strong>외적</strong>이다. 이 두 연산은 그래픽스 수학의 양대 기둥이므로 계산법과 기하학적 의미를 모두 확실히 익혀 두자.</p>
@@ -128,7 +124,7 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 <p>즉 내적은 "두 벡터가 얼마나 같은 방향을 향하는가"를 재는 척도이다. 두 벡터가 모두 단위 벡터라면 내적은 곧 \(\cos\theta\)이다. 그림 4.3처럼 \(\mathbf{b}\)를 \(\mathbf{a}\) 방향으로 내려 그은 그림자(정사영)의 길이가 \(\lVert\mathbf{b}\rVert\cos\theta\)이며, 내적은 여기에 \(\lVert\mathbf{a}\rVert\)를 곱한 값으로 이해할 수 있다. 부호만으로도 유용한 판정이 가능하다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch04/ch04_fig02.svg" alt="figure">
-<p><figcaption>그림 4.3: 내적과 사잇각. \(\mathbf{b}\)를 \(\mathbf{a}\)에 정사영한 길이가 \(\lVert\mathbf{b}\rVert\cos\theta\)이다.</figcaption></figure></p>
+<p><figcaption>그림 4.3: 내적과 사잇각</figcaption></figure></p>
 <ul>
 <li>\(\mathbf{a} \cdot \mathbf{b} > 0\)  —  두 벡터의 사잇각이 예각 (대체로 같은 방향)</li>
 <li>\(\mathbf{a} \cdot \mathbf{b} = 0\)  —  두 벡터가 서로 <strong>수직</strong></li>
@@ -153,7 +149,7 @@ k\,\mathbf{a} = (k a_x,\ k a_y,\ k a_z)
 \]</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch04/ch04_fig01.svg" alt="figure">
-<p><figcaption>그림 4.4: 외적과 오른손 법칙. 두 변 벡터 \(\mathbf{a}\), \(\mathbf{b}\)에 모두 수직인 \(\mathbf{a}\times\mathbf{b}\)가 삼각형 면의 법선 \(\mathbf{n}\)이 된다.</figcaption></figure></p>
+<p><figcaption>그림 4.4: 외적과 오른손 법칙</figcaption></figure></p>
 <p>정점 순서 \(A \to B \to C\)가 반시계 방향일 때 법선은 관찰자 쪽(면의 앞면)을 향한다. WebGL이 삼각형의 앞면을 반시계 방향 정점 순서로 판정하는 것도 이 관례와 맞물려 있다.</p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">내적과 외적, 언제 무엇을 쓰나</span><p>목적이 <strong>수치</strong>(각도, 밝기, 닮은 정도)라면 내적, 목적이 <strong>수직 방향</strong>(법선, 회전축)이라면 외적이다. 앞으로 등장하는 공식이 낯설게 느껴질 때 이 기준으로 돌아오면 대부분 풀린다. GLSL과 glMatrix 모두 <code>dot</code>, <code>cross</code>라는 이름으로 두 연산을 제공한다.</p></div>
 <h2 id="sec3">4.3 행렬과 행렬 곱</h2>

@@ -23,14 +23,12 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
@@ -38,14 +36,12 @@
 <div class="nav-ch current"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 <div class="nav-secs"><a class="nav-sec" href="ch06.html#sec1">6.1 카메라와 뷰 변환</a><a class="nav-sec" href="ch06.html#sec2">6.2 투영 — 직교와 원근</a><a class="nav-sec" href="ch06.html#sec3">6.3 MVP 행렬 파이프라인</a><a class="nav-sec" href="ch06.html#sec4">6.4 뷰포트와 종횡비</a><a class="nav-sec" href="ch06.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch06.html#summary">6장 요약</a><a class="nav-sec" href="ch06.html#exercises">연습문제</a></div>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -144,7 +140,7 @@ M_{ortho} =
 <p>원근 투영의 관측 공간은 직육면체가 아니라, 눈 쪽이 좁고 먼 쪽이 넓은 <strong>잘린 피라미드</strong> 모양이 된다. 이 입체를 <strong class="term-ko">절두체</strong><sup class="term">frustum</sup>라고 부른다. 그림 6.2은 두 투영의 관측 공간과 투영선을 나란히 견주어 보여 준다. 왼쪽 직교 투영은 직육면체 관측 공간에 평행한 투영선이라 같은 크기의 물체가 거리와 무관하게 같은 크기로 담기고, 오른쪽 원근 투영은 절두체 관측 공간에 투영선이 카메라 한 점으로 모여 멀수록 작게 담긴다. glMatrix에서는 절두체를 네 개의 값으로 지정한다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch06/ch06_fig03.svg" alt="figure">
-<p><figcaption>그림 6.2: 직교 투영(왼쪽, 직육면체 관측 공간)과 원근 투영(오른쪽, 절두체 관측 공간)의 비교. 노란 면이 <code>near</code> · <code>far</code> 절단면이다.</figcaption></figure></p>
+<p><figcaption>그림 6.2: 직교 투영(왼쪽, 직육면체 관측 공간)과 원근 투영(오른쪽, 절두체 관측 공간)의 비교</figcaption></figure></p>
 <pre class="line-numbers"><code class="language-javascript">const projection = mat4.create();
 mat4.perspective(projection,
     fovy,        // 세로 방향 시야각 (라디안!)

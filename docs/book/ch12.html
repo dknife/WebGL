@@ -23,28 +23,24 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -93,7 +89,7 @@
 <p>그림 12.1은 이 세 객체가 어떻게 맞물리는지 보여 준다. 렌더러가 한가운데에서 장면(그릴 것)과 카메라(시점)를 입력으로 받아, 그 결과를 캔버스에 픽셀로 출력하는 구조이다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch12/ch12_fig02.svg" alt="figure">
-<p><figcaption>그림 12.1: Three.js의 세 구성 요소. 렌더러가 장면을 카메라 시점에서 그려 캔버스에 출력하며, 이 흐름 전체를 <code>render(scene, camera)</code> 한 번의 호출이 가동한다.</figcaption></figure></p>
+<p><figcaption>그림 12.1: Three.js의 세 구성 요소</figcaption></figure></p>
 <p>세 객체가 만나는 지점이 렌더러의 <code>render()</code> 메서드이다. "이 장면을 이 카메라로 찍어라"라는 한 줄의 명령이 파이프라인 전체를 가동시킨다.</p>
 <pre class="line-numbers"><code class="language-javascript">renderer.render(scene, camera);    // 장면을 카메라 시점에서 그린다</code></pre>
 <h3>첫 예제: 회전하는 정육면체</h3>
@@ -165,7 +161,7 @@ M_{\text{world}} = M_{\text{부모의 부모}} \cdot M_{\text{부모}} \cdot M_{
 <p>그림 12.2은 이 계층을 트리로 나타낸 것이다. 장면을 뿌리로 하여 메시와 그룹이 부모-자식으로 매달려 있고, 부모의 변환이 자식에게 곱해져 내려간다. <code>earthOrbit</code>을 회전시키면 반지름 4만큼 떨어져 매달린 지구가 태양 주위를 돌고(공전), <code>moonOrbit</code>도 지구와 같은 자리에 매달려 있으므로 함께 돈다. 다시 <code>moonOrbit</code>을 회전시키면 달이 지구 주위를 돈다. 두 회전이 자동으로 합성되어 달은 "지구를 따라 태양을 돌면서 동시에 지구 주위를 도는" 복합 운동을 하게 된다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch12/ch12_fig01.svg" alt="figure">
-<p><figcaption>그림 12.2: 태양-지구-달 장면 그래프. 장면을 뿌리로 메시(그리는 물체)와 그룹(보이지 않는 회전축)이 부모-자식 트리를 이루며, 부모의 변환이 경로를 따라 자식에게 전파되어 최종 세계 변환 \(M_{\text{world}}\)가 된다(5장 계층 모델링과 대응).</figcaption></figure></p>
+<p><figcaption>그림 12.2: 태양-지구-달 장면 그래프</figcaption></figure></p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glCanvas'), antialias: true });
 renderer.setSize(600, 400);

@@ -23,7 +23,6 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
@@ -31,21 +30,18 @@
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -160,7 +156,7 @@ function makeProgram(gl, vsSource, fsSource) {
 <p>정점 좌표를 정하려면 먼저 WebGL이 사용하는 좌표계를 알아야 한다. 아무 변환도 하지 않을 때 WebGL의 화면 좌표는 <strong class="term-ko">클립 공간</strong><sup class="term">clip space</sup>이라는 정규화된 좌표계를 따른다. 캔버스의 픽셀 크기와 무관하게, 캔버스 왼쪽 끝이 \(x=-1\), 오른쪽 끝이 \(x=+1\)이고, 아래쪽 끝이 \(y=-1\), 위쪽 끝이 \(y=+1\)이다. 캔버스 정중앙이 원점 \((0, 0)\)이며, 이 범위를 벗어난 정점은 화면 밖으로 잘려 나간다. 그림 2.1은 캔버스 전체에 대응하는 클립 공간의 좌표계를 나타낸다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch02/ch02_fig01.svg" alt="figure">
-<p><figcaption>그림 2.1: 클립 공간 좌표계. 캔버스 전체가 \(x,y\) 각각 \(-1\)에서 \(+1\)까지의 정사각형에 대응하며, 중앙이 원점이고 \(y\)축은 위를 향한다.</figcaption></figure></p>
+<p><figcaption>그림 2.1: 클립 공간 좌표계</figcaption></figure></p>
 <p>수학 시간에 쓰던 좌표계처럼 \(y\)축이 위를 향한다는 점에 주목하자. 2차원 웹 그래픽스(캔버스 2D)나 마우스 좌표는 \(y\)가 아래로 갈수록 커지지만, WebGL의 클립 공간은 위가 양수이다. 우리가 그릴 삼각형의 세 정점은 다음과 같이 정한다.</p>
 <pre class="line-numbers"><code class="language-javascript">// 삼각형 정점 3개의 (x, y) 좌표 — 클립 공간 기준
 const vertices = new Float32Array([
@@ -199,7 +195,7 @@ gl.vertexAttribPointer(
 <p>정점 하나당 2개의 성분만 공급하지만 셰이더의 <code>aPosition</code>은 <code>vec4</code>이다. 이렇게 성분이 모자라면 나머지는 자동으로 기본값 \((z=0, w=1)\)로 채워지므로, 2차원 그림을 그리는 동안은 \((x, y)\)만 보내면 된다. 그림 2.2은 버퍼에 늘어선 숫자들이 어떻게 정점 단위로 끊겨 정점 셰이더의 입력 속성으로 흘러 들어가는지를 나타낸다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch02/ch02_fig03.svg" alt="figure">
-<p><figcaption>그림 2.2: 정점 데이터의 흐름. 버퍼에 연속으로 담긴 <code>float</code> 값을 <code>vertexAttribPointer</code>의 설정(성분 2개씩)에 따라 끊어, 0번 정점 속성 <code>aPosition</code>으로 한 정점씩 공급한다.</figcaption></figure></p>
+<p><figcaption>그림 2.2: 정점 데이터의 흐름</figcaption></figure></p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">WebGL 함수 이름 읽는 법</span><p><code>vertexAttribPointer</code>, <code>vertexAttrib3f</code>처럼 WebGL 함수 이름에는 규칙이 있다. 이름 끝의 숫자는 성분 개수, 문자는 자료형(<code>f</code>: float, <code>i</code>: 정수)을 나타내고, <code>v</code>가 붙으면 값을 낱개가 아니라 배열로 받는다는 뜻이다. 예를 들어 <code>vertexAttrib3f(0, x, y, z)</code>는 0번 속성에 float 3개를 넣고, <code>vertexAttrib3fv(0, arr)</code>는 같은 일을 배열로 한다. 이 규칙은 OpenGL 시절부터 이어져 온 관례로, 앞으로 만날 <code>uniform3f</code>, <code>uniformMatrix4fv</code> 같은 이름도 같은 방식으로 읽으면 된다.</p></div>
 <h3>정점 배열 오브젝트  —  설정 묶어 두기</h3>
 <p>방금 한 속성 연결 설정은 <strong class="term-ko">정점 배열 오브젝트</strong><sup class="term">vertex array object</sup>, 줄여서 VAO에 저장해 둘 수 있다. VAO를 만들어 바인딩해 두면, 이후의 속성 설정이 모두 그 VAO에 기록된다. 그리기 직전에 VAO 하나만 다시 바인딩하면 모든 설정이 한꺼번에 복원되므로, 여러 물체를 그리는 프로그램에서 필수적인 도구이다.</p>
@@ -294,7 +290,7 @@ render();</code></pre><div class="listing-caption">코드 2.1: 첫 번째 삼각
 <p>정점 개수와 만들어지는 도형 개수의 관계를 정리해 두자. 정점이 \(n\)개일 때 <code>TRIANGLES</code>는 \(n/3\)개, <code>TRIANGLE_STRIP</code>과 <code>TRIANGLE_FAN</code>은 \(n-2\)개의 삼각형을 만든다. 스트립과 팬은 정점을 재사용하므로 같은 개수의 정점으로 더 많은 삼각형을 그릴 수 있어, 이어진 면을 표현할 때 효율적이다. 그림 2.3은 같은 정점들이 일곱 가지 프리미티브에 따라 어떻게 서로 다른 점 — 선 — 면으로 조립되는지를 나타낸다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch02/ch02_fig02.svg" alt="figure">
-<p><figcaption>그림 2.3: 일곱 가지 프리미티브의 조립 방식. 파란 점은 버퍼에서 온 정점이고, 구리색 선과 면은 프리미티브에 따라 조립된 결과이다. 같은 정점 집합이라도 <code>mode</code>에 따라 전혀 다른 그림이 된다.</figcaption></figure></p>
+<p><figcaption>그림 2.3: 일곱 가지 프리미티브의 조립 방식</figcaption></figure></p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">사각형 프리미티브는 어디로 갔을까</span><p>과거의 OpenGL에는 사각형을 그리는 <code>GL_QUADS</code>, 다각형을 그리는 <code>GL_POLYGON</code> 같은 프리미티브도 있었다. 그러나 GPU 하드웨어는 내부적으로 모든 면을 삼각형으로 쪼개어 처리하기 때문에, 현대 API들은 이런 프리미티브를 제거하고 삼각형 계열만 남겼다. WebGL에서 사각형을 그리려면 삼각형 두 개를 붙이거나, 정점 4개를 <code>TRIANGLE_STRIP</code>으로 조립하면 된다. "모든 면은 결국 삼각형"이라는 사실은 3차원 모델을 다루는 9장에서도 그대로 이어진다.</p></div>
 <h3>같은 정점, 다른 프리미티브</h3>
 <p>프리미티브의 효과를 눈으로 확인해 보자. 다음 프로그램은 정점 6개를 준비하고 <code>TRIANGLES</code>로 조립하여 삼각형 두 개를 그린다. 옛 그래픽스 강의실에서 즐겨 쓰던, 두 삼각형이 육각별처럼 겹치는 배치이다.</p>
@@ -476,7 +472,7 @@ render();   // 첫 화면 (빈 배경)</code></pre><div class="listing-caption">
 <p>캔버스를 여러 번 클릭하면 클릭한 자리들이 꺾은선으로 이어진다. 예를 들어 다섯 번 클릭하면 그림 2.5과 같은 꺾은선이 그려진다. <code>render()</code> 안의 <code>LINE_STRIP</code>을 <code>POINTS</code>, <code>LINE_LOOP</code>, <code>TRIANGLE_FAN</code> 등으로 바꾸어, 같은 클릭 궤적이 다른 도형으로 조립되는 것도 관찰해 보자.</p>
 <figure class="fig">
 <img class="gfx" src="img/ch02/ch02_img02.png" alt="figure">
-<p><figcaption>그림 2.5: 실습 2-3 실행 결과  —  다섯 번 클릭한 예</figcaption></figure></p></div></p>
+<p><figcaption>그림 2.5: 실습 2-3 실행 결과</figcaption></figure></p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">2장 요약</summary><div class="sum-body"><ul>
 <li>WebGL 프로그램은 자원을 준비하는 <strong>초기화</strong>와 화면을 그리는 <strong>그리기</strong>의 두 단계로 조직한다.</li>
 <li>셰이더는 <strong>컴파일</strong>(<code>compileShader</code>) 후 <strong>링크</strong>(<code>linkProgram</code>)하여 하나의 프로그램으로 만들고, <code>useProgram()</code>으로 파이프라인에 장착한다. 실패 여부는 <code>COMPILE_STATUS</code>·<code>LINK_STATUS</code>로 확인한다.</li>

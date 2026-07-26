@@ -23,7 +23,6 @@
 <div class="layout">
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
-<div class="nav-part">Part I. WebGL 시작</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
@@ -31,21 +30,18 @@
 <div class="nav-ch current"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
 <div class="nav-secs"><a class="nav-sec" href="ch03.html#sec1">3.1 GLSL 언어 기초</a><a class="nav-sec" href="ch03.html#sec2">3.2 셰이더의 입력과 출력</a><a class="nav-sec" href="ch03.html#sec3">3.3 uniform 변수 — 자바스크립트에서 셰이더로</a><a class="nav-sec" href="ch03.html#sec4">3.4 정점 색과 보간</a><a class="nav-sec" href="ch03.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch03.html#summary">3장 요약</a><a class="nav-sec" href="ch03.html#exercises">연습문제</a></div>
 </div>
-<div class="nav-part">Part II. 기하 변환과 카메라</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
 </div>
-<div class="nav-part">Part III. 실감 렌더링</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
-<div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
@@ -111,7 +107,7 @@ vec3 h = a * 0.5;      // (0.5, 1.0, 1.5) — 스칼라 배</code></pre>
 <p>셰이더 프로그래밍의 핵심은 데이터가 어디서 들어와 어디로 나가는지를 파악하는 것이다. 그림 3.1은 파이프라인을 따라 데이터가 흐르는 경로를 나타낸 것이다. 버퍼의 정점 데이터가 <code>in</code> 변수로 정점 셰이더에 들어오고, 정점 셰이더는 <code>gl_Position</code>과 <code>out</code> 변수를 내보낸다. 그 <code>out</code> 값은 래스터화 단계에서 보간된 뒤 프래그먼트 셰이더의 <code>in</code>으로 전달되며, 프래그먼트 셰이더의 <code>out</code>이 최종 색이 되어 화면에 남는다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch03/ch03_fig02.svg" alt="figure">
-<p><figcaption>그림 3.1: 셰이더 데이터 흐름  —  버퍼에서 화면까지 <code>in</code>/<code>out</code> 변수가 흐르는 경로</figcaption></figure></p>
+<p><figcaption>그림 3.1: 셰이더 데이터 흐름</figcaption></figure></p>
 <h3>정점 셰이더의 입출력</h3>
 <p>정점 셰이더의 <code>in</code> 변수는 2장에서 배운 <strong>정점 속성</strong>이다. 버퍼에 담아 둔 데이터가 <code>layout(location = \(n\))</code> 번호에 따라 정점 하나 분량씩 잘려 들어온다. 출력은 두 갈래이다. 하나는 반드시 기록해야 하는 내장 변수 <code>gl_Position</code>(정점의 최종 위치)이고, 다른 하나는 프로그래머가 자유롭게 선언하는 <code>out</code> 변수들로, 다음 단계로 넘기고 싶은 값(색, 텍스처 좌표 등)을 담는다.</p>
 <pre class="line-numbers"><code class="language-glsl">#version 300 es
@@ -281,7 +277,7 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre><div class="listing-caption">코�
 <p>꼭짓점에 가까운 프래그먼트일수록 그 꼭짓점의 값을 많이 물려받는다. 빨강 꼭짓점 바로 옆은 거의 빨강이고, 삼각형의 무게중심은 세 색이 \(\frac{1}{3}\)씩 섞인 회색빛이 된다. 예를 들어 빨강 \((1,0,0)\) 꼭짓점과 파랑 \((0,0,1)\) 꼭짓점을 잇는 변의 중점에서는 두 값이 반씩 섞인 \((0.5, 0, 0.5)\), 즉 보라색이 나타난다. 그림 3.2은 이 RGB 삼각형에서 세 꼭짓점 색이 내부로 퍼지며 섞이는 모습을, 변의 중점과 무게중심의 색과 함께 보여 준다.</p>
 <figure class="fig">
 <img class="tikz" src="img/fig/ch03/ch03_fig01.svg" alt="figure">
-<p><figcaption>그림 3.2: 정점 색의 보간  —  세 꼭짓점(빨강·초록·파랑)의 색이 삼각형 내부에서 가중 평균으로 섞인다</figcaption></figure></p>
+<p><figcaption>그림 3.2: 정점 색의 보간</figcaption></figure></p>
 <p>보간은 색에만 일어나는 특별한 일이 아니다. 정점 셰이더가 <code>out</code>으로 내보내는 <strong>모든 값</strong>이 같은 방식으로 보간된다. 7장에서는 법선 벡터를 보간하여 매끄러운 조명을 만들고, 8장에서는 텍스처 좌표를 보간하여 이미지를 면에 입힌다. 세 꼭짓점의 정보만으로 면 전체를 채우는 이 메커니즘이 실시간 그래픽스 효율의 핵심 원리이다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p>정점 셰이더의 <code>out</code> 값은 래스터화 단계에서 <strong>프래그먼트의 위치에 따라 가중 평균(보간)</strong>되어 프래그먼트 셰이더의 <code>in</code>으로 전달된다. 정점에만 값을 주면 면 전체가 부드럽게 채워지는 이 원리는 색뿐 아니라 법선, 텍스처 좌표 등 모든 정점 데이터에 적용된다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 3-1</strong>  실습 2-2의 사각형(<code>TRIANGLE_STRIP</code>, 정점 4개)에 정점 색 속성을 추가하여, 네 모서리가 각각 빨강·초록·파랑·노랑인 그라데이션 사각형을 그려 보자.</p>
