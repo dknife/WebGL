@@ -43,7 +43,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
-<div class="nav-secs"><a class="nav-sec" href="ch09.html#sec1">9.1 인덱스 버퍼와 drawElements</a><a class="nav-sec" href="ch09.html#sec2">9.2 VAO와 렌더링 효율</a><a class="nav-sec" href="ch09.html#sec3">9.3 OBJ 파일과 모델 로딩</a><a class="nav-sec" href="ch09.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch09.html#summary">9장 요약</a><a class="nav-sec" href="ch09.html#exercises">연습문제</a></div>
+<div class="nav-secs"><a class="nav-sec" href="ch09.html#sec1">9.1 인덱스 버퍼와 drawElements</a><a class="nav-sec" href="ch09.html#sec2">9.2 VAO와 렌더링 효율</a><a class="nav-sec" href="ch09.html#sec3">9.3 OBJ 파일과 모델 로딩</a><a class="nav-sec" href="ch09.html#sec4">9.4 인스턴싱</a><a class="nav-sec" href="ch09.html#sec5">9.5 컬링과 공간 분할</a><a class="nav-sec" href="ch09.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch09.html#summary">9장 요약</a><a class="nav-sec" href="ch09.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-part">Part IV. 한 걸음 더</div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
@@ -51,6 +51,13 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
 </div>
 </nav>
 <main class="content">
@@ -63,6 +70,8 @@
 <li>VAO로 물체별 렌더링 설정을 묶어 여러 물체를 전환하며 그릴 수 있다.</li>
 <li>인터리브 버퍼를 구성하고 <code>stride</code>와 <code>offset</code>의 의미를 설명할 수 있다.</li>
 <li>OBJ 파일을 파싱하여 3차원 모델을 조명과 함께 화면에 그릴 수 있다.</li>
+<li>인스턴싱으로 같은 메시 수천 개를 한 번의 드로우 콜로 그릴 수 있다.</li>
+<li>백페이스·프러스텀 컬링과 공간 분할로 그리지 않을 것을 걸러 낼 수 있다.</li>
 </ul></div></details></div>
 <p>지금까지 우리가 그린 물체는 삼각형 몇 개로 충분했다. 그러나 게임 캐릭터 하나, 자동차 한 대는 수만에서 수백만 개의 삼각형으로 이루어진다. 1장에서 약속했듯이 아무리 복잡한 모델도 결국은 삼각형의 모임, 즉 <strong>메시</strong>이다. 문제는 규모이다. 삼각형이 많아지면 같은 꼭짓점이 수없이 중복되어 메모리를 낭비하고, 물체가 많아지면 물체마다 버퍼 설정을 되풀이하느라 시간을 낭비한다. 그리고 그 많은 정점 좌표를 코드에 손으로 적어 넣을 수는 없는 노릇이다.</p>
 <p>이 장은 이 세 가지 문제를 차례로 해결한다. 먼저 <strong>인덱스 버퍼</strong>로 정점을 공유하여 중복을 없애고, <strong>VAO</strong>로 물체별 설정을 묶어 여러 물체를 효율적으로 전환하며, 마지막으로 모델링 도구가 만들어 낸 <strong>OBJ 파일</strong>을 읽어 들이는 파서를 직접 작성해 진짜 3차원 모델을 화면에 띄운다. 이 장을 마치면 "데이터가 주어지면 무엇이든 그릴 수 있는" 뼈대가 완성된다.</p>
@@ -601,6 +610,106 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 gl.drawArrays(gl.TRIANGLES, 0, mesh.count);</code></pre><div class="listing-caption">코드 9.3: 집 모양 OBJ를 파싱하여 램버트 조명으로 그리기</div></div>
 <p>음영이 진 입체적인 집이 나타난다. 벽과 지붕의 면마다 밝기가 다른 것은, 파서가 각 면의 법선을 정점에 실어 두고 프래그먼트 셰이더가 그 법선과 광원 방향의 내적으로 밝기를 계산했기 때문이다. 콘솔에 찍힌 정점 개수 42는 삼각형 열네 개(집의 여덟 면 중 사각형 여섯 개가 삼각형 둘씩, 삼각형 두 개가 하나씩)에서 나온 값이다. <code>objText</code> 문자열을 다른 OBJ 파일의 내용으로 바꾸면, 코드 한 줄 고치지 않고 다른 모델이 그려진다. 바로 이것이 파일에서 모델을 읽는 로더를 만든 목적이다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p>OBJ 파일은 <code>v</code>(위치)·<code>vn</code>(법선)·<code>f</code>(면 인덱스) 라인으로 메시를 담으며, 인덱스는 <strong>1부터</strong> 시작한다. 파서는 <code>v</code>·<code>vn</code>을 순서대로 모으고 <code>f</code>가 가리키는 값을 풀어써서 정점 배열을 만든다. 이렇게 하면 면마다 다른 법선을 실을 수 있어 조명이 자연스럽고, 문자열만 파일 내용으로 바꾸면 어떤 모델이든 읽을 수 있다.</p></div>
+<h2 id="sec4">9.4 인스턴싱</h2>
+<p>같은 메시를 수백, 수천 개 그려야 할 때가 있다. 풀밭의 풀잎, 우주의 소행성, 군중의 사람들. 이들을 물체마다 <code>drawElements</code>를 한 번씩 호출해 그리면, 정점 데이터는 하나인데도 <strong class="term-ko">드로우 콜</strong><sup class="term">draw call</sup>이 수천 번 발생한다. 드로우 콜 하나하나에는 CPU — GPU 통신 비용이 붙으므로, 이것이 곧 병목이 된다. <strong class="term-ko">인스턴싱</strong><sup class="term">instancing</sup>은 <strong>같은 메시를 한 번의 드로우 콜로 여러 번</strong> 그리는 기법이다.</p>
+<h3>인스턴스별 속성과 디바이저</h3>
+<p>핵심 아이디어는 이렇다. 정점 데이터(위치·법선)는 모든 인스턴스가 공유하되, 인스턴스마다 다른 값(위치 오프셋, 색, 변환 행렬)은 <strong>인스턴스별 속성</strong>으로 따로 넘긴다. 보통의 정점 속성은 정점마다 다음 값으로 넘어가지만, 인스턴스별 속성은 <strong class="term-ko">정점 속성 디바이저</strong><sup class="term">vertex attribute divisor</sup>를 1로 두어 <strong>인스턴스마다</strong> 한 번씩만 넘어가게 한다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 인스턴스별 오프셋 버퍼 (인스턴스 하나당 vec3 하나)
+const offsetBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, offsetBuf);
+gl.bufferData(gl.ARRAY_BUFFER, offsets, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(2);
+gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 0, 0);
+gl.vertexAttribDivisor(2, 1);   // 핵심: 인스턴스마다 한 번씩 전진</code></pre>
+<p>정점 셰이더에서는 이 인스턴스 속성을 보통 속성처럼 받아 위치에 더한다. 내장 변수 <code>gl_InstanceID</code>로 몇 번째 인스턴스인지도 알 수 있다.</p>
+<pre class="line-numbers"><code class="language-glsl">layout(location=0) in vec3 aPos;
+layout(location=2) in vec3 aOffset;   // 인스턴스별
+uniform mat4 uVP;
+void main(){ gl_Position = uVP * vec4(aPos + aOffset, 1.0); }</code></pre>
+<p>그리기는 <code>drawArraysInstanced</code>(또는 <code>drawElementsInstanced</code>) 한 번이면 끝이다. 마지막 인자가 인스턴스 개수다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);</code></pre>
+<h3>예제  —  큐브 수천 개</h3>
+<p>아래 예제는 작은 큐브 \(20\times20\times5 = 2000\)개를 <strong>단 한 번의 드로우 콜</strong>로 격자에 배치한다. 인스턴스마다 위치 오프셋과 색을 넘겨, 같은 큐브가 저마다 다른 자리에서 다른 색으로 나타난다.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const { mat4 } = glMatrix;
+const gl = glCanvas.getContext('webgl2', { antialias: true });
+// 큐브 정점 (36개)
+const P = [-1,-1,-1, 1,-1,-1, 1,1,-1, -1,-1,-1, 1,1,-1, -1,1,-1,
+  -1,-1,1, 1,-1,1, 1,1,1, -1,-1,1, 1,1,1, -1,1,1,
+  -1,1,-1, -1,1,1, 1,1,1, -1,1,-1, 1,1,1, 1,1,-1,
+  -1,-1,-1, 1,-1,1, -1,-1,1, -1,-1,-1, 1,-1,-1, 1,-1,1,
+  1,-1,-1, 1,1,1, 1,-1,1, 1,-1,-1, 1,1,-1, 1,1,1,
+  -1,-1,-1, -1,-1,1, -1,1,1, -1,-1,-1, -1,1,1, -1,1,-1];
+const vs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aOffset;
+layout(location=2) in vec3 aColor;
+uniform mat4 uVP; out vec3 vColor; out vec3 vP;
+void main(){ vColor=aColor; vP=aPos; gl_Position=uVP*vec4(aPos*0.35+aOffset,1.0); }`;
+const fs = `#version 300 es
+precision highp float; in vec3 vColor; in vec3 vP; out vec4 o;
+void main(){
+  vec3 n = normalize(round(vP));                 // 면 법선 근사
+  float d = max(dot(n, normalize(vec3(0.4,0.8,0.5))), 0.0);
+  o = vec4(vColor*(0.35+0.75*d), 1.0);
+}`;
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+const pr=gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(pr); gl.useProgram(pr);
+
+const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+let b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
+
+// 인스턴스별 오프셋·색 만들기
+const NX=20, NY=20, NZ=5, N=NX*NY*NZ;
+const off=new Float32Array(N*3), col=new Float32Array(N*3);
+let i=0;
+for(let z=0;z&lt;NZ;z++) for(let y=0;y&lt;NY;y++) for(let x=0;x&lt;NX;x++){
+  off[i*3]=(x-NX/2)*1.0; off[i*3+1]=(y-NY/2)*1.0; off[i*3+2]=-z*1.0;
+  col[i*3]=x/NX; col[i*3+1]=y/NY; col[i*3+2]=0.5+z/NZ*0.5; i++;
+}
+b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, off, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1,3,gl.FLOAT,false,0,0);
+gl.vertexAttribDivisor(1, 1);                       // 인스턴스별
+b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2,3,gl.FLOAT,false,0,0);
+gl.vertexAttribDivisor(2, 1);                       // 인스턴스별
+
+const vp=mat4.create(), proj=mat4.create(), view=mat4.create();
+mat4.perspective(proj, 50*Math.PI/180, glCanvas.width/glCanvas.height, 0.1, 100);
+mat4.lookAt(view, [8, 8, 22], [0,0,-2], [0,1,0]);
+mat4.multiply(vp, proj, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(pr,'uVP'), false, vp);
+
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.09,0.10,0.13,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, N);     // 드로우 콜 단 한 번!</code></pre><div class="listing-caption">코드 9.4: 인스턴싱으로 큐브 2000개 그리기</div></div>
+<p>실행하면 그림 9.4처럼 큐브 2000개가 격자로 나타나되, 자바스크립트가 GPU에 보낸 그리기 명령은 <strong>단 한 줄</strong>이다. 개수를 20000개로 늘려도 드로우 콜은 여전히 하나다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch09/ch09_img01.png" alt="figure">
+<p><figcaption>그림 9.4: 인스턴싱으로 그린 큐브 2000개(\(20\times20\times5\)). 인스턴스마다 다른 위치와 색을 주었지만, GPU에 보낸 그리기 명령은 <code>drawArraysInstanced</code> 단 한 번이다.</figcaption></figure></p>
+<div class="box keypoint"><span class="chip">요점</span><p>인스턴싱은 "같은 것을 많이"의 정답이다. 공유 데이터(정점)와 개별 데이터(오프셋·색·행렬)를 분리하고, 개별 데이터에 디바이저 1을 주어 한 번의 드로우 콜로 전부 그린다. 인스턴스별로 전체 변환 행렬(<code>mat4</code>)을 넘기면 위치·회전·크기가 다른 물체도 한꺼번에 그릴 수 있다.</p></div>
+<h2 id="sec5">9.5 컬링과 공간 분할</h2>
+<p>가장 빠른 삼각형은 <strong>그리지 않는 삼각형</strong>이다. 어차피 보이지 않을 것을 일찌감치 걸러 내면, GPU는 남은 것에만 힘을 쏟는다. 이렇게 보이지 않는 것을 골라 버리는 일을 통틀어 <strong class="term-ko">컬링</strong><sup class="term">culling</sup>이라 한다.</p>
+<h3>백페이스 컬링</h3>
+<p>닫힌 물체(구·상자처럼 속이 보이지 않는 물체)는 <strong>뒤를 향한 면</strong>이 늘 앞면에 가려진다. 그런 뒷면은 굳이 래스터화할 필요가 없다. <strong class="term-ko">백페이스 컬링</strong><sup class="term">back-face culling</sup>은 정점의 감기 방향(winding)으로 앞뒤를 판별해 뒷면을 버린다. 한 줄로 켠다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.enable(gl.CULL_FACE);   // 기본은 뒷면(CCW가 앞면)을 버림</code></pre>
+<p>닫힌 물체가 많은 장면에서 이것만으로도 프래그먼트 작업이 대략 절반으로 준다. (단, 평면·잎사귀처럼 양면이 다 보여야 하는 물체는 꺼야 한다.)</p>
+<h3>프러스텀 컬링</h3>
+<p>카메라의 시야는 <strong class="term-ko">절두체</strong><sup class="term">frustum</sup>(6장)라는 사각뿔대다. 이 밖에 있는 물체는 화면에 아예 나오지 않으므로 그리기 전에 버릴 수 있다. 각 물체를 감싸는 <strong class="term-ko">경계 구</strong><sup class="term">bounding sphere</sup>나 <strong class="term-ko">경계 상자</strong><sup class="term">bounding box</sup>를 절두체의 여섯 평면과 비교해, 완전히 바깥이면 드로우 콜 자체를 생략한다. 인스턴싱과 달리 이것은 CPU에서 하는 판단이다.</p>
+<h3>공간 분할  —  검사할 대상을 줄이기</h3>
+<p>물체가 수만 개면 매 프레임 전부를 절두체와 비교하는 것도 비싸다. 그래서 공간을 미리 칸으로 나눠 두고, 카메라가 걸치는 칸의 물체만 검사한다. 대표적인 <strong class="term-ko">공간 분할</strong><sup class="term">spatial partitioning</sup> 구조는 다음과 같다.</p>
+<ul>
+<li><strong class="term-ko">균일 격자</strong><sup class="term">uniform grid</sup>: 공간을 같은 크기 칸으로 나눈다. 단순하고 빠르지만 밀도가 고르지 않으면 비효율적이다.</li>
+<li><strong class="term-ko">쿼드트리/옥트리</strong><sup class="term">quadtree/octree</sup>: 물체가 많은 영역만 재귀적으로 더 잘게 나눈다.</li>
+<li><strong class="term-ko">BVH</strong><sup class="term">bounding volume hierarchy</sup>: 경계 부피를 트리로 계층화한다. 레이 트레이싱(11장)의 가속 구조로도 쓰인다.</li>
+</ul>
+<div class="box keypoint"><span class="chip">요점</span><p>성능의 큰 그림은 "일을 줄이는 순서"다  —  공간 분할로 <strong>검사할 물체</strong>를 줄이고, 프러스텀 컬링으로 <strong>그릴 물체</strong>를 줄이고, 백페이스 컬링으로 <strong>래스터화할 면</strong>을 줄이고, 남은 것은 인스턴싱으로 <strong>드로우 콜</strong>을 줄인다. 네 단계가 위에서 아래로 걸러 내며 GPU의 부담을 덜어 준다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 9-1</strong>  정팔면체(octahedron)를 인덱스 버퍼로 그려 보자. 정팔면체는 위·아래·앞·뒤·좌·우 여섯 꼭짓점을 삼각형 여덟 개로 잇는 물체이다. 꼭짓점 여섯 개의 위치와 색, 그리고 삼각형 여덟 개(인덱스 24개)를 작성하여 9.1절 정육면체 예제의 데이터 부분만 교체한다.</p>
 <p><strong>해답</strong>  꼭짓점을 여섯 축 끝에 두고, 위 꼭짓점(2번)과 아래 꼭짓점(3번)을 중심으로 옆면 네 개씩을 잇는다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -698,11 +807,11 @@ gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjection'), false,
 gl.enable(gl.DEPTH_TEST);                          // 깊이 검사
 gl.clearColor(0.1, 0.15, 0.25, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);  // 인덱스 24개</code></pre><div class="listing-caption">코드 9.4: 인덱스 버퍼로 팔면체 그리기</div></div>
+gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);  // 인덱스 24개</code></pre><div class="listing-caption">코드 9.5: 인덱스 버퍼로 팔면체 그리기</div></div>
 <figure class="fig">
-<img class="gfx" src="img/ch09/ch09_img01.png" alt="figure">
-<p><figcaption>그림 9.4: 실습 9-1 실행 결과</figcaption></figure></p>
-<p>삼각형이 여덟 개이므로 <code>drawElements</code>의 <code>count</code>는 \(8 \times 3 = 24\)이다. 꼭짓점은 여섯 개뿐인데 여덟 삼각형이 그 꼭짓점을 공유한다. 실행하면 그림 9.4과 같이 옆에서 보면 마름모꼴로 보이는 정팔면체가 나타난다.</p>
+<img class="gfx" src="img/ch09/ch09_img02.png" alt="figure">
+<p><figcaption>그림 9.5: 실습 9-1 실행 결과</figcaption></figure></p>
+<p>삼각형이 여덟 개이므로 <code>drawElements</code>의 <code>count</code>는 \(8 \times 3 = 24\)이다. 꼭짓점은 여섯 개뿐인데 여덟 삼각형이 그 꼭짓점을 공유한다. 실행하면 그림 9.5과 같이 옆에서 보면 마름모꼴로 보이는 정팔면체가 나타난다.</p>
 <p><strong>실습 9-2</strong>  어떤 메시가 한 정점마다 <strong>위치 3개, 법선 3개, 텍스처 좌표 2개</strong>(모두 <code>float</code>)를 인터리브 버퍼에 담는다고 하자. (a) 한 정점의 스트라이드는 몇 바이트인가? (b) 위치·법선·텍스처 좌표 세 속성의 오프셋은 각각 얼마인가? (c) 이 셋을 0·1·2번 속성에 연결하는 <code>vertexAttribPointer</code> 호출을 작성하시오.</p>
 <p><strong>해답</strong>  <code>float</code>는 4바이트이고 한 정점은 \(3 + 3 + 2 = 8\)개의 <code>float</code>로 이루어진다.</p>
 <ul>

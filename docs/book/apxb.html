@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부록 B WebGL 2.0 고급 기능 — WebGL 3D 그래픽스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="book.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="home" href="../index.html">&#8962; 홈</a>
+  <span class="book-title">WebGL 3D 그래픽스</span>
+  <span class="ch-indicator">부록 B WebGL 2.0 고급 기능</span>
+  <button class="nav-toggle" onclick="document.body.classList.toggle('nav-open')">목차</button>
+</header>
+<div class="layout">
+<nav class="sidebar">
+<div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
+<div class="nav-part">Part I. WebGL 시작</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
+</div>
+<div class="nav-part">Part II. 기하 변환과 카메라</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
+</div>
+<div class="nav-part">Part III. 실감 렌더링</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
+</div>
+<div class="nav-part">Part IV. 한 걸음 더</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+</div>
+<div class="nav-ch current"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
+<div class="nav-secs"><a class="nav-sec" href="apxb.html#sec1">유니폼 버퍼 오브젝트(UBO)</a><a class="nav-sec" href="apxb.html#sec2">트랜스폼 피드백</a><a class="nav-sec" href="apxb.html#sec3">다중 렌더 타깃(MRT)</a></div>
+</div>
+</nav>
+<main class="content">
+<div class="chapter-head">
+  <div class="ch-label">APPENDIX B</div>
+  <h1>WebGL 2.0 고급 기능</h1>
+</div>
+<div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><p>이 부록에서 다루는 것
+<ul>
+<li>유니폼 버퍼 오브젝트(UBO)로 유니폼을 묶어 여러 프로그램이 공유하기</li>
+<li>트랜스폼 피드백으로 정점 셰이더 출력을 버퍼로 되돌려 GPU 파티클 만들기</li>
+<li>다중 렌더 타깃(MRT)으로 한 번에 여러 텍스처에 출력하기(지연 셰이딩의 토대)</li>
+</ul></p></div></details></div>
+<p>이 책의 본문은 WebGL 2.0의 기능 중 입문에 꼭 필요한 것들을 썼다. 여기서는 본문에서 노트로만 언급한 세 가지 저수준 기능을 참조용으로 정리한다. 셋 다 "GPU에게 데이터를 주고받는 방식"을 넓혀, 더 크고 효율적인 렌더링을 가능하게 한다.</p>
+<h2 id="sec1">유니폼 버퍼 오브젝트(UBO)</h2>
+<p>지금까지 유니폼은 <code>uniform1f</code>·<code>uniformMatrix4fv</code>로 하나씩 넘겼다. 뷰·투영 행렬처럼 <strong>여러 프로그램이 똑같이 쓰는</strong> 유니폼을 프로그램마다 다시 넘기는 것은 낭비다. <strong class="term-ko">유니폼 버퍼 오브젝트</strong><sup class="term">uniform buffer object</sup>(UBO)는 유니폼들을 하나의 버퍼(블록)에 담아 두고, 여러 프로그램이 그 블록을 <strong>공유</strong>하게 한다. 카메라가 움직이면 UBO 하나만 갱신하면 모든 셰이더가 새 행렬을 본다.</p>
+<pre class="line-numbers"><code class="language-glsl">// 셰이더: 유니폼 블록으로 선언
+layout(std140) uniform Camera {
+  mat4 uView;
+  mat4 uProj;
+};</code></pre>
+<pre class="line-numbers"><code class="language-javascript">// JS: 버퍼를 바인딩 포인트 0에 묶고, 프로그램의 블록을 그 포인트에 연결
+const ubo = gl.createBuffer();
+gl.bindBuffer(gl.UNIFORM_BUFFER, ubo);
+gl.bufferData(gl.UNIFORM_BUFFER, 128, gl.DYNAMIC_DRAW);   // mat4 두 개 = 128바이트
+gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, ubo);
+const idx = gl.getUniformBlockIndex(program, 'Camera');
+gl.uniformBlockBinding(program, idx, 0);
+// 카메라가 바뀌면 이 버퍼만 갱신하면 모든 프로그램이 공유
+gl.bufferSubData(gl.UNIFORM_BUFFER, 0, viewMatrix);
+gl.bufferSubData(gl.UNIFORM_BUFFER, 64, projMatrix);</code></pre>
+<p><code>std140</code> 레이아웃은 블록 안 변수들의 메모리 정렬 규칙이다. <code>vec3</code>이 16바이트 경계에 맞춰지는 등 규칙이 있어, JS 쪽에서 오프셋을 맞출 때 주의해야 한다.</p>
+<h2 id="sec2">트랜스폼 피드백</h2>
+<p>정점 셰이더의 출력은 늘 래스터화로 흘러갔다. <strong class="term-ko">트랜스폼 피드백</strong><sup class="term">transform feedback</sup>은 그 출력을 화면이 아니라 <strong>버퍼로 되돌려</strong> 받는다. 정점 셰이더를 "버퍼 \(\to\) 계산 \(\to\) 버퍼"의 병렬 계산기로 쓰는 셈이다. 10.6절의 파티클을 CPU가 아니라 GPU에서 갱신하는 것이 대표적 용도다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 출력으로 되돌릴 varying을 지정하고 링크
+gl.transformFeedbackVaryings(program, ['vNewPos', 'vNewVel'], gl.SEPARATE_ATTRIBS);
+gl.linkProgram(program);
+// 갱신 패스: 래스터화는 끄고, 결과 버퍼로 캡처
+gl.enable(gl.RASTERIZER_DISCARD);
+gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, outPosBuf);
+gl.beginTransformFeedback(gl.POINTS);
+gl.drawArrays(gl.POINTS, 0, N);       // 정점 셰이더가 새 위치를 계산해 버퍼에 씀
+gl.endTransformFeedback();
+gl.disable(gl.RASTERIZER_DISCARD);</code></pre>
+<p>보통 입력 버퍼와 출력 버퍼를 매 프레임 맞바꾸는 <strong>핑퐁</strong>으로, 수십만 파티클을 CPU 왕복 없이 GPU 안에서 갱신한다.</p>
+<h2 id="sec3">다중 렌더 타깃(MRT)</h2>
+<p>프래그먼트 셰이더가 색 하나만 출력하던 제약을 푸는 것이 <strong class="term-ko">다중 렌더 타깃</strong><sup class="term">multiple render targets</sup>(MRT)이다. 하나의 FBO에 색 텍스처 여러 장을 붙이고, 셰이더에서 <code>layout(location=N) out</code>으로 각각에 동시에 쓴다.</p>
+<pre class="line-numbers"><code class="language-glsl">layout(location=0) out vec4 gPosition;   // 위치
+layout(location=1) out vec4 gNormal;     // 법선
+layout(location=2) out vec4 gAlbedo;     // 재질색</code></pre>
+<pre class="line-numbers"><code class="language-javascript">// FBO에 텍스처 셋을 각각 다른 attachment에 붙이고
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texPos, 0);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, texNrm, 0);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, texAlb, 0);
+gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2]);</code></pre>
+<p>이렇게 화면의 위치·법선·재질을 미리 여러 텍스처(G-buffer)에 그려 두고, 조명을 그다음에 화면 공간에서 한 번에 계산하는 것이 <strong class="term-ko">지연 셰이딩</strong><sup class="term">deferred shading</sup>이다(11.6절). 광원이 수백 개인 장면에서, 광원마다 전체 장면을 다시 그리는 대신 화면 픽셀당 한 번씩만 조명을 계산할 수 있다.</p>
+<div class="box keypoint"><span class="chip">요점</span><p>세 기능의 공통점은 "GPU와 데이터를 주고받는 통로를 넓힌다"는 것이다  —  UBO는 유니폼을 묶어 공유하고, 트랜스폼 피드백은 정점 출력을 버퍼로 되받고, MRT는 프래그먼트 출력을 여러 텍스처로 내보낸다. 이 통로들이 대규모 파티클·지연 셰이딩·GPU 시뮬레이션의 토대가 되며, WebGPU(13.3절)는 이 방향을 더 밀고 나간 것이다.</p></div>
+<div class="pager-row"><a class="pager prev" href="apxa.html">&larr; 부록 A</a><span></span></div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-glsl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<script src="book.js"></script>
+</body>
+</html>

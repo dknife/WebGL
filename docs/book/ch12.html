@@ -50,7 +50,14 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
-<div class="nav-secs"><a class="nav-sec" href="ch12.html#sec1">12.1 Three.js 시작하기</a><a class="nav-sec" href="ch12.html#sec2">12.2 장면 그래프와 오브젝트</a><a class="nav-sec" href="ch12.html#sec3">12.3 재질, 조명, 텍스처</a><a class="nav-sec" href="ch12.html#sec4">12.4 실전 프로젝트: 3차원 제품 뷰어</a><a class="nav-sec" href="ch12.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch12.html#summary">12장 요약</a><a class="nav-sec" href="ch12.html#exercises">연습문제</a></div>
+<div class="nav-secs"><a class="nav-sec" href="ch12.html#sec1">12.1 Three.js 시작하기</a><a class="nav-sec" href="ch12.html#sec2">12.2 장면 그래프와 오브젝트</a><a class="nav-sec" href="ch12.html#sec3">12.3 재질, 조명, 텍스처</a><a class="nav-sec" href="ch12.html#sec4">12.4 텍스트와 UI 렌더링</a><a class="nav-sec" href="ch12.html#sec5">12.5 실전 프로젝트: 3차원 제품 뷰어</a><a class="nav-sec" href="ch12.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch12.html#summary">12장 요약</a><a class="nav-sec" href="ch12.html#exercises">연습문제</a></div>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
 </div>
 </nav>
 <main class="content">
@@ -63,6 +70,7 @@
 <li>지금까지 배운 저수준 개념이 Three.js의 어떤 기능에 대응되는지 설명할 수 있다.</li>
 <li>장면 그래프에 물체를 계층적으로 조립하고 애니메이션할 수 있다.</li>
 <li>재질·조명·그림자·텍스처를 조합하여 실감 나는 장면을 구성할 수 있다.</li>
+<li>캔버스 2D를 텍스처로 삼아 3차원 장면에 텍스트·UI를 얹을 수 있다.</li>
 <li>드래그 회전과 휠 줌을 갖춘 3차원 제품 뷰어를 완성할 수 있다.</li>
 </ul></div></details></div>
 <p>지금까지 우리는 삼각형 하나를 그리기 위해 셰이더를 컴파일하고, 버퍼에 정점을 담고, 행렬을 곱하고, 조명 방정식을 손으로 코딩해 왔다. 이 책의 마지막 장에서는 그 모든 일을 대신해 주는 고수준 라이브러리 <strong>Three.js</strong>를 만난다. 열한 개 장에 걸쳐 쌓아 온 저수준 지식이 헛수고였다는 뜻이 아니다. 오히려 그 반대이다. Three.js의 모든 클래스는 우리가 직접 만들어 본 것들의 포장이므로, 원리를 아는 독자에게 Three.js는 블랙박스가 아니라 <strong>투명한 상자</strong>이다. 어떤 기능이 내부에서 무엇을 하는지 훤히 보이고, 문제가 생겼을 때 어디를 들여다보아야 할지도 안다.</p>
@@ -287,7 +295,24 @@ renderer.setAnimationLoop((time) =&gt; {
 <p>체커보드 무늬가 원근에 따라 멀어지고, 붉은 공이 바닥을 오가며 그 아래로 그림자가 함께 움직인다. <code>PlaneGeometry</code>는 기본적으로 \(xy\) 평면에 서 있으므로 <code>rotation.x</code>를 \(-90^\circ\)만큼 돌려 바닥으로 눕혔다. 8장·11장에서 각각 수십 줄이 필요하던 텍스처와 그림자가, 재질의 <code>map</code> 지정과 <code>castShadow</code> / <code>receiveShadow</code> 몇 줄로 완성되었다.</p>
 <div class="box caution"><span class="chip">주의</span><p>그림자가 나오지 않을 때 점검할 곳은 대개 정해져 있다. 렌더러의 <code>shadowMap.enabled</code>, 조명의 <code>castShadow</code>, 그림자를 드리울 물체의 <code>castShadow</code>, 그림자를 받을 물체의 <code>receiveShadow</code>  —  이 네 스위치 중 하나라도 빠지면 그림자는 보이지 않는다. 또한 <code>PointLight</code>보다 <code>DirectionalLight</code>가 그림자를 얻기 쉬우니 처음에는 방향광으로 시작하자.</p></div>
 <div class="box keypoint"><span class="chip">요점</span><p>재질 클래스는 조명 모델을 고르는 일이다. <code>Basic</code>(조명 무시)·<code>Lambert</code>(확산)·<code>Phong</code>(확산+정반사)·<code>Standard</code>(물리 기반)가 7장 셰이딩과 대응한다. 조명은 <code>Ambient</code>·<code>Directional</code>·<code>Point</code> 객체를 장면에 추가해 놓으며, 그림자는 렌더러·조명·물체의 스위치 몇 개로 켠다. <code>CanvasTexture</code>는 2D 캔버스 그림을 텍스처로 쓰게 해 준다.</p></div>
-<h2 id="sec4">12.4 실전 프로젝트: 3차원 제품 뷰어</h2>
+<h2 id="sec4">12.4 텍스트와 UI 렌더링</h2>
+<p>WebGL에는 "글자를 그린다"는 명령이 없다. 삼각형과 픽셀만 다룰 뿐이다. 그런데 점수판·라벨·버튼처럼 3차원 장면 위에 글자와 UI를 얹어야 할 때가 많다. 가장 실용적인 해법은 우리가 이미 가진 도구, 곧 <strong>텍스처</strong>를 쓰는 것이다.</p>
+<h3>캔버스 2D를 텍스처로</h3>
+<p>브라우저의 2D 캔버스는 <code>fillText</code>로 글자를, <code>fillRect</code>로 사각형을 손쉽게 그린다. 이 2D 캔버스에 글자를 그린 뒤, 그 캔버스를 <strong>텍스처로 업로드</strong>해 3차원 사각형에 입히면 된다. 8장에서 이미지 파일을 텍스처로 올린 것과 똑같은데, 이미지 대신 "글자를 그린 캔버스"를 올리는 것뿐이다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 1) 2D 캔버스에 글자를 그린다
+const c2d = document.createElement('canvas');
+c2d.width = 256; c2d.height = 64;
+const ctx = c2d.getContext('2d');
+ctx.font = 'bold 40px sans-serif';
+ctx.fillStyle = 'white';
+ctx.fillText('SCORE 1200', 10, 46);
+// 2) 그 캔버스를 텍스처로 올린다 (이미지 대신 캔버스를 넘김)
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c2d);</code></pre>
+<p>이 텍스처를 화면에 고정된 사각형(빌보드)이나 3차원 물체 위에 붙이면 라벨이 된다. 내용이 자주 바뀌면 그때만 캔버스를 다시 그려 텍스처를 갱신한다.</p>
+<h3>SDF 폰트  —  확대해도 또렷하게</h3>
+<p>캔버스 텍스처는 확대하면 글자가 흐려진다(8장의 확대 필터 한계). 게임 UI처럼 크기가 자주 바뀌는 글자에는 <strong class="term-ko">부호 있는 거리장</strong><sup class="term">signed distance field</sup>(SDF) 폰트를 쓴다. 각 화소에 "글자 윤곽선까지의 거리"를 담아 두면, 프래그먼트 셰이더에서 그 거리로 경계를 선명하게 되살릴 수 있어 아무리 확대해도 가장자리가 또렷하다.</p>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">HTML을 겹쳐 쓰는 길도 있다</span><p>사실 복잡한 UI(버튼·입력창·메뉴)는 굳이 WebGL로 그리지 않고, 캔버스 위에 보통의 HTML 요소를 <code>position:absolute</code>로 겹쳐 두는 편이 쉽고 접근성도 좋다. WebGL은 3차원 장면을, HTML은 그 위의 UI를 맡는 역할 분담이다. Three.js의 <code>CSS2DRenderer</code>가 이 방식을 돕는다. "3차원 장면 안에 박힌 글자"는 텍스처로, "화면에 고정된 UI"는 HTML로  —  이 구분이 실무의 요령이다.</p></div>
+<h2 id="sec5">12.5 실전 프로젝트: 3차원 제품 뷰어</h2>
 <p>이제 이 책의 마지막 프로젝트이자 종합 과제이다. 쇼핑몰에서 상품을 마우스로 돌려 보고 확대해 보는 <strong>3차원 제품 뷰어</strong>를 만든다. 지금까지의 모든 조각  —  장면 그래프, 재질과 조명, 그림자, 그리고 10장의 이벤트 처리  —  가 하나의 애플리케이션으로 모인다.</p>
 <h3>요구사항 정의</h3>
 <p>무엇을 만들지부터 분명히 하자. 실전에서는 언제나 요구사항 정의가 먼저이다.</p>
@@ -550,7 +575,7 @@ arm.add(hand);</code></pre></li>
 <li class="ex-item" data-ex="7"><span class="diff"><span class="d2">★★</span></span>  그림자가 화면에 나타나려면 켜야 하는 스위치가 최소 네 곳이다. 코드 12.3을 참고하여 그 네 곳을 모두 쓰고, 각각이 무엇을 담당하는지 설명하시오.</li>
 <li class="ex-item" data-ex="8"><span class="diff"><span class="d3">★★★</span></span>  코드 12.4의 제품 뷰어에 <strong>바닥 회전 없이 로봇만 도는 스포트라이트 조명</strong>을 추가하려 한다. 로봇 위에서 아래를 비추는 조명을 만들되, 로봇이 드래그로 회전해도 조명은 고정되어 있어야 한다. 어떤 조명 객체를 어디에(장면인가 로봇 그룹인가) 추가해야 하는지 설명하고, 만약 조명을 <code>robot</code> 그룹에 추가하면 어떤 문제가 생기는지 논하시오.</li>
 </ol></div></details>
-<div class="pager-row"><a class="pager prev" href="ch11.html">&larr; 11장</a><span></span></div>
+<div class="pager-row"><a class="pager prev" href="ch11.html">&larr; 11장</a><a class="pager next" href="ch13.html">13장 &rarr;</a></div>
 </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>

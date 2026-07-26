@@ -41,7 +41,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
-<div class="nav-secs"><a class="nav-sec" href="ch08.html#sec1">8.1 텍스처와 텍스처 좌표</a><a class="nav-sec" href="ch08.html#sec2">8.2 텍스처 로딩과 샘플링</a><a class="nav-sec" href="ch08.html#sec3">8.3 필터링과 밉맵</a><a class="nav-sec" href="ch08.html#sec4">8.4 래핑 모드</a><a class="nav-sec" href="ch08.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch08.html#summary">8장 요약</a><a class="nav-sec" href="ch08.html#exercises">연습문제</a></div>
+<div class="nav-secs"><a class="nav-sec" href="ch08.html#sec1">8.1 텍스처와 텍스처 좌표</a><a class="nav-sec" href="ch08.html#sec2">8.2 텍스처 로딩과 샘플링</a><a class="nav-sec" href="ch08.html#sec3">8.3 필터링과 밉맵</a><a class="nav-sec" href="ch08.html#sec4">8.4 래핑 모드</a><a class="nav-sec" href="ch08.html#sec5">8.5 반투명과 알파 블렌딩</a><a class="nav-sec" href="ch08.html#sec6">8.6 노멀 매핑</a><a class="nav-sec" href="ch08.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch08.html#summary">8장 요약</a><a class="nav-sec" href="ch08.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
 </div>
@@ -51,6 +51,13 @@
 <div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
 </div>
 </nav>
 <main class="content">
@@ -63,6 +70,8 @@
 <li>텍스처 객체를 만들고 이미지 데이터를 GPU에 올려, 셰이더에서 샘플링할 수 있다.</li>
 <li>확대·축소 필터와 밉맵을 상황에 맞게 설정할 수 있다.</li>
 <li>래핑 모드를 이용해 \(0 \sim 1\) 밖의 텍스처 좌표로 타일링을 구현할 수 있다.</li>
+<li>알파 블렌딩으로 반투명 물체를 그리고, 깊이 정렬 문제를 다룰 수 있다.</li>
+<li>노멀 매핑과 탄젠트 공간(TBN)으로 지오메트리 없이 표면 요철을 표현할 수 있다.</li>
 </ul></div></details></div>
 <p>7장에서 우리는 조명 계산으로 물체에 입체감을 불어넣었다. 그러나 조명만으로 만든 화면 속 물체들은 여전히 어딘가 허전하다. 표면 전체가 매끈한 단색이기 때문이다. 현실의 물체는 그렇지 않다. 나무 탁자에는 나뭇결이, 벽돌담에는 벽돌 무늬가, 지구본에는 대륙과 바다가 그려져 있다. 이런 세밀한 무늬를 전부 폴리곤으로 만들려면 정점이 천문학적으로 필요하겠지만, 그래픽스에는 훨씬 영리한 방법이 있다. 표면에 <strong>이미지를 입히는</strong> 것이다.</p>
 <p>이 기법이 <strong>텍스처 매핑</strong>이다. 벽지를 벽에 바르듯 이미지를 폴리곤 표면에 발라 붙이는 이 기법은, 적은 정점으로 풍부한 시각적 세부를 얻는 실시간 그래픽스의 핵심 무기이다. 이 장에서는 이미지와 표면을 이어 주는 텍스처 좌표에서 출발하여, 텍스처를 GPU에 올리고 셰이더에서 읽어 오는 방법, 그리고 텍스처가 늘어나고 줄어들 때 품질을 지키는 필터링·밉맵·래핑 설정까지, 텍스처 매핑의 전 과정을 익힌다.</p>
@@ -495,6 +504,127 @@ gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption"
 <p>실전에서 이 기법의 쓰임새는 무궁무진하다. 바닥의 타일, 벽의 벽돌, 잔디밭, 철판 무늬처럼 작은 무늬가 반복되는 표면은 모두 "작은 텍스처 + 큰 텍스처 좌표 + <code>REPEAT</code>"로 만든다. \(512 \times 512\) 벽돌 텍스처 한 장이면 좌표를 \(0 \sim 50\)으로 주는 것만으로 벽돌 5만 장짜리 담벼락을 채울 수 있다. 다만 멀리서 보면 반복 주기가 눈에 띄어 인위적으로 보일 수 있는데, 이를 감추는 기법들은 11장에서 다시 만난다.</p>
 <div class="box note"><span class="chip">잠깐</span><span class="box-title">2의 거듭제곱 제약은 옛말</span><p>초기 GPU들은 텍스처의 가로·세로가 \(2\)의 거듭제곱(\(64\), \(128\), \(256\), …)일 때만 온전히 동작했고, WebGL 1.0도 이 제약을 물려받아 <strong>2의 거듭제곱이 아닌</strong>(NPOT, non-power-of-two) 텍스처에는 <code>REPEAT</code> 래핑과 밉맵을 허용하지 않았다. 옛 자료들이 텍스처 크기를 한사코 \(2\)의 거듭제곱으로 맞추는 것은 이 때문이다. <strong>WebGL 2.0에서는 이 제약이 완전히 사라져서</strong>, \(600 \times 400\) 같은 임의 크기의 텍스처에도 밉맵과 모든 래핑 모드를 쓸 수 있다. 다만 밉맵 각 레벨의 크기가 절반씩 깔끔하게 떨어지는 2의 거듭제곱 텍스처는 여전히 GPU에 다루기 편한 크기라, 실무에서는 지금도 즐겨 쓰인다.</p></div>
 <div class="box keypoint"><span class="chip">요점</span><p>\(0 \sim 1\) 밖의 텍스처 좌표를 어떻게 읽을지는 <strong>래핑 모드</strong>가 정한다. <code>REPEAT</code>는 무한 반복(타일링), <code>MIRRORED_REPEAT</code>는 뒤집으며 반복, <code>CLAMP_TO_EDGE</code>는 가장자리 연장이며, \(s\)·\(t\)축을 따로 설정할 수 있다. 작은 텍스처를 큰 좌표로 반복시키는 타일링은 넓은 표면을 채우는 표준 기법이다.</p></div>
+<h2 id="sec5">8.5 반투명과 알파 블렌딩</h2>
+<p>지금까지 그린 물체는 모두 불투명했다. 뒤에 있는 물체를 완전히 가렸다. 하지만 유리·물·연기·불꽃, 그리고 UI의 반투명 패널처럼 <strong>뒤가 비쳐 보이는</strong> 표현은 그래픽스의 기본이다. 이를 위해 프래그먼트의 색에 <strong class="term-ko">알파</strong><sup class="term">alpha</sup>(불투명도) 값을 주고, 새로 그리는 색을 이미 화면에 있는 색과 섞는다. 이것이 <strong class="term-ko">알파 블렌딩</strong><sup class="term">alpha blending</sup>이다.</p>
+<h3>블렌딩 켜기</h3>
+<p>기본적으로 프래그먼트는 프레임버퍼의 기존 색을 <strong>덮어쓴다</strong>. 블렌딩을 켜면 대신 두 색을 섞는다. 섞는 방식은 <code>blendFunc</code>로 정하는데, 가장 흔한 것은 소스(새 색)의 알파를 가중치로 쓰는 방식이다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);</code></pre>
+<p>이 설정의 뜻은 최종 색 \(=\) (새 색 \(\times\) 새 알파) \(+\) (기존 색 \(\times (1-\)새 알파\()\))이다. 새 알파가 0.3이면 새 색 30% + 기존 색 70%로 섞여 반투명하게 겹친다. 프래그먼트 셰이더에서는 <code>outColor</code>의 넷째 성분에 알파를 담기만 하면 된다.</p>
+<pre class="line-numbers"><code class="language-glsl">outColor = vec4(color, 0.55);   // 55% 불투명 = 45% 투명</code></pre>
+<p>그림 8.4은 알파 0.55짜리 색 사각형 넷을 겹쳐 그린 것이다. 겹친 영역에서 색이 섞여 새 색이 나타난다  —  빨강과 초록이 겹쳐 노랑기가 돌고, 파랑이 더해지며 다시 어우러진다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch08/ch08_img01.png" alt="figure">
+<p><figcaption>그림 8.4: 알파 블렌딩. 반투명(알파 0.55) 사각형 넷을 겹쳐 그리면 겹친 영역에서 소스 — 데스티네이션 색이 섞인다.</figcaption></figure></p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const gl = glCanvas.getContext('webgl2', { antialias: true });
+const vs = `#version 300 es
+layout(location=0) in vec2 p; uniform vec2 uOff; uniform float uAspect;
+void main(){ gl_Position = vec4(p.x+uOff.x, (p.y+uOff.y)*uAspect, 0.0, 1.0); }`;
+const fs = `#version 300 es
+precision highp float; uniform vec4 uColor; out vec4 o;
+void main(){ o = uColor; }`;
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+const pr=gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(pr); gl.useProgram(pr);
+
+const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER,
+  new Float32Array([-0.5,-0.5, 0.5,-0.5, -0.5,0.5, 0.5,0.5]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+gl.uniform1f(gl.getUniformLocation(pr,'uAspect'), glCanvas.width/glCanvas.height);
+
+gl.clearColor(0.12,0.13,0.16,1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.enable(gl.BLEND);                                   // 블렌딩 켜기
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);    // 표준 알파 합성
+
+const uC=gl.getUniformLocation(pr,'uColor'), uO=gl.getUniformLocation(pr,'uOff');
+const quads=[[-0.30,0.10, 1.0,0.25,0.30],[0.0,-0.05, 0.20,0.85,0.35],
+             [0.30,0.10, 0.25,0.45,1.0],[0.0,0.22, 1.0,0.85,0.20]];
+for(const q of quads){
+  gl.uniform2f(uO, q[0], q[1]);
+  gl.uniform4f(uC, q[2], q[3], q[4], 0.55);            // 알파 0.55
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}</code></pre><div class="listing-caption">코드 8.4: 반투명 사각형 겹쳐 그리기</div></div>
+<h3>깊이 정렬이라는 함정</h3>
+<p>블렌딩에는 불투명 물체에는 없던 골칫거리가 하나 있다. <strong class="term-ko">그리는 순서</strong><sup class="term">draw order</sup>가 결과를 바꾼다는 것이다. 반투명 물체는 뒤에 있는 것을 비쳐 보여야 하므로, <strong>먼 것부터 가까운 것 순으로</strong> 그려야 옳게 섞인다. 게다가 깊이 버퍼가 켜져 있으면, 가까운 반투명 물체를 먼저 그렸을 때 그 뒤의 물체가 깊이 테스트에 막혀 아예 그려지지 않는다.</p>
+<p>정석은 이렇다. 불투명 물체를 먼저 다 그리고, 그다음 반투명 물체만 모아 <strong>카메라에서 먼 순서로 정렬해</strong> 그린다. 이때 깊이 <strong>쓰기</strong>는 꺼서(<code>depthMask(false)</code>) 반투명 물체끼리 서로를 가리지 않게 하되, 깊이 <strong>테스트</strong>는 켠 채 두어 이미 그린 불투명 물체 뒤로는 가려지게 한다.</p>
+<pre class="line-numbers"><code class="language-javascript">// 1) 불투명 물체 먼저 (깊이 쓰기 켬)
+gl.depthMask(true);  gl.disable(gl.BLEND);
+drawOpaque();
+// 2) 반투명 물체: 먼→가까운 순 정렬, 깊이 쓰기만 끔
+gl.enable(gl.BLEND);  gl.depthMask(false);
+drawTransparentSortedBackToFront();
+gl.depthMask(true);   // 원복</code></pre>
+<div class="box caution"><span class="chip">주의</span><p>정렬로도 완벽하지 않다. 두 반투명 물체가 서로 얽혀 있으면 어느 쪽을 먼저 그려도 틀린 픽셀이 생긴다. 이를 근본적으로 푸는 <strong class="term-ko">순서 독립 투명</strong><sup class="term">order-independent transparency</sup>(OIT) 기법들이 있지만 비용이 크다. 대부분의 실시간 응용은 "불투명 먼저, 반투명은 정렬해서 나중에"라는 실용적 규칙으로 충분하다.</p></div>
+<div class="box note"><span class="chip">잠깐</span><span class="box-title">가산 블렌딩  —  빛나는 것들</span><p>불꽃·발광·마법 이펙트처럼 <strong>빛을 더하는</strong> 표현에는 <code>gl.blendFunc(gl.SRC_ALPHA, gl.ONE)</code>을 쓴다. 기존 색에 새 색을 무조건 더하기만 하므로 겹칠수록 밝아진다. 이 <strong class="term-ko">가산 블렌딩</strong><sup class="term">additive blending</sup>은 정렬이 필요 없고(덧셈은 순서 무관), 10장 파티클과 이 책 표지의 블룸에서 빛을 쌓는 데 쓰인다.</p></div>
+<h2 id="sec6">8.6 노멀 매핑</h2>
+<p>텍스처는 표면에 <strong>색</strong>을 입혔다. 그런데 벽돌의 우툴두툴함, 가죽의 주름, 돌의 파임 같은 <strong>요철</strong>은 색만으로는 살지 않는다. 진짜로 지오메트리를 잘게 쪼개 울퉁불퉁하게 만들 수도 있지만, 삼각형이 폭발한다. 대신 <strong class="term-ko">노멀 매핑</strong><sup class="term">normal mapping</sup>은 지오메트리는 평평하게 두고, 조명이 참고하는 <strong>법선만</strong> 픽셀마다 흔들어 요철을 흉내 낸다. 빛은 법선으로 밝기를 정하므로, 법선을 속이면 눈도 속는다.</p>
+<h3>노멀 맵이란</h3>
+<p><strong class="term-ko">노멀 맵</strong><sup class="term">normal map</sup>은 색 대신 <strong>법선 벡터</strong>를 담은 텍스처다. 각 픽셀의 RGB가 한 법선의 \((x, y, z)\)를 나타낸다. 법선 성분은 \(-1\sim1\)인데 색은 \(0\sim1\)이므로, \(\text{색}\times2-1\)로 풀어 쓴다. 대부분의 노멀 맵이 푸르스름하게 보이는 이유가 여기 있다  —  평평한 부분의 법선은 \((0,0,1)\)이고, 이를 색으로 인코딩하면 \((0.5, 0.5, 1.0)\), 곧 연한 파랑이 되기 때문이다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec3 n = texture(uNormalMap, vUV).rgb * 2.0 - 1.0;  // 색 → 법선</code></pre>
+<h3>탄젠트 공간과 TBN</h3>
+<p>여기서 핵심 문제가 생긴다. 노멀 맵의 법선은 <strong>표면에 붙은 좌표계</strong>  —  곧 <strong class="term-ko">탄젠트 공간</strong><sup class="term">tangent space</sup>에서 정의된다. "위(\(z\))"가 언제나 그 표면의 바깥 방향을 뜻한다. 그런데 조명은 월드 공간에서 계산한다. 그래서 탄젠트 공간의 법선을 월드 공간으로 옮겨 줄 다리가 필요하다.</p>
+<p>그 다리가 <strong class="term-ko">TBN 행렬</strong><sup class="term">TBN matrix</sup>이다. 표면 한 점에서 서로 수직인 세 축  —  텍스처 \(s\) 방향을 따르는 <strong class="term-ko">탄젠트</strong><sup class="term">tangent</sup> \(\mathbf{T}\), \(t\) 방향을 따르는 <strong class="term-ko">바이탄젠트</strong><sup class="term">bitangent</sup> \(\mathbf{B}\), 그리고 원래 표면 법선 \(\mathbf{N}\)  —  을 열로 세운 \(3\times3\) 행렬이다. 이 행렬을 곱하면 탄젠트 공간 벡터가 월드 공간으로 회전한다.</p>
+\[
+\mathrm{TBN} = [\,\mathbf{T}\ \ \mathbf{B}\ \ \mathbf{N}\,],\qquad
+\mathbf{n}_{\text{world}} = \mathrm{TBN}\cdot\mathbf{n}_{\text{tangent}}
+\]
+<p>탄젠트 \(\mathbf{T}\)는 보통 삼각형의 정점 위치와 텍스처 좌표 차이로부터 미리 계산해 정점 속성으로 넘긴다(법선을 넘기던 것과 같은 방식이다). 프래그먼트 셰이더에서는 노멀 맵을 읽어 월드 공간으로 옮긴 뒤, 7장의 조명 계산에 <strong>그 법선을 그대로 넣기만</strong> 하면 된다.</p>
+<pre class="line-numbers"><code class="language-glsl">// 정점 셰이더에서 넘어온 T, N (월드 공간)으로 TBN 구성
+vec3 T = normalize(vT);
+vec3 N = normalize(vN);
+vec3 B = cross(N, T);
+mat3 TBN = mat3(T, B, N);
+
+vec3 nTan = texture(uNormalMap, vUV).rgb * 2.0 - 1.0;
+vec3 normal = normalize(TBN * nTan);   // 이 법선을 조명에 사용</code></pre>
+<h3>예제  —  절차 벽돌 노멀 매핑</h3>
+<p>그림 8.5은 같은 평면을 왼쪽은 색만, 오른쪽은 절차적으로 만든 벽돌 노멀 맵과 함께 렌더한 것이다. 왼쪽은 벽돌 무늬가 그려져 있을 뿐 평평하지만, 오른쪽은 같은 방향의 빛에서 줄눈이 파이고 벽돌이 도드라진다  —  지오메트리는 똑같이 평평한 사각형 하나인데도. 아래 예제는 이미지 파일 없이 셰이더 안에서 벽돌 높이로부터 법선을 만들어 쓴다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch08/ch08_img02.png" alt="figure">
+<p><figcaption>그림 8.5: 노멀 매핑. 왼쪽은 색만 입힌 평면, 오른쪽은 같은 평면에 절차 벽돌 노멀 맵을 더한 것. 지오메트리는 둘 다 평평한 사각형이지만, 법선을 흔들면 빛이 요철을 만든다.</figcaption></figure></p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">const gl = glCanvas.getContext('webgl2', { antialias: true });
+const vs = `#version 300 es
+layout(location=0) in vec2 aP; out vec2 vUV;
+void main(){ vUV = aP*0.5+0.5; gl_Position = vec4(aP, 0.0, 1.0); }`;
+const fs = `#version 300 es
+precision highp float; in vec2 vUV; out vec4 o;
+uniform vec3 uLight;
+// 벽돌 높이장 → 탄젠트 공간 법선 (이미지 노멀 맵을 절차적으로 대체)
+vec3 brickNormal(vec2 uv, out float mortar){
+  vec2 g = uv*vec2(6.0,3.0);
+  g.x += mod(floor(g.y), 2.0)*0.5;        // 어긋쌓기
+  vec2 f = fract(g), d = min(f, 1.0-f);
+  float m = 0.06;                          // 줄눈 폭
+  mortar = smoothstep(0.0,m,d.x)*smoothstep(0.0,m,d.y);
+  // 줄눈 경계에서 표면이 기울어짐 → 법선 흔들기
+  vec2 slope = vec2(smoothstep(0.0,m,f.x)-smoothstep(1.0-m,1.0,f.x),
+                    smoothstep(0.0,m,f.y)-smoothstep(1.0-m,1.0,f.y));
+  return normalize(vec3(-slope*1.6, 1.0));
+}
+void main(){
+  float mortar;
+  vec3 N = brickNormal(vUV, mortar);       // 노멀 맵에서 읽은 것과 같은 역할
+  vec3 L = normalize(uLight);
+  float diff = max(dot(N, L), 0.0);        // 흔들린 법선으로 조명
+  vec3 base = mix(vec3(0.25,0.22,0.20), vec3(0.72,0.30,0.22), mortar);
+  vec3 c = base*(0.15 + 0.95*diff);
+  o = vec4(pow(c, vec3(1.0/2.2)), 1.0);
+}`;
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+const pr=gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(pr); gl.useProgram(pr);
+const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+gl.uniform3f(gl.getUniformLocation(pr,'uLight'), -0.5, 0.5, 0.7);  // 왼쪽 위에서 빛
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.5: 절차 벽돌 노멀 매핑</div></div>
+<div class="box keypoint"><span class="chip">요점</span><p>노멀 매핑은 "법선을 속여 빛을 속인다." 지오메트리는 그대로 두고 픽셀마다 법선만 바꾸므로, 삼각형 수를 늘리지 않고도 표면에 풍부한 디테일을 준다. 관건은 탄젠트 공간의 법선을 TBN 행렬로 월드 공간에 옮겨 조명과 좌표계를 맞추는 것이다. 여기서 한 걸음 더 나아간 <strong class="term-ko">변위 매핑</strong><sup class="term">displacement mapping</sup>은 법선이 아니라 실제 정점을 밀어 올려 윤곽선까지 바꾼다.</p></div>
 <p><span id="labs"></span><div class="box lab"><div class="lab-title">실습을 통한 개념 정리</div><p><strong>실습 8-1</strong>  코드 8.1의 체커보드를 취향대로 바꿔 보자. 격자를 \(16 \times 16\)으로 촘촘하게 만들고, 흑백 대신 주황과 남색이 교차하도록 수정한다.</p>
 <p><strong>해답</strong>  코드 8.1에서 텍스처 생성 부분만 바꾸면 된다. 두 색을 배열로 준비해 두고 칸마다 골라 쓴다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -583,11 +713,11 @@ gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
 
 gl.clearColor(0.1, 0.15, 0.25, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.4: 체커보드 색과 크기 바꾸기</div></div>
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.6: 체커보드 색과 크기 바꾸기</div></div>
 <figure class="fig">
-<img class="gfx" src="img/ch08/ch08_img01.png" alt="figure">
-<p><figcaption>그림 8.4: 실습 8-1 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 8.4과 같은 결과가 나타난다. <code>SIZE</code>만 바꾸면 나머지 코드(<code>texImage2D</code>의 크기 인자 포함)가 그대로 따라오도록 상수를 한 곳에서 관리한 덕을 보는 것도 확인하자.</p>
+<img class="gfx" src="img/ch08/ch08_img03.png" alt="figure">
+<p><figcaption>그림 8.6: 실습 8-1 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 8.6과 같은 결과가 나타난다. <code>SIZE</code>만 바꾸면 나머지 코드(<code>texImage2D</code>의 크기 인자 포함)가 그대로 따라오도록 상수를 한 곳에서 관리한 덕을 보는 것도 확인하자.</p>
 <p><strong>실습 8-2</strong>  절차 생성의 힘을 좀 더 느껴 보자. 폭 1, 높이 64짜리 세로 그라데이션 텍스처를 만들어 화면 전체를 덮는 사각형에 입히면, 아래는 노을빛 주황에서 위는 밤하늘 남색으로 물드는 하늘 배경이 된다. 필터는 <code>LINEAR</code>로 하여 띠가 지지 않게 한다.</p>
 <p><strong>해답</strong>  코드 8.1에서 텍스처 생성부와 사각형 좌표를 다음으로 바꾼다.</p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -673,11 +803,11 @@ gl.bindTexture(gl.TEXTURE_2D, texture);
 gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
 
 gl.clear(gl.COLOR_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.5: 절차 생성 그라데이션 텍스처</div></div>
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);</code></pre><div class="listing-caption">코드 8.7: 절차 생성 그라데이션 텍스처</div></div>
 <figure class="fig">
-<img class="gfx" src="img/ch08/ch08_img02.png" alt="figure">
-<p><figcaption>그림 8.5: 실습 8-2 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 8.5와 같은 결과가 나타난다. 64단짜리 계단 데이터인데도 <code>LINEAR</code> 필터의 보간 덕에 매끄러운 그라데이션이 된다. <code>gl.NEAREST</code>로 바꾸어 띠가 드러나는 것과 비교해 보자. 색 값이 세로로만 변하므로 폭은 1텍셀이면 충분하다는 점이 이 실습의 요령이다.</p>
+<img class="gfx" src="img/ch08/ch08_img04.png" alt="figure">
+<p><figcaption>그림 8.7: 실습 8-2 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 8.7와 같은 결과가 나타난다. 64단짜리 계단 데이터인데도 <code>LINEAR</code> 필터의 보간 덕에 매끄러운 그라데이션이 된다. <code>gl.NEAREST</code>로 바꾸어 띠가 드러나는 것과 비교해 보자. 색 값이 세로로만 변하므로 폭은 1텍셀이면 충분하다는 점이 이 실습의 요령이다.</p>
 <p><strong>실습 8-3</strong>  텍스처를 3차원으로 데려가 보자. 6장에서 만든 것과 같은 정육면체의 여섯 면 각각에 코드 8.1의 체커보드 텍스처를 통째로 입히고, 원근 투영 카메라로 비스듬히 바라본다. (힌트: 면마다 정점 4개에 텍스처 좌표 \((0,0)\), \((1,0)\), \((1,1)\), \((0,1)\)을 배정하고 삼각형 2개로 쪼갠다. 위치와 텍스처 좌표를 한 버퍼에 섞어 담을 때는 <code>vertexAttribPointer</code>의 스트라이드 인자를 활용한다.)</p>
 <p><strong>해답</strong></p>
 <div class="listing"><pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -782,11 +912,11 @@ gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
 gl.enable(gl.DEPTH_TEST);                 // 3차원이므로 깊이 판정 필수
 gl.clearColor(0.1, 0.15, 0.25, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLES, 0, 36);       // 6면 x 삼각형 2개 x 정점 3개</code></pre><div class="listing-caption">코드 8.6: 정육면체에 체커보드 입히기</div></div>
+gl.drawArrays(gl.TRIANGLES, 0, 36);       // 6면 x 삼각형 2개 x 정점 3개</code></pre><div class="listing-caption">코드 8.8: 정육면체에 체커보드 입히기</div></div>
 <figure class="fig">
-<img class="gfx" src="img/ch08/ch08_img03.png" alt="figure">
-<p><figcaption>그림 8.6: 실습 8-3 실행 결과</figcaption></figure></p>
-<p>실행하면 그림 8.6과 같은 결과가 나타난다. 체커보드가 입혀진 정육면체의 세 면이 보인다. 텍스처 좌표는 면 위에서 정의되는 값이므로, 물체가 3차원 공간에서 어떤 변환을 거치든 무늬는 표면에 "붙은 채로" 따라간다는 것이 이 실습의 핵심 관찰이다. 6장의 회전 애니메이션을 결합해 정육면체를 돌려 보면 더욱 실감 난다.</p></div></p>
+<img class="gfx" src="img/ch08/ch08_img05.png" alt="figure">
+<p><figcaption>그림 8.8: 실습 8-3 실행 결과</figcaption></figure></p>
+<p>실행하면 그림 8.8과 같은 결과가 나타난다. 체커보드가 입혀진 정육면체의 세 면이 보인다. 텍스처 좌표는 면 위에서 정의되는 값이므로, 물체가 3차원 공간에서 어떤 변환을 거치든 무늬는 표면에 "붙은 채로" 따라간다는 것이 이 실습의 핵심 관찰이다. 6장의 회전 애니메이션을 결합해 정육면체를 돌려 보면 더욱 실감 난다.</p></div></p>
 <details class="box summary" id="summary"><summary class="box-head">8장 요약</summary><div class="sum-body"><ul>
 <li><strong>텍스처 매핑</strong>은 표면에 이미지를 입혀 적은 정점으로 풍부한 세부를 얻는 기법이다. 텍스처의 한 칸은 <strong>텍셀</strong>이며, 화면의 픽셀과 일대일로 만나지 않는다.</li>
 <li>텍스처 위의 위치는 해상도와 무관한 \(0 \sim 1\) 정규화 좌표 \((s, t)\)로 가리킨다(\((0,0)\)은 왼쪽 아래). 흔히 \((u, v)\)로도 부른다.</li>

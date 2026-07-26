@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부록 A 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서 — WebGL 3D 그래픽스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="book.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="home" href="../index.html">&#8962; 홈</a>
+  <span class="book-title">WebGL 3D 그래픽스</span>
+  <span class="ch-indicator">부록 A 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</span>
+  <button class="nav-toggle" onclick="document.body.classList.toggle('nav-open')">목차</button>
+</header>
+<div class="layout">
+<nav class="sidebar">
+<div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
+<div class="nav-part">Part I. WebGL 시작</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
+</div>
+<div class="nav-part">Part II. 기하 변환과 카메라</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
+</div>
+<div class="nav-part">Part III. 실감 렌더링</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
+</div>
+<div class="nav-part">Part IV. 한 걸음 더</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch current"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+<div class="nav-secs"><a class="nav-sec" href="apxa.html#sec1">전략 –- 화면을 덮는 삼각형 하나</a><a class="nav-sec" href="apxa.html#sec2">카메라와 광선 생성</a><a class="nav-sec" href="apxa.html#sec3">장면의 표현 –- 배열로 담은 물체들</a><a class="nav-sec" href="apxa.html#sec4">광선-물체 교차</a><a class="nav-sec" href="apxa.html#sec5">색을 결정하는 바운스 루프</a><a class="nav-sec" href="apxa.html#sec6">배경 –- 하늘, 구름, 바닥</a><a class="nav-sec" href="apxa.html#sec7">그림자와 caustic</a><a class="nav-sec" href="apxa.html#sec8">화면 밖에서 완성하기 –- FBO 블룸 후처리</a><a class="nav-sec" href="apxa.html#sec9">직접 해보기</a></div>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
+</div>
+</nav>
+<main class="content">
+<div class="chapter-head">
+  <div class="ch-label">APPENDIX A</div>
+  <h1>표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</h1>
+</div>
+<div class="center"><details class="box goals"><summary class="box-head">이 장을 마치면</summary><div class="goals-body"><p>이 부록에서 다루는 것
+<ul>
+<li>화면을 덮는 삼각형 하나로 픽셀마다 광선을 쏘는 레이 트레이싱 구조</li>
+<li>구·정육면체·팔면체·크라운컷 다이아몬드의 해석적 광선 교차</li>
+<li>유리(반사·굴절)·메탈·확산·텍스처 재질과 다이아몬드 색분산</li>
+<li>절차적 하늘·구름·체커 바닥, 그림자와 caustic</li>
+<li>11장의 FBO(Render To Texture)로 구현한 블룸 후처리 4패스</li>
+</ul></p></div></details></div>
+<p>이 책의 표지에 놓인 유리와 금속 구, 크라운컷 다이아몬드, 지구본, 그리고 어스름한 하늘과 체커 바닥은 3D 모델링 도구로 만든 것이 아니다. 외부 메시도, 텍스처 이미지 파일도 없다. <strong>단 한 장의 삼각형과 한 편의 프래그먼트 셰이더</strong>가 픽셀마다 광선을 쏘아 그린 <strong class="term-ko">레이 트레이싱</strong><sup class="term">ray tracing</sup> 장면이며, 마지막에 11장에서 배운 <strong class="term-ko">프레임버퍼 오브젝트</strong><sup class="term">framebuffer object</sup>로 블룸을 입혔다. 이 부록은 그 코드를 처음부터 끝까지 따라가며, 이 책이 다룬 개념들이 어떻게 한 화면에 모이는지 보인다. 전체는 하나의 HTML 파일이고, 브라우저에서 그대로 열린다.</p>
+<h2 id="sec1">전략 --- 화면을 덮는 삼각형 하나</h2>
+<p>지금까지 우리는 물체를 이루는 삼각형 수백, 수천 개를 정점 버퍼에 담아 래스터화했다. 레이 트레이싱은 발상을 뒤집는다. 장면을 이루는 삼각형을 그리는 대신, <strong>화면 전체를 덮는 삼각형 딱 하나</strong>를 그린다. 그러면 프래그먼트 셰이더가 화면의 모든 픽셀에서 한 번씩 실행되는데, 바로 그 픽셀 하나하나에서 카메라로부터 광선을 쏘아 장면과의 충돌을 계산한다. 물체는 정점이 아니라 셰이더 안의 수식(구의 방정식, 평면의 방정식 등)으로 존재한다.</p>
+<p>화면을 덮는 데는 사각형(삼각형 2개) 대신 <strong>커다란 삼각형 하나</strong>를 쓰는 관용적 기법을 이용한다. 정점을 \((-1,-1),(3,-1),(-1,3)\)에 두면 이 삼각형은 클립 공간 \([-1,1]^2\)를 완전히 덮는다. 뼈대는 다음과 같다.</p>
+<pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2', { antialias: true });
+
+// 정점 셰이더: 화면을 덮는 삼각형을 그대로 통과시킨다
+const vs = `#version 300 es
+layout(location=0) in vec2 p;
+void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+// 화면을 덮는 큰 삼각형 하나 (-1,-1) (3,-1) (-1,3)
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER,
+  new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// 프래그먼트 셰이더가 픽셀마다 광선을 쏜다 (아래 절에서 작성)
+gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre>
+<p>이제 모든 일은 프래그먼트 셰이더 안에서 벌어진다.</p>
+<h2 id="sec2">카메라와 광선 생성</h2>
+<p>각 픽셀에서 가장 먼저 할 일은 그 픽셀을 통과하는 <strong>광선</strong>(광선의 시작점 <code>ro</code>와 방향 <code>rd</code>)을 만드는 것이다. <code>gl_FragCoord</code>로 픽셀 좌표를 얻어 \([-1,1]\) 범위의 화면 좌표 <code>q</code>로 바꾸고, 카메라 위치 <code>eye</code>에서 바라보는 지점 <code>ta</code>를 향하는 좌표계(오른쪽 <code>rgt</code>, 위 <code>up</code>, 앞 <code>f</code>)를 세운다. 표지는 세로로 긴 판형이므로, 가로 화각은 유지하고 세로만 늘리도록 종횡비를 처리한다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec2 q = (gl_FragCoord.xy / uRes) * 2.0 - 1.0;
+float asp = uRes.x / uRes.y;
+if (asp &gt;= 1.0) q.x *= asp;   // 가로가 넓으면 가로 화각 확장
+else            q.y /= asp;   // 세로 표지: 세로 화각 확장
+
+vec3 eye = vec3(3.1, 1.85, 4.9);      // 카메라 위치
+vec3 ta  = vec3(-0.05, 0.80, -0.10);  // 바라보는 지점
+vec3 f   = normalize(ta - eye);
+vec3 rgt = normalize(cross(f, vec3(0,1,0)));
+vec3 up  = cross(rgt, f);
+vec3 rd  = normalize(q.x*rgt + q.y*up + 2.0*f);  // 픽셀 광선 방향
+vec3 ro  = eye;                                   // 광선 시작점</code></pre>
+<p>계수 <code>2.0</code>은 초점 거리에 해당한다. 값이 클수록 화각이 좁아져 망원처럼, 작을수록 광각처럼 보인다.</p>
+<h2 id="sec3">장면의 표현 --- 배열로 담은 물체들</h2>
+<p>장면의 모든 물체는 병렬 배열 몇 개로 표현한다. <code>K</code>는 <strong>모양</strong>(0 구, 1 정육면체, 2 원기둥, 3 팔면체, 4 다이아몬드), <code>MT</code>는 <strong>재질</strong>(0 유리, 1 메탈, 2 확산, 3 텍스처), <code>C</code>는 중심, <code>S</code>는 크기, <code>T</code>는 색(유리·메탈의 색조, 확산의 알베도)이다. 물체를 추가하거나 색을 바꾸려면 이 배열만 손대면 된다.</p>
+<pre class="line-numbers"><code class="language-glsl">const int N = 20;                 // 물체 개수
+int K[20]; int MT[20]; vec3 C[20]; vec3 S[20]; vec3 T[20];
+
+void setup(){
+  // 투명(유리) 물체 — K: 모양, MT=0: 유리
+  K[0]=0; MT[0]=0; C[0]=vec3(-1.45,0.95,0.20); S[0]=vec3(0.95); T[0]=vec3(1.0,0.04,0.16); // 루비 구
+  K[2]=4; MT[2]=0; C[2]=vec3( 2.00,0.55,-0.50);S[2]=vec3(0.72); T[2]=vec3(0.16,0.46,0.95);// 다이아몬드
+  // 불투명 메탈 공 — MT=1
+  K[6]=0; MT[6]=1; C[6]=vec3(-3.00,0.36,2.00); S[6]=vec3(0.36); T[6]=vec3(1.0,0.08,0.10); // 빨강 메탈
+  // 텍스처 지구본 — MT=3
+  K[12]=0; MT[12]=3; C[12]=vec3(-1.50,0.60,2.15); S[12]=vec3(0.60); T[12]=vec3(0.2,0.4,0.6);
+  // 배경의 불투명 구·정육면체 — MT=1(메탈) 또는 2(확산)
+  K[13]=1; MT[13]=2; C[13]=vec3(-1.20,0.60,-3.00); S[13]=vec3(0.60); T[13]=vec3(0.12,0.30,0.85);
+  // …나머지 물체 생략 (같은 방식)
+
+  // 광원 세 개: 위치 LP, 색·세기 LC
+  LP[0]=vec3(5.0,7.5,4.0);  LC[0]=vec3(1.0,0.96,0.88)*1.15;
+  LP[1]=vec3(-5.0,5.5,1.5); LC[1]=vec3(0.6,0.78,1.0)*0.9;
+  LP[2]=vec3(1.0,4.5,-5.0); LC[2]=vec3(1.0,0.68,0.44)*0.85;
+}</code></pre>
+<h2 id="sec4">광선-물체 교차</h2>
+<p>광선 \(\mathbf{o}+t\,\mathbf{d}\)가 물체와 만나는 가장 가까운 거리 \(t\)와 그 지점의 법선을 구하는 것이 레이 트레이싱의 핵심 계산이다. 구는 2차 방정식으로 정확히 풀린다.</p>
+<pre class="line-numbers"><code class="language-glsl">// 광선과 구의 교차: 가장 가까운 t, 표면 법선 n을 돌려준다
+float iSphere(vec3 ro, vec3 rd, vec3 c, float r, out vec3 n){
+  vec3 oc = ro - c;
+  float b = dot(oc, rd);
+  float k = dot(oc, oc) - r*r;
+  float h = b*b - k;                 // 판별식
+  if (h &lt; 0.0) return -1.0;          // 만나지 않음
+  h = sqrt(h);
+  float t = -b - h;                  // 가까운 근
+  if (t &lt; 1e-3) t = -b + h;          // 안에서 출발했으면 먼 근
+  if (t &lt; 1e-3) return -1.0;
+  n = normalize((ro + rd*t) - c);
+  return t;
+}</code></pre>
+<p>표지의 주인공인 크라운컷 다이아몬드는 평면(반평면) 여러 개의 교집합으로 정의되는 <strong>볼록 다면체</strong>다. 위쪽의 평평한 테이블 면, 비스듬한 크라운 패싯 8개, 아래로 뾰족하게 모이는 파빌리온 패싯 8개를 각각 반평면 \(\mathbf{n}\!\cdot\!\mathbf{p}\le d\)로 두고, 광선을 이 반평면들로 차례로 잘라(슬랩 클리핑) 들어오고 나가는 구간을 구한다.</p>
+<pre class="line-numbers"><code class="language-glsl">// 크라운컷 다이아몬드: 테이블 + 크라운/파빌리온 패싯의 볼록 다면체
+float iGem(vec3 ro, vec3 rd, vec3 c, float s, out vec3 n){
+  vec3 o = ro - c;
+  float tN = -1e9, tF = 1e9;           // 들어오는 구간 [tN, tF]
+  vec3 nEnter = vec3(0,1,0), nExit = vec3(0,1,0);
+
+  // 반평면 하나로 광선 구간을 자르는 매크로 같은 처리 (테이블·크라운·파빌리온에 반복)
+  //  fn: 면 법선, d: 면까지 거리 → 영역은 dot(fn, p) &lt;= d
+  //  den&gt;0 이면 나가는 면(tF 갱신), den&lt;0 이면 들어오는 면(tN·법선 갱신)
+  for (int i = 0; i &lt; 8; i++){
+    float a = 6.2831853 * float(i) / 8.0;
+    vec3 fn = normalize(vec3(cos(a), 0.85, sin(a)));   // 크라운 패싯(위-바깥)
+    float d = dot(fn, vec3(s*cos(a), 0.0, s*sin(a)));
+    float den = dot(fn, rd), num = d - dot(fn, o);
+    if (abs(den) &lt; 1e-7){ if (num &lt; 0.0) return -1.0; }
+    else { float t = num/den;
+      if (den &lt; 0.0){ if (t &gt; tN){ tN = t; nEnter = fn; } }
+      else          { if (t &lt; tF){ tF = t; nExit  = fn; } } }
+    // 파빌리온 패싯(아래-바깥, 22.5° 회전)도 같은 방식으로 잘라낸다 …
+  }
+  if (tN &gt; tF || tF &lt; 1e-3) return -1.0;
+  if (tN &gt; 1e-3){ n = nEnter; return tN; }  // 바깥에서 진입
+  n = nExit; return tF;                      // 안에서 탈출
+}</code></pre>
+<p>정육면체(<code>iBox</code>)는 슬랩 3쌍, 원기둥·팔면체도 같은 요령의 해석적 교차로 구현한다. <code>scene()</code> 함수는 바닥 평면과 모든 물체에 대해 교차를 시도하고 가장 가까운 것을 고른다.</p>
+<h2 id="sec5">색을 결정하는 바운스 루프</h2>
+<p>광선이 무엇과 만났는지 알았으면, 그 지점의 색을 정한다. 유리와 금속은 빛을 다시 튕기거나 통과시키므로, 광선을 여러 번 <strong>바운스</strong>시키며 색을 누적한다. <code>thr</code>(throughput)은 지금까지 광선이 잃지 않고 나른 빛의 비율이다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec3 col = vec3(0.0), thr = vec3(1.0);
+for (int bounce = 0; bounce &lt; 7; bounce++){
+  float t; vec3 n; int oi;
+  int which = scene(ro, rd, t, n, oi);
+  if (which == -1){ col += thr * sky(rd);            break; } // 하늘
+  if (which ==  0){ col += thr * shadeFloor(ro+rd*t, rd); break; } // 바닥
+
+  vec3 p = ro + rd*t; vec3 v = -rd;
+  if (MT[oi] == 3){ col += thr*shadeDiffuse(p,n,v,texGlobe(n)); break; } // 지구본
+  if (MT[oi] == 2){ col += thr*shadeDiffuse(p,n,v,T[oi]);       break; } // 확산
+  if (MT[oi] == 1){                                     // 불투명 메탈: 반사만
+    vec3 nf = dot(rd,n)&lt;0.0 ? n : -n;
+    float ci = max(dot(v,nf), 0.0);
+    vec3 F = T[oi] + (1.0 - T[oi]) * pow(1.0-ci, 5.0); // 색조 프레넬
+    thr *= F;  rd = reflect(rd, nf);  ro = p + rd*1e-3;
+    continue;
+  }
+  // 유리(유전체): 반사 + 굴절
+  bool entering = dot(rd,n) &lt; 0.0;  vec3 nf = entering ? n : -n;
+  float ior = (K[oi]==4) ? 2.42 : 1.5;                 // 다이아몬드는 높은 굴절률
+  float ci = max(dot(v,nf), 0.0);
+  float fres = 0.04 + 0.96*pow(1.0-ci, 5.0);           // 프레넬 반사율
+  col += thr * fres * /* 반사 방향의 환경색 */ ;
+  vec3 rt = refract(rd, nf, entering ? 1.0/ior : ior); // 굴절 방향
+  thr *= (1.0-fres) * mix(vec3(1.0), T[oi], entering ? 0.30 : 0.0); // 색조 흡수
+  rd = rt;  ro = p + rd*1e-3;
+}
+col *= 0.66;   // 노출</code></pre>
+<p><strong class="term-ko">프레넬</strong><sup class="term">Fresnel</sup> 항 <code>fres</code>는 스치는 각도에서 반사가 강해지는 현상을 근사한다. 금속은 굴절 없이 반사만 하되 반사색을 금속색 <code>T</code>로 물들이고, 유리는 반사와 굴절로 빛을 나눈다. 다이아몬드는 굴절률을 2.42로 높여 내부 반사가 화려하게 일어난다.</p>
+<p>다이아몬드의 <strong>색분산</strong>(무지개 파이어)은 패싯의 법선과 시선으로 색상(hue)을 뽑아 코사인 팔레트로 무지개를 만들고, 프레넬 엣지로 가중해 얹는다. 값싼 연산 한 줄로 보석의 반짝임을 흉내 낸다.</p>
+<pre class="line-numbers"><code class="language-glsl">if (K[oi] == 4){   // 다이아몬드 색분산 — 패싯별 무지개 파이어
+  float edge = 0.22 + 0.78*pow(1.0-ci, 2.0);
+  float hue  = fract(dot(nf, vec3(1.7,0.9,1.3))*0.5 + dot(nf,v)*0.6);
+  vec3  fire = 0.5 + 0.5*cos(6.2831853*(hue + vec3(0.0, 0.33, 0.67)));
+  col += thr * (1.0-fres) * edge * fire * 0.95;
+}</code></pre>
+<h2 id="sec6">배경 --- 하늘, 구름, 바닥</h2>
+<p>광선이 아무 물체도 맞히지 못하면 <strong>하늘</strong>이다. 시선의 높이에 따라 짙은 남색에서 지평선의 옅은 파랑으로 섞고, <code>fbm</code> 잡음을 하늘 평면에 투영해 구름을 얹는다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec3 sky(vec3 rd){
+  float h = clamp(rd.y*0.5 + 0.5, 0.0, 1.0);
+  vec3 c = mix(vec3(0.09,0.17,0.36), vec3(0.002,0.02,0.12), pow(h, 0.62));
+  if (rd.y &gt; 0.015){                       // 지평선 위에만 구름
+    vec2 cp = rd.xz / rd.y * 1.15;          // 하늘 평면에 투영
+    float f = fbm(cp*0.52 + vec2(3.0,1.5));
+    float cov = smoothstep(0.46, 0.86, f);
+    vec3 cloud = mix(vec3(0.20,0.25,0.38), vec3(0.48,0.52,0.62),
+                     smoothstep(0.4, 0.95, f));
+    c = mix(c, cloud, cov * smoothstep(0.02,0.28,rd.y) * 0.85);
+  }
+  return c;
+}</code></pre>
+<p>바닥은 무한 체커 평면이다. 멀어질수록 칸이 촘촘해져 생기는 계단 잡음을 막기 위해, 화소가 덮는 폭 <code>fwidth</code>로 체커를 <strong>해석적으로 안티에일리어싱</strong>한다.</p>
+<pre class="line-numbers"><code class="language-glsl">vec3 checkerCol(vec2 p){
+  vec2 w = fwidth(p) + 1e-3;             // 이 화소가 덮는 바닥 폭
+  vec2 i = 2.0*(abs(fract((p-0.5*w)*0.5)-0.5)
+              - abs(fract((p+0.5*w)*0.5)-0.5)) / w;
+  float c = 0.5 - 0.5*i.x*i.y;           // 경계에서 부드럽게 평균
+  return mix(vec3(0.04,0.06,0.14), vec3(0.55,0.58,0.66), c);
+}</code></pre>
+<h2 id="sec7">그림자와 caustic</h2>
+<p>바닥의 각 점에서 광원으로 그림자 광선을 쏘아 물체가 가리면 어둡게 한다(<code>shadowT</code>). 유리는 완전히 막지 않고 빛을 조금 통과시키므로 그림자를 옅게, 불투명 물체는 짙게 감쇠한다. 여기에 <strong>굴절 caustic</strong>을 더한다. 광원에서 물체 중심을 지나 바닥에 맺히는 지점을 초점으로 삼아, 물체 색을 띤 밝은 링과 핫스팟을 부드러운 그림자 안쪽에 얹어, 유리가 빛을 모아 만든 밝은 무늬를 흉내 낸다.</p>
+<h2 id="sec8">화면 밖에서 완성하기 --- FBO 블룸 후처리</h2>
+<p>여기까지가 장면을 한 번 그리는 과정이다. 마지막으로 11장에서 배운 <strong class="term-ko">프레임버퍼 오브젝트</strong><sup class="term">framebuffer object</sup>(FBO)를 써서 <strong>블룸</strong>(bloom)을 입힌다. 블룸은 밝은 부분의 빛이 번져 나오는 효과로, 보석의 하이라이트와 색분산, caustic을 은은하게 발광시켜 장면을 극적으로 만든다. 구조는 화면이 아니라 텍스처에 그린 뒤 그 텍스처를 다시 입력으로 쓰는 <strong>2패스(여기서는 4패스) 포스트 프로세싱</strong>이다.</p>
+<ol>
+<li><strong>장면 패스</strong>: 레이 트레이서를 화면이 아니라 부동소수점 텍스처(<code>RGBA16F</code>)에 그린다. 밝기가 1을 넘는 하이라이트를 손실 없이 보존하기 위해서다.</li>
+<li><strong>밝은 부분 추출</strong>: 그 텍스처에서 임계값보다 밝은 화소만 골라 반해상도 텍스처에 담는다.</li>
+<li><strong>가우시안 블러</strong>: 추출한 밝은 부분을 가로·세로로 분리해 흐린다. 두 개의 FBO를 번갈아 쓰는 <strong>핑퐁</strong>으로 여러 번 반복해 넓게 번지게 한다.</li>
+<li><strong>합성</strong>: 원본 장면에 흐린 밝은 부분을 더하고, 비네트·감마·대비·채도를 적용해 화면에 출력한다.</li>
+</ol>
+<p>먼저 후처리 셰이더 세 편이다. 밝은 부분 추출과 분리형 블러, 그리고 합성이다.</p>
+<pre class="line-numbers"><code class="language-glsl">// (2) 밝은 부분만 추출
+uniform sampler2D uTex; uniform float uThreshold;
+void main(){
+  vec3 c = texture(uTex, uv).rgb;
+  float l = max(max(c.r, c.g), c.b);
+  o = vec4(c * smoothstep(uThreshold, uThreshold+0.6, l), 1.0);
+}
+// (3) 분리형 가우시안 블러 (uDir로 가로/세로 선택)
+uniform vec2 uTexel; uniform vec2 uDir;
+void main(){
+  vec2 d = uDir * uTexel * 1.4;
+  vec3 s = texture(uTex, uv).rgb * 0.2270;
+  s += (texture(uTex,uv+d).rgb    + texture(uTex,uv-d).rgb)    * 0.1946;
+  s += (texture(uTex,uv+2.0*d).rgb+ texture(uTex,uv-2.0*d).rgb)* 0.1216;
+  s += (texture(uTex,uv+3.0*d).rgb+ texture(uTex,uv-3.0*d).rgb)* 0.0541;
+  s += (texture(uTex,uv+4.0*d).rgb+ texture(uTex,uv-4.0*d).rgb)* 0.0162;
+  o = vec4(s, 1.0);
+}
+// (4) 합성 + 그레이딩
+uniform sampler2D uScene, uBloom; uniform float uBloomInt;
+void main(){
+  vec3 c = texture(uScene,uv).rgb + texture(uBloom,uv).rgb * uBloomInt;
+  float dc = length(uv-0.5);  c *= clamp(1.0 - 1.6*dc*dc, 0.16, 1.0); // 비네트
+  c = pow(clamp(c,0.0,1.0), vec3(0.4545));                            // 감마
+  c = clamp((c-0.5)*1.20 + 0.5, 0.0, 1.0);                            // 대비
+  float lum = dot(c, vec3(0.299,0.587,0.114));
+  o = vec4(clamp(mix(vec3(lum), c, 1.22), 0.0, 1.0), 1.0);            // 채도
+}</code></pre>
+<p>JavaScript 쪽에서는 렌더 타깃 텍스처와 FBO를 만들고, 네 패스를 순서대로 그린다. 색 버퍼로 부동소수점 텍스처를 쓰기 위해 <code>EXT_color_buffer_float</code> 확장을 켠다.</p>
+<pre class="line-numbers"><code class="language-javascript">gl.getExtension('EXT_color_buffer_float');   // 부동소수점 렌더 타깃 허용
+
+// 렌더 타깃 텍스처(RGBA16F)와 FBO를 만드는 헬퍼
+function mkTex(w, h){
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0,
+                gl.RGBA, gl.HALF_FLOAT, null);   // 빈 부동소수점 텍스처
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return t;
+}
+function mkFBO(t){
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                          gl.TEXTURE_2D, t, 0);   // 색 버퍼 = 이 텍스처
+  return f;
+}
+
+const W = canvas.width, H = canvas.height, hw = W&gt;&gt;1, hh = H&gt;&gt;1;
+const sceneT = mkTex(W,H),  sceneF = mkFBO(sceneT);   // 장면(전해상도)
+const bA = mkTex(hw,hh), bAF = mkFBO(bA);             // 블룸(반해상도) A
+const bB = mkTex(hw,hh), bBF = mkFBO(bB);             // 블룸(반해상도) B
+
+// (1) 장면 → sceneT
+gl.bindFramebuffer(gl.FRAMEBUFFER, sceneF); gl.viewport(0,0,W,H);
+gl.useProgram(pScene); /* uRes 설정 */ gl.drawArrays(gl.TRIANGLES,0,3);
+
+// (2) 밝은 부분 추출 → bA
+gl.bindFramebuffer(gl.FRAMEBUFFER, bAF); gl.viewport(0,0,hw,hh);
+gl.useProgram(pBright); /* uTex=sceneT, uThreshold=0.62 */ gl.drawArrays(gl.TRIANGLES,0,3);
+
+// (3) 가우시안 블러: bA↔bB 핑퐁 3회 (가로→세로)
+gl.useProgram(pBlur);
+for (let i = 0; i &lt; 3; i++){
+  gl.bindFramebuffer(gl.FRAMEBUFFER, bBF);  // 가로: bA → bB
+  gl.bindTexture(gl.TEXTURE_2D, bA); /* uDir=(1,0) */ gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, bAF);  // 세로: bB → bA
+  gl.bindTexture(gl.TEXTURE_2D, bB); /* uDir=(0,1) */ gl.drawArrays(gl.TRIANGLES,0,3);
+}
+
+// (4) 합성 → 화면(기본 프레임버퍼)
+gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0,0,W,H);
+gl.useProgram(pComp); /* uScene=sceneT, uBloom=bA, uBloomInt=1.1 */
+gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre>
+<p>이 네 번의 그리기가 끝나면, 어두운 무대 위에서 보석들이 은은히 발광하는 표지 장면이 완성된다. 화면 대신 텍스처를 목적지로 삼아 결과를 되먹이는  —  11장에서 배운 바로 그 되먹임이  —  표지를 완성한 것이다.</p>
+<h2 id="sec9">직접 해보기</h2>
+<p>전체 코드는 하나의 HTML 파일이므로, 브라우저에서 열어 곧바로 값을 바꿔 볼 수 있다.</p>
+<ul>
+<li><code>setup()</code>의 배열에 물체를 추가하거나 <code>T[]</code> 색을 바꿔 자신만의 장면을 꾸며 보자.</li>
+<li>합성 패스의 <code>uThreshold</code>(블룸 임계값)와 <code>uBloomInt</code>(세기), <code>col *= 0.66</code>(노출)을 조절해 분위기를 바꿔 보자.</li>
+<li>블러 반복 횟수를 늘리면 더 넓게 번지고, <code>uTexel</code> 계수를 키우면 더 성기게 번진다.</li>
+<li>다이아몬드 색분산의 <code>fire</code> 강도(<code>* 0.95</code>)를 올려 더 화려한 보석을 만들어 보자.</li>
+</ul>
+<p>한 장의 삼각형에서 시작해, 광선과 재질, 절차적 배경, 그리고 화면 밖 렌더링까지  —  이 책이 지나온 길이 이 한 장의 표지에 고스란히 담겨 있다.</p>
+<div class="pager-row"><a class="pager prev" href="ch13.html">&larr; 13장</a><a class="pager next" href="apxb.html">부록 B &rarr;</a></div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-glsl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<script src="book.js"></script>
+</body>
+</html>
