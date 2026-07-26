@@ -55,7 +55,7 @@
 <div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
 </div>
 <div class="nav-ch current"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
-<div class="nav-secs"><a class="nav-sec" href="apxb.html#sec1">유니폼 버퍼 오브젝트(UBO)</a><a class="nav-sec" href="apxb.html#sec2">트랜스폼 피드백</a><a class="nav-sec" href="apxb.html#sec3">다중 렌더 타깃(MRT)</a></div>
+<div class="nav-secs"><a class="nav-sec" href="apxb.html#sec1">유니폼 버퍼 오브젝트(UBO)</a><a class="nav-sec" href="apxb.html#sec2">트랜스폼 피드백</a><a class="nav-sec" href="apxb.html#sec3">다중 렌더 타깃(MRT)</a><a class="nav-sec" href="apxb.html#sec4">전체 코드 — 트랜스폼 피드백 GPU 파티클</a></div>
 </div>
 </nav>
 <main class="content">
@@ -113,6 +113,113 @@ gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, tex
 gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2]);</code></pre>
 <p>이렇게 화면의 위치·법선·재질을 미리 여러 텍스처(G-buffer)에 그려 두고, 조명을 그다음에 화면 공간에서 한 번에 계산하는 것이 <strong class="term-ko">지연 셰이딩</strong><sup class="term">deferred shading</sup>이다(11.6절). 광원이 수백 개인 장면에서, 광원마다 전체 장면을 다시 그리는 대신 화면 픽셀당 한 번씩만 조명을 계산할 수 있다.</p>
 <div class="box keypoint"><span class="chip">요점</span><p>세 기능의 공통점은 "GPU와 데이터를 주고받는 통로를 넓힌다"는 것이다  —  UBO는 유니폼을 묶어 공유하고, 트랜스폼 피드백은 정점 출력을 버퍼로 되받고, MRT는 프래그먼트 출력을 여러 텍스처로 내보낸다. 이 통로들이 대규모 파티클·지연 셰이딩·GPU 시뮬레이션의 토대가 되며, WebGPU(13.3절)는 이 방향을 더 밀고 나간 것이다.</p></div>
+<h2 id="sec4">전체 코드  —  트랜스폼 피드백 GPU 파티클</h2>
+<p>이 부록에서 다룬 세 기능 가운데 <strong>트랜스폼 피드백</strong>을 처음부터 끝까지 돌려 보는 완결 예제다. 파티클 3000개의 위치 — 속도 — 수명을 모두 GPU의 정점 셰이더에서 갱신해 버퍼로 되돌리고(핑퐁), 그 결과를 점 스프라이트로 그린다. CPU는 매 프레임 <code>uDt</code> 하나만 넘길 뿐이다. 웹 에디션에서 [실행]으로 분수가 솟는 것을 확인해 보자.</p>
+<div class="listing"><pre class="line-numbers"><code class="language-javascript">// 트랜스폼 피드백 GPU 파티클 — 갱신을 전부 GPU에서(정점 셰이더 출력을 버퍼로 되돌림)
+const gl = glCanvas.getContext('webgl2', { antialias: true });
+const N = 3000;
+
+// --- 갱신 프로그램: (pos, vel, life) → (newPos, newVel, newLife) ---
+const updVS = `#version 300 es
+layout(location=0) in vec2 aPos;
+layout(location=1) in vec2 aVel;
+layout(location=2) in float aLife;
+uniform float uDt; uniform float uSeed;
+out vec2 vPos; out vec2 vVel; out float vLife;
+float hash(float n){ return fract(sin(n)*43758.5453); }
+void main(){
+  float life = aLife - uDt;
+  vec2 pos = aPos, vel = aVel;
+  if(life &lt;= 0.0){                                  // 재생성 (바닥 분출)
+    float s = float(gl_VertexID) + uSeed;
+    float a = hash(s)*6.2831;
+    float sp = 0.4 + hash(s+1.3)*0.5;
+    pos = vec2(0.0, -0.9);
+    vel = vec2(cos(a)*0.25, 0.9 + hash(s+2.7)*0.6);
+    life = 0.7 + hash(s+3.1)*0.8;
+  } else {
+    vel.y -= 1.3*uDt;                               // 중력
+    pos += vel*uDt;
+  }
+  vPos = pos; vVel = vel; vLife = life;
+}`;
+const updFS = `#version 300 es
+precision highp float; void main(){}`;   // 래스터화 안 함
+
+// --- 렌더 프로그램: 점 스프라이트 + 가산 블렌딩 ---
+const renVS = `#version 300 es
+layout(location=0) in vec2 aPos;
+layout(location=2) in float aLife;
+out float vLife;
+void main(){ vLife=aLife; gl_Position=vec4(aPos,0.0,1.0); gl_PointSize=4.0+aLife*14.0; }`;
+const renFS = `#version 300 es
+precision highp float; in float vLife; out vec4 o;
+void main(){ vec2 d=gl_PointCoord-0.5; float r=1.0-smoothstep(0.0,0.5,length(d));
+  vec3 c=mix(vec3(1.0,0.3,0.05), vec3(0.5,0.85,1.0), vLife); o=vec4(c*r, r); }`;
+
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o);
+  if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(o)); return o; }
+function prog(vs,fs,tfVaryings){
+  const p=gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  if(tfVaryings) gl.transformFeedbackVaryings(p, tfVaryings, gl.INTERLEAVED_ATTRIBS);
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+  return p;
+}
+const updP = prog(updVS, updFS, ['vPos','vVel','vLife']);
+const renP = prog(renVS, renFS, null);
+
+// 초기 파티클 데이터 (pos.xy, vel.xy, life) = 5 float/입자
+const init = new Float32Array(N*5);
+for(let i=0;i&lt;N;i++){
+  const a=Math.random()*6.28;
+  init[i*5]=0; init[i*5+1]=-0.9;
+  init[i*5+2]=Math.cos(a)*0.25; init[i*5+3]=0.9+Math.random()*0.6;
+  init[i*5+4]=Math.random()*1.2;                    // 흩어진 초기 수명
+}
+// 핑퐁 버퍼 두 벌
+function makeBuf(data){ const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_COPY); return b; }
+let bufA = makeBuf(init), bufB = makeBuf(new Float32Array(N*5));
+const STRIDE = 5*4;
+function bindAttribs(buf){
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,STRIDE,0);   // pos
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1,2,gl.FLOAT,false,STRIDE,8);   // vel
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2,1,gl.FLOAT,false,STRIDE,16);  // life
+}
+const tf = gl.createTransformFeedback();
+
+let last=0;
+function frame(t){
+  const dt = last ? Math.min((t-last)/1000, 0.05) : 0.016; last=t;
+  // 1) 갱신 패스: bufA를 읽어 bufB에 새 상태를 쓴다 (래스터화 끔)
+  gl.useProgram(updP);
+  gl.uniform1f(gl.getUniformLocation(updP,'uDt'), dt);
+  gl.uniform1f(gl.getUniformLocation(updP,'uSeed'), (t%1000)*0.7);
+  bindAttribs(bufA);
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, bufB);
+  gl.enable(gl.RASTERIZER_DISCARD);
+  gl.beginTransformFeedback(gl.POINTS);
+  gl.drawArrays(gl.POINTS, 0, N);
+  gl.endTransformFeedback();
+  gl.disable(gl.RASTERIZER_DISCARD);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+  // 2) 렌더 패스: 방금 쓴 bufB를 그린다
+  gl.useProgram(renP);
+  bindAttribs(bufB);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  gl.clearColor(0.02,0.02,0.05,1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.POINTS, 0, N);
+  // 3) 버퍼 교체 (핑퐁)
+  const tmp=bufA; bufA=bufB; bufB=tmp;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);</code></pre><div class="listing-caption">코드 B.1: 트랜스폼 피드백 GPU 파티클 전체</div></div>
 <div class="pager-row"><a class="pager prev" href="apxa.html">&larr; 부록 A</a><span></span></div>
 </main>
 </div>
