@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch11 예제 1 — 장면을 FBO에 그리고 흑백 필터로 출력하기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+// ===== 준비: 컨텍스트와 glMatrix =====
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 1패스 셰이더: 색 정육면체를 그리는 장면 셰이더 =====
+const sceneVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uMVP;
+out vec3 vColor;
+void main() {
+    gl_Position = uMVP * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const sceneFS = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+// ===== 2패스 셰이더: 화면 가득 사각형 + 흑백 필터 =====
+const filterVS = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);   // 행렬이 필요 없다
+    vTexCoord = aPosition * 0.5 + 0.5;         // [-1,1] → [0,1]
+}`;
+const filterFS = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uScene;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(uScene, vTexCoord);
+    float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    fragColor = vec4(vec3(lum), 1.0);          // 흑백 변환
+}`;
+
+const sceneProgram  = makeProgram(gl, sceneVS, sceneFS);
+const filterProgram = makeProgram(gl, filterVS, filterFS);
+
+// ===== VAO 1: 색 정육면체 (정점 8개 + 인덱스 36개) =====
+const positions = new Float32Array([
+    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,   // 앞면
+    -1, -1, -1,   1, -1, -1,   1,  1, -1,  -1,  1, -1,   // 뒷면
+]);
+const colors = new Float32Array([                        // 좌표를 색으로
+    0, 0, 1,   1, 0, 1,   1, 1, 1,   0, 1, 1,
+    0, 0, 0,   1, 0, 0,   1, 1, 0,   0, 1, 0,
+]);
+const indices = new Uint16Array([
+    0, 1, 2,  0, 2, 3,   1, 5, 6,  1, 6, 2,   5, 4, 7,  5, 7, 6,
+    4, 0, 3,  4, 3, 7,   3, 2, 6,  3, 6, 7,   4, 5, 1,  4, 1, 0,
+]);
+const cubeVao = gl.createVertexArray();
+gl.bindVertexArray(cubeVao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const colVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colVbo);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+const ebo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ===== VAO 2: 화면 가득 사각형 (TRIANGLE_STRIP 정점 4개) =====
+const quadVao = gl.createVertexArray();
+gl.bindVertexArray(quadVao);
+const quadVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadVbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,   1, -1,   -1, 1,   1, 1,
+]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ===== FBO: 색 텍스처 + 깊이 렌더버퍼 =====
+const FBO_W = 600, FBO_H = 400;
+const sceneTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, sceneTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, FBO_W, FBO_H, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+const depthRbo = gl.createRenderbuffer();
+gl.bindRenderbuffer(gl.RENDERBUFFER, depthRbo);
+gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, FBO_W, FBO_H);
+
+const fbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, sceneTex, 0);
+gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                           gl.RENDERBUFFER, depthRbo);
+if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    console.log('framebuffer incomplete');
+
+// ===== MVP 행렬 =====
+const proj = mat4.create(), view = mat4.create(), mvp = mat4.create();
+mat4.perspective(proj, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+mat4.lookAt(view, [2.4, 2.0, 3.2], [0, 0, 0], [0, 1, 0]);
+mat4.multiply(mvp, proj, view);
+
+// ===== 1패스: 정육면체를 FBO(텍스처)에 그린다 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+gl.viewport(0, 0, FBO_W, FBO_H);             // FBO 크기에 맞춘 뷰포트
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.9, 0.85, 0.75, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(sceneProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(sceneProgram, 'uMVP'), false, mvp);
+gl.bindVertexArray(cubeVao);
+gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+
+// ===== 2패스: 텍스처를 화면 가득 사각형에 입혀 필터 적용 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);    // 목적지를 화면으로 복귀
+gl.viewport(0, 0, canvas.width, canvas.height);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(filterProgram);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, sceneTex);     // 1패스의 결과를 입력으로
+gl.uniform1i(gl.getUniformLocation(filterProgram, 'uScene'), 0);
+gl.bindVertexArray(quadVao);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+</script>
+</body></html>

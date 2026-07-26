@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch07 예제 6 — 점광원으로 조명</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 셰이더: 점광원 위치에서 빛 방향을 프래그먼트마다 계산 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vPosition;
+out vec3 vNormal;
+void main() {
+    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    gl_Position = uProj * uView * worldPos;
+    vPosition = worldPos.xyz;
+    vNormal = mat3(uModel) * aNormal;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vPosition;
+in vec3 vNormal;
+uniform vec3 uLightPos;      // 점광원의 위치
+uniform vec3 uLightColor;
+uniform vec3 uMaterial;
+out vec4 fragColor;
+void main() {
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(uLightPos - vPosition);   // 표면점 -> 광원
+    float diff = max(dot(N, L), 0.0);
+    vec3 color = 0.2 * uMaterial + diff * uLightColor * uMaterial;
+    fragColor = vec4(color, 1.0);
+}`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 정육면체 정점 36개 =====
+function makeCube() {
+    const faces = [
+        [[ 0, 0, 1], [ 1, 0, 0], [0, 1, 0]],
+        [[ 0, 0,-1], [-1, 0, 0], [0, 1, 0]],
+        [[ 1, 0, 0], [ 0, 0,-1], [0, 1, 0]],
+        [[-1, 0, 0], [ 0, 0, 1], [0, 1, 0]],
+        [[ 0, 1, 0], [ 1, 0, 0], [0, 0,-1]],
+        [[ 0,-1, 0], [ 1, 0, 0], [0, 0, 1]],
+    ];
+    const pos = [], nrm = [];
+    for (const [n, u, v] of faces) {
+        const corner = (su, sv) => {
+            for (let k = 0; k < 3; k++)
+                pos.push(0.5*n[k] + su*0.5*u[k] + sv*0.5*v[k]);
+            nrm.push(n[0], n[1], n[2]);
+        };
+        corner(-1,-1); corner(1,-1); corner(1,1);
+        corner(-1,-1); corner(1,1);  corner(-1,1);
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const cube = makeCube();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.pos, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.nrm, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ===== MVP 행렬과 uniform =====
+const eye = [1.6, 1.4, 2.2];
+const model = mat4.create();
+const view = mat4.create();
+mat4.lookAt(view, eye, [0, 0, 0], [0, 1, 0]);
+const proj = mat4.create();
+mat4.perspective(proj, Math.PI/4, canvas.width/canvas.height, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+
+// uLightDir 대신 점광원 위치를 넘긴다
+gl.uniform3f(gl.getUniformLocation(program, 'uLightPos'), 0.9, 1.1, 1.2);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), 1.0, 1.0, 1.0);
+gl.uniform3f(gl.getUniformLocation(program, 'uMaterial'), 0.8, 0.2, 0.2);
+
+// ===== 그리기 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 36);
+</script>
+</body></html>

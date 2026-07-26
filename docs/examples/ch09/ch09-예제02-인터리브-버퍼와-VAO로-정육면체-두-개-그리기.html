@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch09 예제 2 — 인터리브 버퍼와 VAO로 정육면체 두 개 그리기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(vColor, 1.0);
+}`;
+
+// 2장의 셰이더 도우미를 압축한 형태
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 인덱스 버퍼: 두 정육면체가 공유한다 -----
+const indices = new Uint16Array([
+    0, 1, 2,   0, 2, 3,     1, 5, 6,   1, 6, 2,
+    5, 4, 7,   5, 7, 6,     4, 0, 3,   4, 3, 7,
+    3, 2, 6,   3, 6, 7,     4, 5, 1,   4, 1, 0,
+]);
+const ibo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+// ----- 물체 하나 = VAO 하나: 인터리브 버퍼를 만들어 VAO로 묶는다 -----
+function makeCubeVao(gl, ibo, colors) {
+    const pos = [
+        -1, -1,  1,    1, -1,  1,    1,  1,  1,   -1,  1,  1,
+        -1, -1, -1,    1, -1, -1,    1,  1, -1,   -1,  1, -1,
+    ];
+    // [x y z r g b] 순서로 한 버퍼에 섞어 담는다 (인터리브)
+    const data = new Float32Array(8 * 6);
+    for (let i = 0; i < 8; i++) {
+        data.set(pos.slice(i * 3, i * 3 + 3), i * 6);         // 위치 3개
+        data.set(colors.slice(i * 3, i * 3 + 3), i * 6 + 3);  // 색 3개
+    }
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    // 한 정점 = 24바이트: 위치는 오프셋 0, 색은 오프셋 12
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);   // 인덱스 버퍼도 VAO에 기록
+    gl.bindVertexArray(null);                      // 설정 끝
+    return vao;
+}
+
+// 따뜻한 색 조합과 차가운 색 조합으로 VAO 두 개를 만든다
+const warm = [
+    1.0, 0.3, 0.2,   1.0, 0.6, 0.2,   1.0, 0.9, 0.3,   1.0, 0.4, 0.5,
+    0.8, 0.2, 0.2,   0.9, 0.5, 0.1,   1.0, 0.8, 0.5,   0.9, 0.3, 0.4,
+];
+const cool = [
+    0.2, 0.4, 1.0,   0.2, 0.8, 1.0,   0.3, 1.0, 0.9,   0.4, 0.5, 1.0,
+    0.2, 0.2, 0.8,   0.1, 0.6, 0.9,   0.5, 0.9, 1.0,   0.3, 0.4, 0.9,
+];
+const vaoA = makeCubeVao(gl, ibo, warm);
+const vaoB = makeCubeVao(gl, ibo, cool);
+
+// ----- 카메라는 두 물체가 공유한다 -----
+const view = mat4.create();
+const projection = mat4.create();
+mat4.lookAt(view, [0, 2.5, 7], [0, 0, 0], [0, 1, 0]);
+mat4.perspective(projection, Math.PI / 4, 600 / 400, 0.1, 100);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjection'), false,
+                    projection);
+
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+// ----- 그리기: VAO 전환 + uModel 교체로 drawElements 2회 -----
+const model = mat4.create();
+
+mat4.fromTranslation(model, [-1.7, 0, 0]);         // 왼쪽 정육면체
+mat4.rotateY(model, model, 0.5);
+gl.uniformMatrix4fv(uModelLoc, false, model);
+gl.bindVertexArray(vaoA);
+gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+
+mat4.fromTranslation(model, [1.7, 0, 0]);          // 오른쪽 정육면체
+mat4.rotateY(model, model, -0.3);
+gl.uniformMatrix4fv(uModelLoc, false, model);
+gl.bindVertexArray(vaoB);
+gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+</script>
+</body></html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch01 예제 1 — WebGL 컨텍스트를 얻고 화면을 지우는 첫 프로그램 (first.js)</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+// 캔버스 요소를 찾아 WebGL 2.0 컨텍스트를 얻는다
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+if (!gl) {
+    // 브라우저가 WebGL 2.0을 지원하지 않는 경우
+    alert('WebGL 2.0을 지원하지 않는 브라우저입니다.');
+}
+
+// 캔버스를 지울 색을 지정한다 (R, G, B, A — 각 0.0~1.0)
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+
+// 색 버퍼를 지정한 색으로 지운다
+gl.clear(gl.COLOR_BUFFER_BIT);
+</script>
+</body></html>

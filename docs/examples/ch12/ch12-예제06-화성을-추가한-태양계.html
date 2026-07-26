@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch12 예제 6 — 화성을 추가한 태양계</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script>
+const renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('glCanvas'), antialias: true });
+renderer.setSize(600, 400);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+const camera = new THREE.PerspectiveCamera(45, 600 / 400, 0.1, 100);
+camera.position.set(0, 7, 13);             // 넓어진 궤도가 다 보이도록 물린 카메라
+camera.lookAt(0, 0, 0);
+
+// ----- 태양과 조명 -----
+const sun = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 32, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffcc33 }));
+scene.add(sun);
+scene.add(new THREE.PointLight(0xffffff, 1.5));
+scene.add(new THREE.AmbientLight(0x202020));
+
+// ----- 지구 계층: 공전 중심 Group → 지구, 그리고 달 -----
+const earthOrbit = new THREE.Group();
+scene.add(earthOrbit);
+const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 32, 16),
+    new THREE.MeshLambertMaterial({ color: 0x3377ff }));
+earth.position.x = 4;
+earthOrbit.add(earth);
+const moonOrbit = new THREE.Group();
+moonOrbit.position.x = 4;
+earthOrbit.add(moonOrbit);
+const moon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 16, 8),
+    new THREE.MeshLambertMaterial({ color: 0xbbbbbb }));
+moon.position.x = 1.0;
+moonOrbit.add(moon);
+
+// ----- 화성 계층: 태양 자리의 Group → 화성 -----
+const marsOrbit = new THREE.Group();
+scene.add(marsOrbit);
+const mars = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 32, 16),
+    new THREE.MeshLambertMaterial({ color: 0xcc5533 }));
+mars.position.x = 6;                       // 지구보다 먼 궤도
+marsOrbit.add(mars);
+
+// ----- 공전과 자전 -----
+renderer.setAnimationLoop((time) => {
+    const t = time * 0.001;
+    earthOrbit.rotation.y = t * 0.5;       // 지구 공전
+    moonOrbit.rotation.y  = t * 2.0;       // 달 공전
+    earth.rotation.y      = t * 3.0;       // 지구 자전
+    marsOrbit.rotation.y  = t * 0.26;      // 화성 공전 (지구보다 느리게)
+    mars.rotation.y       = t * 3.0;       // 화성 자전
+    renderer.render(scene, camera);
+});
+</script>
+</body></html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch10 예제 1 — 좌우로 왕복하는 삼각형 — 첫 애니메이션 루프</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+uniform vec2 uOffset;
+void main() {
+    gl_Position = vec4(aPosition + uOffset, 0.0, 1.0);
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(1.0, 0.6, 0.2, 1.0);   // 주황색
+}`;
+
+// 셰이더 도우미 (2장의 도우미를 압축한 형태)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uOffsetLoc = gl.getUniformLocation(program, 'uOffset');
+
+const vertices = new Float32Array([
+     0.0,  0.2,   -0.2, -0.2,    0.2, -0.2,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ----- 애니메이션 상태 -----
+let x = 0.0;             // 삼각형의 현재 x 위치
+let dx = 0.01;           // 한 프레임에 이동할 거리
+
+function update() {
+    x += dx;                             // 매 프레임 조금씩 이동
+    if (x > 0.7 || x < -0.7) dx = -dx;   // 가장자리에서 방향 반전
+}
+
+function draw() {
+    gl.clearColor(0.1, 0.15, 0.25, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform2f(uOffsetLoc, x, 0.0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function frame() {
+    update();                        // 1) 상태 갱신
+    draw();                          // 2) 그리기
+    requestAnimationFrame(frame);    // 3) 다음 프레임 예약
+}
+requestAnimationFrame(frame);        // 루프 시동
+</script>
+</body></html>

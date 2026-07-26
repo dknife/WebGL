@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch11 예제 2 — 바닥 위 정육면체에 그림자 드리우기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+// ===== 준비: 컨텍스트와 glMatrix =====
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 1패스: 빛 시점에서 깊이만 기록 =====
+const depthVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+uniform mat4 uLightMVP;
+void main() { gl_Position = uLightMVP * vec4(aPosition, 1.0); }`;
+const depthFS = `#version 300 es
+precision mediump float;
+void main() { }`;    // 색은 없다 — 깊이만 기록된다
+
+// ===== 2패스: 그림자 판정이 들어간 본 렌더링 =====
+const mainVS = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uMVP;
+uniform mat4 uShadowMVP;
+out vec3 vNormal;
+out vec4 vShadowCoord;
+void main() {
+    gl_Position  = uMVP * vec4(aPosition, 1.0);
+    vNormal      = aNormal;
+    vShadowCoord = uShadowMVP * vec4(aPosition, 1.0);
+}`;
+const mainFS = `#version 300 es
+precision mediump float;
+in vec3 vNormal;
+in vec4 vShadowCoord;
+uniform sampler2D uDepthMap;
+uniform vec3 uColor;
+uniform vec3 uLightDir;
+out vec4 fragColor;
+void main() {
+    vec3 sc = vShadowCoord.xyz / vShadowCoord.w;
+    float nearest = texture(uDepthMap, sc.xy).r;
+    float shadow = (sc.z - 0.005 > nearest) ? 0.0 : 1.0;
+    float diff = max(dot(normalize(vNormal), uLightDir), 0.0);
+    vec3 color = uColor * (0.35 + 0.65 * diff * shadow);
+    fragColor = vec4(color, 1.0);
+}`;
+
+const depthProgram = makeProgram(gl, depthVS, depthFS);
+const mainProgram  = makeProgram(gl, mainVS, mainFS);
+
+// ===== 장면 기하: 바닥 평면 + 정육면체 (위치 3 + 법선 3) =====
+function cubeVertices(cx, cy, cz, half) {
+    const faces = [                        // [법선, 가로축, 세로축]
+        [[0,0, 1],[ 1,0,0],[0,1,0]],  [[0,0,-1],[-1,0,0],[0,1,0]],
+        [[1,0, 0],[ 0,0,-1],[0,1,0]], [[-1,0,0],[ 0,0,1],[0,1,0]],
+        [[0,1, 0],[ 1,0,0],[0,0,-1]], [[0,-1,0],[ 1,0,0],[0,0,1]],
+    ];
+    const v = [];
+    for (const [n, u, w] of faces) {
+        const corner = (a, b) => v.push(
+            cx + half * (n[0] + a * u[0] + b * w[0]),
+            cy + half * (n[1] + a * u[1] + b * w[1]),
+            cz + half * (n[2] + a * u[2] + b * w[2]),
+            n[0], n[1], n[2]);
+        corner(-1, -1); corner(1, -1); corner(1, 1);   // 삼각형 1
+        corner(-1, -1); corner(1, 1);  corner(-1, 1);  // 삼각형 2
+    }
+    return v;
+}
+const floorVerts = [                       // y = 0 평면, 법선 +y
+    -4, 0, -4,  0, 1, 0,    4, 0, -4,  0, 1, 0,    4, 0, 4,  0, 1, 0,
+    -4, 0, -4,  0, 1, 0,    4, 0,  4,  0, 1, 0,   -4, 0, 4,  0, 1, 0,
+];
+const verts = new Float32Array(
+    [...floorVerts, ...cubeVertices(0, 0.8, 0, 0.8)]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);   // 위치
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);  // 법선
+
+// ===== 깊이맵 FBO: 깊이 텍스처만 부착 =====
+const SHADOW_SIZE = 1024;
+const depthTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, depthTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24,
+              SHADOW_SIZE, SHADOW_SIZE, 0,
+              gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const depthFbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, depthFbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                        gl.TEXTURE_2D, depthTex, 0);
+if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    console.log('framebuffer incomplete');
+
+// ===== 행렬: 빛 시점과 카메라 시점 =====
+const lightPos = [-4, 4, 2];
+const lightView = mat4.create(), lightProj = mat4.create();
+mat4.lookAt(lightView, lightPos, [0, 0, 0], [0, 1, 0]);
+mat4.ortho(lightProj, -8, 8, -8, 8, 1, 20);
+const lightMVP = mat4.create();
+mat4.multiply(lightMVP, lightProj, lightView);
+
+const biasMatrix = mat4.fromValues(        // [-1,1] → [0,1]
+    0.5, 0,   0,   0,    0,   0.5, 0,   0,
+    0,   0,   0.5, 0,    0.5, 0.5, 0.5, 1);
+const shadowMVP = mat4.create();
+mat4.multiply(shadowMVP, biasMatrix, lightMVP);
+
+const proj = mat4.create(), view = mat4.create(), mvp = mat4.create();
+mat4.perspective(proj, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+mat4.lookAt(view, [4, 3.5, 6], [0, 0.5, 0], [0, 1, 0]);
+mat4.multiply(mvp, proj, view);
+
+const lightDir = vec3.create();
+vec3.normalize(lightDir, lightPos);        // 원점 기준 빛 방향
+
+// ===== 1패스: 빛 시점에서 깊이맵을 만든다 =====
+gl.enable(gl.DEPTH_TEST);
+gl.bindFramebuffer(gl.FRAMEBUFFER, depthFbo);
+gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
+gl.clear(gl.DEPTH_BUFFER_BIT);             // 깊이만 지운다
+gl.useProgram(depthProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(depthProgram, 'uLightMVP'),
+                    false, lightMVP);
+gl.bindVertexArray(vao);
+gl.drawArrays(gl.TRIANGLES, 0, 42);        // 바닥 6 + 정육면체 36
+
+// ===== 2패스: 카메라 시점에서 그림자와 함께 그린다 =====
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.viewport(0, 0, canvas.width, canvas.height);
+gl.clearColor(0.75, 0.85, 0.95, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.useProgram(mainProgram);
+gl.uniformMatrix4fv(gl.getUniformLocation(mainProgram, 'uMVP'), false, mvp);
+gl.uniformMatrix4fv(gl.getUniformLocation(mainProgram, 'uShadowMVP'),
+                    false, shadowMVP);
+gl.uniform3fv(gl.getUniformLocation(mainProgram, 'uLightDir'), lightDir);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, depthTex);   // 깊이맵을 입력으로
+gl.uniform1i(gl.getUniformLocation(mainProgram, 'uDepthMap'), 0);
+
+const uColor = gl.getUniformLocation(mainProgram, 'uColor');
+gl.uniform3f(uColor, 0.8, 0.8, 0.8);       // 바닥: 밝은 회색
+gl.drawArrays(gl.TRIANGLES, 0, 6);
+gl.uniform3f(uColor, 1.0, 0.55, 0.2);      // 정육면체: 주황
+gl.drawArrays(gl.TRIANGLES, 6, 36);
+</script>
+</body></html>

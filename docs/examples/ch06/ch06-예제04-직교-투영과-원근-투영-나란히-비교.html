@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch06 예제 4 — 직교 투영과 원근 투영 나란히 비교</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 정육면체 데이터: 꼭짓점 8개 + 면 6개로 압축 =====
+const corner = [
+    [-0.5,-0.5, 0.5], [ 0.5,-0.5, 0.5], [ 0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    [-0.5,-0.5,-0.5], [ 0.5,-0.5,-0.5], [ 0.5, 0.5,-0.5], [-0.5, 0.5,-0.5],
+];
+const face = [
+    [0, 1, 2, 3,  1.0, 0.3, 0.3],           // 앞면(+z): 빨강
+    [5, 4, 7, 6,  0.3, 0.8, 0.3],           // 뒷면(-z): 초록
+    [1, 5, 6, 2,  0.3, 0.4, 1.0],           // 오른면(+x): 파랑
+    [4, 0, 3, 7,  1.0, 0.8, 0.2],           // 왼면(-x): 노랑
+    [3, 2, 6, 7,  0.3, 0.9, 0.9],           // 윗면(+y): 청록
+    [4, 5, 1, 0,  0.9, 0.4, 0.9],           // 아랫면(-y): 자홍
+];
+const pos = [], col = [];
+for (const [a, b, c, d, ...rgb] of face) {
+    for (const i of [a, b, c,  a, c, d]) {
+        pos.push(...corner[i]);
+        col.push(...rgb);
+    }
+}
+function setAttribute(loc, data, size) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+setAttribute(0, pos, 3);
+setAttribute(1, col, 3);
+
+// ===== 모델·뷰 행렬 (양쪽 뷰포트 공통) =====
+const model = mat4.create();
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+const view = mat4.create();
+mat4.lookAt(view, [1.2, 1.0, 1.8], [0, 0, 0], [0, 1, 0]);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+
+const projection = mat4.create();
+const uProjLoc = gl.getUniformLocation(program, 'uProjection');
+
+// ===== 그리기: 왼쪽 절반은 직교, 오른쪽 절반은 원근 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+const aspect = 300 / 400;                        // 뷰포트 절반의 종횡비
+
+// 왼쪽 절반: 직교 투영 — 원근감이 없다
+gl.viewport(0, 0, 300, 400);
+mat4.ortho(projection, -1.2, 1.2,                // left, right
+           -1.2 / aspect, 1.2 / aspect,          // bottom, top (비율 유지)
+           0.1, 10.0);                           // near, far
+gl.uniformMatrix4fv(uProjLoc, false, projection);
+gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+// 오른쪽 절반: 원근 투영 — 가까운 모서리가 더 크게 보인다
+gl.viewport(300, 0, 300, 400);
+mat4.perspective(projection, Math.PI / 4, aspect, 0.1, 10.0);
+gl.uniformMatrix4fv(uProjLoc, false, projection);
+gl.drawArrays(gl.TRIANGLES, 0, 36);
+</script>
+</body></html>

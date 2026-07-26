@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch09 예제 3 — 집 모양 OBJ를 파싱하여 램버트 조명으로 그리기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+// ----- 작은 집 모양 OBJ (파일 대신 문자열로 내장) -----
+const objText = `
+v -1.0 0.0  1.0
+v  1.0 0.0  1.0
+v  1.0 1.2  1.0
+v -1.0 1.2  1.0
+v -1.0 0.0 -1.0
+v  1.0 0.0 -1.0
+v  1.0 1.2 -1.0
+v -1.0 1.2 -1.0
+v  0.0 1.9  1.0
+v  0.0 1.9 -1.0
+vn  0.0 0.0  1.0
+vn  0.0 0.0 -1.0
+vn  1.0 0.0  0.0
+vn -1.0 0.0  0.0
+vn -0.573 0.819 0.0
+vn  0.573 0.819 0.0
+f 1//1 2//1 3//1 4//1
+f 4//1 3//1 9//1
+f 6//2 5//2 8//2 7//2
+f 7//2 8//2 10//2
+f 2//3 6//3 7//3 3//3
+f 5//4 1//4 4//4 8//4
+f 4//5 9//5 10//5 8//5
+f 9//6 3//6 7//6 10//6
+`;
+
+// ----- OBJ 파서: v, vn, f 라인을 읽어 정점 배열로 풀어낸다 -----
+function parseOBJ(text) {
+    const v = [], vn = [];                 // 파일에 나온 순서대로 모은다
+    const positions = [], normals = [];    // 최종 정점 배열 (풀어쓴 형태)
+    for (const line of text.split('\n')) {
+        const t = line.trim().split(/\s+/);          // 공백으로 토큰 분리
+        if (t[0] === 'v')       v.push(t.slice(1).map(Number));
+        else if (t[0] === 'vn') vn.push(t.slice(1).map(Number));
+        else if (t[0] === 'f') {
+            const corners = t.slice(1).map(s => {
+                const [pi, , ni] = s.split('/');     // "위치//법선" 분해
+                return [Number(pi) - 1, Number(ni) - 1];  // 1부터 → 0부터
+            });
+            // 부채꼴 분할: 정점 4개 이상인 면도 삼각형으로 나눈다
+            for (let i = 1; i < corners.length - 1; i++) {
+                for (const [pi, ni] of [corners[0], corners[i],
+                                        corners[i + 1]]) {
+                    positions.push(...v[pi]);
+                    normals.push(...vn[ni]);
+                }
+            }
+        }
+    }
+    return {
+        positions: new Float32Array(positions),
+        normals:   new Float32Array(normals),
+        count:     positions.length / 3,             // 정점 개수
+    };
+}
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vNormal;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vNormal = mat3(uModel) * aNormal;      // 법선을 월드 공간으로 (7장)
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vNormal;
+uniform vec3 uLightDir;                    // 표면에서 광원을 향하는 방향
+out vec4 fragColor;
+void main() {
+    vec3 n = normalize(vNormal);
+    float diff = max(dot(n, normalize(uLightDir)), 0.0);   // 램버트 (7장)
+    vec3 base = vec3(0.9, 0.65, 0.35);     // 물체의 기본색
+    fragColor = vec4(base * (0.25 + 0.75 * diff), 1.0);    // 주변광 + 확산광
+}`;
+
+// 2장의 셰이더 도우미를 압축한 형태
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 파싱한 메시를 버퍼에 올린다 -----
+const mesh = parseOBJ(objText);
+console.log('vertex count:', mesh.count);  // 42 (삼각형 14개)
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, mesh.positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, mesh.normals, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ----- 행렬과 조명 -----
+const model = mat4.create();
+const view = mat4.create();
+const projection = mat4.create();
+mat4.fromTranslation(model, [0, -0.9, 0]);         // 집의 중심을 원점 근처로
+mat4.rotateY(model, model, -0.35);
+mat4.lookAt(view, [3, 2.2, 5], [0, 0, 0], [0, 1, 0]);
+mat4.perspective(projection, Math.PI / 4, 600 / 400, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjection'), false,
+                    projection);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.8);
+
+// ----- 그리기 -----
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+</script>
+</body></html>

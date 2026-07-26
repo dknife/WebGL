@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch04 예제 1 — glMatrix로 벡터 연산 확인하기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const { vec3 } = glMatrix;
+
+// ----- 덧셈, 스칼라 곱 -----
+const a = vec3.fromValues(1, 2, 0);
+const b = vec3.fromValues(3, -1, 0);
+const tmp = vec3.create();
+
+vec3.add(tmp, a, b);
+console.log('a + b        =', tmp);            // (4, 1, 0)
+vec3.scale(tmp, a, 2.0);
+console.log('2a           =', tmp);            // (2, 4, 0)
+
+// ----- 크기와 정규화 -----
+const v = vec3.fromValues(3, 0, 4);
+console.log('|v|          =', vec3.length(v)); // 5
+vec3.normalize(tmp, v);
+console.log('normalize(v) =', tmp);            // (0.6, 0, 0.8)
+
+// ----- 내적: 수직 판정 -----
+const right = vec3.fromValues(1, 0, 0);
+const up    = vec3.fromValues(0, 1, 0);
+console.log('right . up   =', vec3.dot(right, up));   // 0 (수직)
+
+// ----- 외적: 두 벡터에 수직인 벡터 -----
+vec3.cross(tmp, right, up);
+console.log('right x up   =', tmp);            // (0, 0, 1) — +z 방향
+
+// ----- 삼각형 법선 계산 -----
+const A = vec3.fromValues(0, 0, 0);
+const B = vec3.fromValues(1, 0, 0);
+const C = vec3.fromValues(0, 1, 0);
+const AB = vec3.create(), AC = vec3.create();
+const n  = vec3.create();
+vec3.subtract(AB, B, A);           // 변 벡터 B - A
+vec3.subtract(AC, C, A);           // 변 벡터 C - A
+vec3.cross(n, AB, AC);             // 두 변의 외적
+vec3.normalize(n, n);              // 정규화 → 법선
+console.log('삼각형 법선  =', n);   // (0, 0, 1)
+</script>
+</body></html>

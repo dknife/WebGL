@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch08 예제 3 — REPEAT 래핑으로 텍스처 타일링</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);
+}`;
+
+// 셰이더 도우미 (2장의 도우미 압축형)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ----- 8x8 그라데이션 텍스처: 축 방향이 보이는 무늬 -----
+const SIZE = 8;
+const pixels = new Uint8Array(SIZE * SIZE * 4);
+for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+        const i = (row * SIZE + col) * 4;
+        pixels[i]     = 40 + col * 30;    // R: 오른쪽으로 갈수록 붉게
+        pixels[i + 1] = 40 + row * 30;    // G: 위로 갈수록 밝게
+        pixels[i + 2] = 150;              // B: 고정
+        pixels[i + 3] = 255;
+    }
+}
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+// 래핑 모드: 다른 값으로 바꿔 결과를 비교해 보자
+// (gl.MIRRORED_REPEAT, gl.CLAMP_TO_EDGE)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+// ----- 사각형: 텍스처 좌표를 0 ~ 4로 준다 -----
+const positions = new Float32Array([
+    -0.6, -0.9,    0.6, -0.9,    -0.6, 0.9,    0.6, 0.9,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,     4.0, 0.0,      0.0, 4.0,    4.0, 4.0,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+</script>
+</body></html>

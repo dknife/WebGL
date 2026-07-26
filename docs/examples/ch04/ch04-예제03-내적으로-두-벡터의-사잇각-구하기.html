@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch04 예제 3 — 내적으로 두 벡터의 사잇각 구하기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const { vec3 } = glMatrix;
+
+const a = vec3.fromValues(1, 0, 0);
+const b = vec3.fromValues(1, 1, 0);
+
+// 각 벡터를 정규화하면 내적이 곧 cos(theta)가 된다
+const an = vec3.create(), bn = vec3.create();
+vec3.normalize(an, a);
+vec3.normalize(bn, b);
+const cos = vec3.dot(an, bn);
+
+const rad = Math.acos(cos);               // 라디안
+const deg = rad * 180 / Math.PI;          // 도 단위로 변환
+console.log('사잇각 =', deg, '도');        // 45도
+</script>
+</body></html>

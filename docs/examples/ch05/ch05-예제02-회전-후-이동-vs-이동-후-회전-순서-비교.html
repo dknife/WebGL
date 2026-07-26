@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch05 예제 2 — 회전 후 이동 vs 이동 후 회전 — 순서 비교</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;
+void main() {
+    gl_Position = uModel * aPosition;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+uniform vec4 uColor;                    // 그리기마다 바꿀 색
+out vec4 fragColor;
+void main() {
+    fragColor = uColor;
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미 압축판) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uColorLoc = gl.getUniformLocation(program, 'uColor');
+
+// 원점 주변의 삼각형 (위 꼭짓점으로 방향을 알아본다)
+const vertices = new Float32Array([
+     0.0,  0.25,   -0.25, -0.25,    0.25, -0.25,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ===== 같은 R, T로 곱하는 순서만 다른 두 행렬 =====
+const R = mat4.create();
+const T = mat4.create();
+mat4.fromZRotation(R, 90 * Math.PI / 180);   // 90도 회전
+mat4.fromTranslation(T, [0.5, 0, 0]);        // 오른쪽으로 0.5 이동
+
+const TR = mat4.create();
+const RT = mat4.create();
+mat4.multiply(TR, T, R);                     // TR: 회전 후 이동
+mat4.multiply(RT, R, T);                     // RT: 이동 후 회전
+
+// 행렬과 색을 바꿔 가며 같은 삼각형을 세 번 그린다
+function drawTriangle(m, r, g, b) {
+    gl.uniformMatrix4fv(uModelLoc, false, m);
+    gl.uniform4f(uColorLoc, r, g, b, 1.0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+drawTriangle(mat4.create(), 0.5, 0.5, 0.5);  // 회색: 변환 전 원본
+drawTriangle(TR, 1.0, 0.6, 0.2);             // 주황: 회전 후 이동
+drawTriangle(RT, 0.2, 0.8, 0.8);             // 청록: 이동 후 회전
+</script>
+</body></html>

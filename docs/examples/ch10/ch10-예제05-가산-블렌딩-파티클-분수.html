@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch10 예제 5 — 가산 블렌딩 파티클 분수</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const gl = glCanvas.getContext('webgl2', { antialias: true });
+const N = 800;
+const pos = new Float32Array(N*3);   // 위치
+const vel = new Float32Array(N*3);   // 속도
+const life = new Float32Array(N);    // 남은 수명
+function spawn(i){
+  pos[i*3]=0; pos[i*3+1]=-0.9; pos[i*3+2]=0;
+  const a=Math.random()*6.28, s=0.15+Math.random()*0.1;
+  vel[i*3]=Math.cos(a)*s*0.5; vel[i*3+1]=0.8+Math.random()*0.5; vel[i*3+2]=Math.sin(a)*s*0.5;
+  life[i]=0.6+Math.random()*0.6;
+}
+for(let i=0;i<N;i++){ spawn(i); life[i]*=Math.random(); }
+
+const vs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in float aLife;
+out float vLife;
+void main(){ vLife=aLife; gl_Position=vec4(aPos.x, aPos.y, 0.0, 1.0);
+  gl_PointSize = 6.0 + aLife*18.0; }`;
+const fs = `#version 300 es
+precision highp float; in float vLife; out vec4 o;
+void main(){
+  vec2 d = gl_PointCoord - 0.5;
+  float r = 1.0 - smoothstep(0.0, 0.5, length(d));   // 둥근 감쇠
+  vec3 col = mix(vec3(1.0,0.25,0.05), vec3(1.0,0.9,0.4), vLife); // 식으며 붉어짐
+  o = vec4(col*r, r);
+}`;
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+const pr=gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(pr); gl.useProgram(pr);
+
+const pb=gl.createBuffer(), lb=gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, pb);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
+gl.bindBuffer(gl.ARRAY_BUFFER, lb);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1,1,gl.FLOAT,false,0,0);
+
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE);          // 가산 블렌딩
+
+let last=0;
+function frame(t){
+  const dt = last ? Math.min((t-last)/1000, 0.05) : 0.016; last=t;
+  for(let i=0;i<N;i++){                        // CPU에서 파티클 갱신
+    life[i]-=dt;
+    if(life[i]<=0){ spawn(i); continue; }
+    vel[i*3+1]-=1.4*dt;                         // 중력
+    pos[i*3]+=vel[i*3]*dt; pos[i*3+1]+=vel[i*3+1]*dt; pos[i*3+2]+=vel[i*3+2]*dt;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, pb); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lb); gl.bufferData(gl.ARRAY_BUFFER, life, gl.DYNAMIC_DRAW);
+  gl.clearColor(0.03,0.03,0.05,1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.POINTS, 0, N);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body></html>

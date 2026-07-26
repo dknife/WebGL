@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch10 예제 3 — 방향키로 움직이는 사각형</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+canvas.setAttribute('tabindex', '0');   // 캔버스가 키보드 포커스를 받게
+canvas.focus();                          // 시작하자마자 포커스 요청
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+uniform mat4 uModel;
+void main() {
+    gl_Position = uModel * vec4(aPosition, 0.0, 1.0);
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.2, 0.8, 0.8, 1.0);   // 청록색
+}`;
+
+// 셰이더 도우미 (2장의 도우미를 압축한 형태)
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+
+// 사각형 (TRIANGLE_STRIP, 정점 4개)
+const vertices = new Float32Array([
+    -0.15, -0.15,    0.15, -0.15,   -0.15,  0.15,    0.15,  0.15,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ----- 상태: 위치와 눌려 있는 키 집합 -----
+const pos = { x: 0, y: 0 };
+const keys = new Set();
+const speed = 0.8;                   // 초당 이동 거리 (클립 공간 단위)
+
+canvas.addEventListener('keydown', (e) => {
+    keys.add(e.key);
+    e.preventDefault();              // 방향키의 페이지 스크롤 방지
+});
+canvas.addEventListener('keyup', (e) => {
+    keys.delete(e.key);
+});
+
+const model = mat4.create();
+let prevTime = 0;
+
+function frame(time) {
+    const dt = (time - prevTime) * 0.001;    // 흐른 시간 (초)
+    prevTime = time;
+
+    // ----- 갱신: 눌려 있는 키에 따라 위치 이동 -----
+    if (keys.has('ArrowLeft'))  pos.x -= speed * dt;
+    if (keys.has('ArrowRight')) pos.x += speed * dt;
+    if (keys.has('ArrowUp'))    pos.y += speed * dt;
+    if (keys.has('ArrowDown'))  pos.y -= speed * dt;
+
+    // ----- 그리기 -----
+    mat4.fromTranslation(model, [pos.x, pos.y, 0]);
+    gl.uniformMatrix4fv(uModelLoc, false, model);
+    gl.clearColor(0.1, 0.15, 0.25, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body></html>

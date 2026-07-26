@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch12 예제 1 — Three.js 첫 예제 — 회전하는 정육면체</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script>
+// ----- 렌더러: 기존 캔버스에 연결 -----
+const renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('glCanvas'),
+    antialias: true
+});
+renderer.setSize(600, 400);
+
+// ----- 장면과 카메라 -----
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101828);
+
+const camera = new THREE.PerspectiveCamera(45, 600 / 400, 0.1, 100);
+camera.position.set(2, 2, 4);            // 카메라 위치
+camera.lookAt(0, 0, 0);                  // 원점을 바라보게
+
+// ----- 물체: 지오메트리 + 재질 = 메시 -----
+const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const material = new THREE.MeshStandardMaterial({ color: 0x33cc66 });
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+// ----- 조명 -----
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+sunLight.position.set(3, 5, 4);          // 빛이 오는 방향
+scene.add(sunLight);
+scene.add(new THREE.AmbientLight(0x404040));   // 은은한 주변광
+
+// ----- 애니메이션 루프 -----
+renderer.setAnimationLoop((time) => {
+    cube.rotation.y = time * 0.001;      // 1초에 약 1라디안씩 회전
+    cube.rotation.x = time * 0.0004;
+    renderer.render(scene, camera);
+});
+</script>
+</body></html>

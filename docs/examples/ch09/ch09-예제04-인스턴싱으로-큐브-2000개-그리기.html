@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch09 예제 4 — 인스턴싱으로 큐브 2000개 그리기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const { mat4 } = glMatrix;
+const gl = glCanvas.getContext('webgl2', { antialias: true });
+// 큐브 정점 (36개)
+const P = [-1,-1,-1, 1,-1,-1, 1,1,-1, -1,-1,-1, 1,1,-1, -1,1,-1,
+  -1,-1,1, 1,-1,1, 1,1,1, -1,-1,1, 1,1,1, -1,1,1,
+  -1,1,-1, -1,1,1, 1,1,1, -1,1,-1, 1,1,1, 1,1,-1,
+  -1,-1,-1, 1,-1,1, -1,-1,1, -1,-1,-1, 1,-1,-1, 1,-1,1,
+  1,-1,-1, 1,1,1, 1,-1,1, 1,-1,-1, 1,1,-1, 1,1,1,
+  -1,-1,-1, -1,-1,1, -1,1,1, -1,-1,-1, -1,1,1, -1,1,-1];
+const vs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aOffset;
+layout(location=2) in vec3 aColor;
+uniform mat4 uVP; out vec3 vColor; out vec3 vP;
+void main(){ vColor=aColor; vP=aPos; gl_Position=uVP*vec4(aPos*0.35+aOffset,1.0); }`;
+const fs = `#version 300 es
+precision highp float; in vec3 vColor; in vec3 vP; out vec4 o;
+void main(){
+  vec3 n = normalize(round(vP));                 // 면 법선 근사
+  float d = max(dot(n, normalize(vec3(0.4,0.8,0.5))), 0.0);
+  o = vec4(vColor*(0.35+0.75*d), 1.0);
+}`;
+function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+const pr=gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(pr); gl.useProgram(pr);
+
+const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+let b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
+
+// 인스턴스별 오프셋·색 만들기
+const NX=20, NY=20, NZ=5, N=NX*NY*NZ;
+const off=new Float32Array(N*3), col=new Float32Array(N*3);
+let i=0;
+for(let z=0;z<NZ;z++) for(let y=0;y<NY;y++) for(let x=0;x<NX;x++){
+  off[i*3]=(x-NX/2)*1.0; off[i*3+1]=(y-NY/2)*1.0; off[i*3+2]=-z*1.0;
+  col[i*3]=x/NX; col[i*3+1]=y/NY; col[i*3+2]=0.5+z/NZ*0.5; i++;
+}
+b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, off, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1,3,gl.FLOAT,false,0,0);
+gl.vertexAttribDivisor(1, 1);                       // 인스턴스별
+b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2,3,gl.FLOAT,false,0,0);
+gl.vertexAttribDivisor(2, 1);                       // 인스턴스별
+
+const vp=mat4.create(), proj=mat4.create(), view=mat4.create();
+mat4.perspective(proj, 50*Math.PI/180, glCanvas.width/glCanvas.height, 0.1, 100);
+mat4.lookAt(view, [8, 8, 22], [0,0,-2], [0,1,0]);
+mat4.multiply(vp, proj, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(pr,'uVP'), false, vp);
+
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.09,0.10,0.13,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, N);     // 드로우 콜 단 한 번!
+</script>
+</body></html>

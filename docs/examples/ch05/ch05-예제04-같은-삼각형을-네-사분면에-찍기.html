@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch05 예제 4 — 같은 삼각형을 네 사분면에 찍기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+uniform mat4 uModel;
+void main() {
+    gl_Position = uModel * aPosition;
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(1.0, 0.6, 0.2, 1.0);   // 주황색
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미 압축판) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+
+// ===== 버퍼에는 원점 주변의 작은 삼각형 하나만 =====
+const vertices = new Float32Array([
+     0.0,  0.15,   -0.15, -0.15,    0.15, -0.15,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// 네 사분면 중앙으로 가는 이동 벡터들
+const offsets = [
+    [ 0.5,  0.5],   // 1사분면
+    [-0.5,  0.5],   // 2사분면
+    [-0.5, -0.5],   // 3사분면
+    [ 0.5, -0.5],   // 4사분면
+];
+const model = mat4.create();
+for (const [tx, ty] of offsets) {
+    mat4.fromTranslation(model, [tx, ty, 0]);   // 행렬만 바꾸고
+    gl.uniformMatrix4fv(uModelLoc, false, model);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);          // 같은 버퍼를 다시 그린다
+}
+</script>
+</body></html>

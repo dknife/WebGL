@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch12 예제 5 — 금속성·거칠기가 다른 세 구</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script>
+// ----- 렌더러·장면·카메라 -----
+const renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('glCanvas'), antialias: true });
+renderer.setSize(600, 400);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101828);
+const camera = new THREE.PerspectiveCamera(45, 600 / 400, 0.1, 100);
+camera.position.set(0, 1.5, 5);           // 세 구가 다 보이도록 물린 카메라
+camera.lookAt(0, 0, 0);
+
+// ----- 조명 -----
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+sunLight.position.set(3, 5, 4);
+scene.add(sunLight);
+scene.add(new THREE.AmbientLight(0x404040));
+
+// ----- 물체: metalness·roughness가 다른 구 세 개 -----
+const geometry = new THREE.SphereGeometry(0.7, 32, 16);
+const params = [
+    { metalness: 0.0, roughness: 0.9 },   // 거친 플라스틱 느낌
+    { metalness: 0.5, roughness: 0.5 },
+    { metalness: 1.0, roughness: 0.2 },   // 매끈한 금속 느낌
+];
+params.forEach((p, i) => {
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0x3388cc, metalness: p.metalness, roughness: p.roughness });
+    const ball = new THREE.Mesh(geometry, mat);
+    ball.position.x = (i - 1) * 1.8;      // 왼쪽부터 나란히
+    scene.add(ball);
+});
+
+// ----- 회전 없이 한 장면만 그린다 -----
+renderer.render(scene, camera);
+</script>
+</body></html>

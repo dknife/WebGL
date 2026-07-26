@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch11 예제 4 — 셰이더 레이 트레이서 — 유리 구, 굴절, caustic, 그림자</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2', { antialias: true });
+
+// 화면 가득 삼각형 하나 (레이 트레이싱은 메시가 필요 없다)
+const vs = `#version 300 es
+layout(location = 0) in vec2 p;
+void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+
+const fs = `#version 300 es
+precision highp float;
+out vec4 outColor;
+uniform vec2 uRes;
+const vec3 LIGHT = vec3(4.0, 6.5, 3.0);
+const vec3 SPH = vec3(-0.25, 1.0, 0.35);   const float SR = 1.0;   // 유리 구
+const vec3 BOXC = vec3(1.95, 0.7, -0.7);   const vec3 BOXH = vec3(0.7, 0.7, 0.7);
+
+float iPlane(vec3 ro, vec3 rd) {           // 바닥 평면 y = 0
+    if (abs(rd.y) < 1e-4) return -1.0;
+    float t = -ro.y / rd.y; return t > 1e-3 ? t : -1.0;
+}
+float iSphere(vec3 ro, vec3 rd, vec3 c, float r) {
+    vec3 oc = ro - c; float b = dot(oc, rd); float k = dot(oc, oc) - r * r;
+    float h = b * b - k; if (h < 0.0) return -1.0; h = sqrt(h);
+    float t = -b - h; if (t > 1e-3) return t; t = -b + h; return t > 1e-3 ? t : -1.0;
+}
+float iBox(vec3 ro, vec3 rd, vec3 c, vec3 hs, out vec3 nrm) {
+    vec3 m = 1.0 / rd, o = ro - c, n = m * o, k = abs(m) * hs;
+    vec3 t1 = -n - k, t2 = -n + k;
+    float tN = max(max(t1.x, t1.y), t1.z), tF = min(min(t2.x, t2.y), t2.z);
+    if (tN > tF || tF < 0.0) return -1.0;
+    float t = tN > 1e-3 ? tN : tF; if (t < 1e-3) return -1.0;
+    vec3 p = o + rd * t, d = abs(p) - hs;
+    nrm = normalize(sign(p) * step(d.yzx, d.xyz) * step(d.zxy, d.xyz));
+    return t;
+}
+vec3 sky(vec3 rd) {
+    float t = clamp(rd.y * 0.5 + 0.5, 0.0, 1.0);
+    return mix(vec3(0.55, 0.62, 0.72), vec3(0.16, 0.22, 0.38), t)
+         + vec3(0.9, 0.85, 0.7) * pow(max(dot(rd, normalize(LIGHT)), 0.0), 80.0) * 0.6;
+}
+float checker(vec2 p) { return mix(0.28, 0.86, mod(floor(p.x) + floor(p.y), 2.0)); }
+
+// 그림자: 큐브에 막히면 0, 유리 구에 막히면 부분 통과
+float shadow(vec3 ro, vec3 rd, float maxt) {
+    vec3 bn; float tb = iBox(ro, rd, BOXC, BOXH, bn);
+    if (tb > 0.0 && tb < maxt) return 0.0;
+    float ts = iSphere(ro, rd, SPH, SR);
+    return (ts > 0.0 && ts < maxt) ? 0.35 : 1.0;
+}
+vec3 shadeFloor(vec3 p, vec3 rd) {
+    vec3 n = vec3(0, 1, 0); vec3 base = vec3(checker(p.xz));
+    vec3 L = normalize(LIGHT - p); float diff = max(dot(n, L), 0.0);
+    float sh = shadow(p + n * 1e-3, L, length(LIGHT - p));
+    // caustic 근사: 그림자 광선이 유리 구의 초점 부근을 지나면 밝기를 더한다
+    float caustic = 0.0;
+    float ts = iSphere(p + n * 1e-3, L, SPH, SR);
+    if (ts > 0.0) { vec3 q = p + L * ts; caustic = smoothstep(0.9, 0.0, abs(length(q - SPH) - 0.55)) * 0.9; }
+    vec3 col = base * (0.18 + 0.9 * diff * sh) + vec3(1.0, 0.93, 0.7) * caustic * diff;
+    return mix(col, sky(reflect(rd, n)), 0.06);
+}
+vec3 shadeBox(vec3 p, vec3 n, vec3 rd) {
+    vec3 L = normalize(LIGHT - p); float diff = max(dot(n, L), 0.0);
+    float sh = shadow(p + n * 1e-3, L, length(LIGHT - p));
+    float spec = pow(max(dot(reflect(-L, n), -rd), 0.0), 40.0);
+    vec3 col = vec3(0.98, 0.42, 0.24) * (0.2 + 0.85 * diff * sh) + vec3(1.0) * spec * sh * 0.6;
+    return mix(col, sky(reflect(rd, n)), 0.18);
+}
+// 이차 광선(굴절·반사 후)은 유리를 다시 추적하지 않고 한 번만 장면을 조회한다
+vec3 trace2(vec3 ro, vec3 rd) {
+    float tp = iPlane(ro, rd); vec3 bn; float tb = iBox(ro, rd, BOXC, BOXH, bn);
+    float t = 1e9; int which = -1;
+    if (tp > 0.0 && tp < t) { t = tp; which = 0; }
+    if (tb > 0.0 && tb < t) { t = tb; which = 1; }
+    if (which == 0) return shadeFloor(ro + rd * t, rd);
+    if (which == 1) return shadeBox(ro + rd * t, bn, rd);
+    return sky(rd);
+}
+vec3 glass(vec3 rd, vec3 p, vec3 n) {
+    float fres = 0.04 + 0.96 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+    vec3 rin = refract(rd, n, 1.0 / 1.5);          // 공기 → 유리
+    vec3 refrCol;
+    if (dot(rin, rin) < 1e-5) refrCol = trace2(p, reflect(rd, n));
+    else {
+        float t2 = iSphere(p + rin * 1e-3, rin, SPH, SR);
+        vec3 p2 = p + rin * max(t2, 0.0); vec3 n2 = normalize(p2 - SPH);
+        vec3 rout = refract(rin, -n2, 1.5);        // 유리 → 공기
+        if (dot(rout, rout) < 1e-5) rout = reflect(rin, -n2);   // 전반사
+        refrCol = trace2(p2 + rout * 1e-3, rout) * vec3(0.85, 0.95, 1.0);
+    }
+    vec3 reflCol = trace2(p + n * 1e-3, reflect(rd, n));
+    return mix(refrCol, reflCol, fres);
+}
+void main() {
+    vec2 ndc = (gl_FragCoord.xy / uRes) * 2.0 - 1.0; ndc.x *= uRes.x / uRes.y;
+    vec3 eye = vec3(3.4, 2.3, 4.6), ta = vec3(0.1, 0.85, 0.0);
+    vec3 f = normalize(ta - eye), rgt = normalize(cross(f, vec3(0, 1, 0))), up = cross(rgt, f);
+    vec3 rd = normalize(ndc.x * rgt + ndc.y * up + 2.2 * f), ro = eye;
+    float tp = iPlane(ro, rd), ts = iSphere(ro, rd, SPH, SR);
+    vec3 bn; float tb = iBox(ro, rd, BOXC, BOXH, bn);
+    float t = 1e9; int which = -1; vec3 nrm;
+    if (tp > 0.0 && tp < t) { t = tp; which = 0; }
+    if (ts > 0.0 && ts < t) { t = ts; which = 2; }
+    if (tb > 0.0 && tb < t) { t = tb; which = 1; nrm = bn; }
+    vec3 col;
+    if (which == 0) col = shadeFloor(ro + rd * t, rd);
+    else if (which == 1) col = shadeBox(ro + rd * t, nrm, rd);
+    else if (which == 2) { vec3 p = ro + rd * t; col = glass(rd, p, normalize(p - SPH)); }
+    else col = sky(rd);
+    outColor = vec4(pow(col, vec3(0.4545)), 1.0);   // 감마 보정
+}`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src); gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vs, fs);
+gl.useProgram(program);
+
+// 화면 가득 삼각형
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.uniform2f(gl.getUniformLocation(program, 'uRes'), canvas.width, canvas.height);
+gl.drawArrays(gl.TRIANGLES, 0, 3);
+</script>
+</body></html>

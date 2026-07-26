@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch06 예제 3 — 카메라 위치를 바꿔 정육면체 관찰</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4 } = glMatrix;
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+out vec3 vColor;
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vColor = aColor;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 fragColor;
+void main() { fragColor = vec4(vColor, 1.0); }`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 정육면체 데이터: 꼭짓점 8개 + 면 6개로 압축 =====
+const corner = [
+    [-0.5,-0.5, 0.5], [ 0.5,-0.5, 0.5], [ 0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    [-0.5,-0.5,-0.5], [ 0.5,-0.5,-0.5], [ 0.5, 0.5,-0.5], [-0.5, 0.5,-0.5],
+];
+const face = [
+    [0, 1, 2, 3,  1.0, 0.3, 0.3],           // 앞면(+z): 빨강
+    [5, 4, 7, 6,  0.3, 0.8, 0.3],           // 뒷면(-z): 초록
+    [1, 5, 6, 2,  0.3, 0.4, 1.0],           // 오른면(+x): 파랑
+    [4, 0, 3, 7,  1.0, 0.8, 0.2],           // 왼면(-x): 노랑
+    [3, 2, 6, 7,  0.3, 0.9, 0.9],           // 윗면(+y): 청록
+    [4, 5, 1, 0,  0.9, 0.4, 0.9],           // 아랫면(-y): 자홍
+];
+const pos = [], col = [];
+for (const [a, b, c, d, ...rgb] of face) {
+    for (const i of [a, b, c,  a, c, d]) {
+        pos.push(...corner[i]);
+        col.push(...rgb);
+    }
+}
+function setAttribute(loc, data, size) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+setAttribute(0, pos, 3);
+setAttribute(1, col, 3);
+
+// ===== 행렬 uniform 위치 =====
+const uModelLoc = gl.getUniformLocation(program, 'uModel');
+const uViewLoc  = gl.getUniformLocation(program, 'uView');
+const uProjLoc  = gl.getUniformLocation(program, 'uProjection');
+const model = mat4.create();                     // 단위 행렬: 원점에 그대로
+gl.uniformMatrix4fv(uModelLoc, false, model);
+const view = mat4.create();
+const projection = mat4.create();
+
+// ===== 세 가지 카메라 설정을 좌·중·우로 나란히 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+const aspect = 200 / 400;                        // 뷰포트 3분할의 종횡비
+const shots = [                                  // [eye, up]
+    [[0, 0, 2.5], [0, 1, 0]],                    // (a) 정면
+    [[0, 2.5, 0], [0, 1, 0]],                    // (b) 바로 위 — up이 시선과 평행!
+    [[0, 2.5, 0], [0, 0, -1]],                   // (c) 바로 위 + up 교정
+];
+shots.forEach(([eye, up], k) => {
+    gl.viewport(k * 200, 0, 200, 400);
+    mat4.lookAt(view, eye, [0, 0, 0], up);
+    gl.uniformMatrix4fv(uViewLoc, false, view);
+    mat4.perspective(projection, Math.PI / 4, aspect, 0.1, 10.0);
+    gl.uniformMatrix4fv(uProjLoc, false, projection);
+    gl.drawArrays(gl.TRIANGLES, 0, 36);          // 6면 x 2삼각형 x 3정점
+});
+</script>
+</body></html>

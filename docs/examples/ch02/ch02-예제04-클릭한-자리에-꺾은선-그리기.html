@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch02 예제 4 — 클릭한 자리에 꺾은선 그리기</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() { gl_Position = aPosition; gl_PointSize = 6.0; }`;
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() { fragColor = vec4(1.0, 0.6, 0.2, 1.0); }`;
+
+function makeShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    return shader;
+}
+const program = gl.createProgram();
+gl.attachShader(program, makeShader(gl, gl.VERTEX_SHADER, vsSource));
+gl.attachShader(program, makeShader(gl, gl.FRAGMENT_SHADER, fsSource));
+gl.linkProgram(program);
+gl.useProgram(program);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+const points = [];          // 클릭으로 쌓이는 정점 좌표
+
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    // 픽셀 좌표 → 클립 공간 좌표 변환
+    const x = (e.clientX - rect.left) / canvas.width  * 2 - 1;
+    const y = 1 - (e.clientY - rect.top) / canvas.height * 2;
+    points.push(x, y);
+    render();
+});
+
+function render() {
+    // 정점이 늘어날 때마다 버퍼를 갱신 (자주 바뀌므로 DYNAMIC_DRAW)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(points),
+                  gl.DYNAMIC_DRAW);
+    gl.clearColor(0.1, 0.15, 0.25, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.LINE_STRIP, 0, points.length / 2);
+}
+
+render();   // 첫 화면 (빈 배경)
+</script>
+</body></html>

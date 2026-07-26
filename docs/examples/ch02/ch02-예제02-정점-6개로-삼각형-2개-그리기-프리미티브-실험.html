@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch02 예제 2 — 정점 6개로 삼각형 2개 그리기 — 프리미티브 실험</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec4 aPosition;
+void main() {
+    gl_Position = aPosition;
+    gl_PointSize = 8.0;      // POINTS로 그릴 때의 점 크기 (픽셀)
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.2, 0.8, 0.8, 1.0);   // 청록색
+}`;
+
+function makeShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.log(gl.getShaderInfoLog(shader));
+        return null;
+    }
+    return shader;
+}
+const program = gl.createProgram();
+gl.attachShader(program, makeShader(gl, gl.VERTEX_SHADER, vsSource));
+gl.attachShader(program, makeShader(gl, gl.FRAGMENT_SHADER, fsSource));
+gl.linkProgram(program);
+gl.useProgram(program);
+
+// 삼각형 2개: 위를 향한 삼각형 + 아래를 향한 삼각형 (육각별 배치)
+const vertices = new Float32Array([
+    -0.8, -0.4,    0.8, -0.4,    0.0,  0.8,   // 첫 번째 삼각형
+    -0.8,  0.4,    0.8,  0.4,    0.0, -0.8,   // 두 번째 삼각형
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+gl.clearColor(0.15, 0.35, 0.2, 1.0);         // 배경: 짙은 초록
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+// 프리미티브를 바꿔 가며 실행해 보자:
+// gl.POINTS, gl.LINES, gl.LINE_STRIP, gl.LINE_LOOP,
+// gl.TRIANGLES, gl.TRIANGLE_STRIP, gl.TRIANGLE_FAN
+gl.drawArrays(gl.TRIANGLES, 0, 6);
+</script>
+</body></html>

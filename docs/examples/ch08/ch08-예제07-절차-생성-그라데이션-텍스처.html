@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch08 예제 7 — 절차 생성 그라데이션 텍스처</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}`;
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);
+}`;
+
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 1 x 64 그라데이션: 아래(주황) → 위(남색)를 선형 보간으로 채운다 =====
+const H = 64;
+const pixels = new Uint8Array(H * 4);
+const lo = [255, 160, 60], hi = [40, 60, 160];   // 아래 노을빛, 위 밤하늘빛
+for (let row = 0; row < H; row++) {
+    const t = row / (H - 1);              // 아래 0.0 ~ 위 1.0
+    for (let k = 0; k < 3; k++)
+        pixels[row * 4 + k] = Math.round(lo[k] * (1 - t) + hi[k] * t);
+    pixels[row * 4 + 3] = 255;
+}
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, H, 0,   // 폭 1, 높이 64
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+// ===== 사각형은 클립 공간 전체(-1 ~ 1)를 덮는다 =====
+const positions = new Float32Array([
+    -1.0, -1.0,    1.0, -1.0,    -1.0, 1.0,    1.0, 1.0,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,      1.0, 0.0,       0.0, 1.0,     1.0, 1.0,
+]);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+</script>
+</body></html>

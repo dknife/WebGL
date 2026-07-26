@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch07 예제 1 — 확산 반사 + 주변광을 받는 정육면체</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+const { mat4, vec3 } = glMatrix;
+
+// ===== 정점 셰이더: 법선을 프래그먼트로 넘긴다 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+out vec3 vNormal;
+void main() {
+    gl_Position = uProj * uView * uModel * vec4(aPosition, 1.0);
+    vNormal = mat3(uModel) * aNormal;   // 법선은 회전 성분만 적용
+}`;
+
+// ===== 프래그먼트 셰이더: 램버트 확산 + 주변광 =====
+const fsSource = `#version 300 es
+precision mediump float;
+in vec3 vNormal;
+uniform vec3 uLightDir;     // 표면에서 광원을 향하는 방향 (단위 벡터)
+uniform vec3 uLightColor;   // 광원의 색
+uniform vec3 uMaterial;     // 재질의 색
+out vec4 fragColor;
+void main() {
+    vec3 N = normalize(vNormal);              // 보간된 법선을 다시 정규화
+    float diff = max(dot(N, uLightDir), 0.0); // 램버트 코사인 법칙
+    vec3 ambient = 0.2 * uMaterial;                 // 주변광
+    vec3 diffuse = diff * uLightColor * uMaterial;  // 확산 반사
+    fragColor = vec4(ambient + diffuse, 1.0);
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+
+// ===== 정육면체: 면마다 법선을 가진 정점 36개 =====
+function makeCube() {
+    // 각 면 = [법선 n, 면의 가로축 u, 세로축 v]
+    const faces = [
+        [[ 0, 0, 1], [ 1, 0, 0], [0, 1, 0]],   // 앞면 (+z)
+        [[ 0, 0,-1], [-1, 0, 0], [0, 1, 0]],   // 뒷면 (-z)
+        [[ 1, 0, 0], [ 0, 0,-1], [0, 1, 0]],   // 오른쪽 (+x)
+        [[-1, 0, 0], [ 0, 0, 1], [0, 1, 0]],   // 왼쪽 (-x)
+        [[ 0, 1, 0], [ 1, 0, 0], [0, 0,-1]],   // 윗면 (+y)
+        [[ 0,-1, 0], [ 1, 0, 0], [0, 0, 1]],   // 아랫면 (-y)
+    ];
+    const pos = [], nrm = [];
+    for (const [n, u, v] of faces) {
+        // 면 중심 0.5n에서 u, v 방향으로 +-0.5 이동한 꼭짓점
+        const corner = (su, sv) => {
+            for (let k = 0; k < 3; k++)
+                pos.push(0.5*n[k] + su*0.5*u[k] + sv*0.5*v[k]);
+            nrm.push(n[0], n[1], n[2]);   // 한 면의 정점 6개는 같은 법선
+        };
+        corner(-1,-1); corner(1,-1); corner(1,1);    // 삼각형 1
+        corner(-1,-1); corner(1,1);  corner(-1,1);   // 삼각형 2
+    }
+    return { pos: new Float32Array(pos), nrm: new Float32Array(nrm) };
+}
+
+// ===== 초기화: 버퍼 2개를 0번(위치)·1번(법선) 속성에 연결 =====
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+const cube = makeCube();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.pos, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const nrmVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, nrmVbo);
+gl.bufferData(gl.ARRAY_BUFFER, cube.nrm, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+// ===== MVP 행렬 (6장과 같은 구성) =====
+const model = mat4.create();
+const view = mat4.create();
+mat4.lookAt(view, [1.6, 1.4, 2.2], [0, 0, 0], [0, 1, 0]);
+const proj = mat4.create();
+mat4.perspective(proj, Math.PI/4, canvas.width/canvas.height, 0.1, 100);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModel'), false, model);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, view);
+gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, proj);
+
+// ===== 조명과 재질 =====
+const lightDir = vec3.fromValues(0.5, 0.8, 0.6);   // 광원이 있는 쪽
+vec3.normalize(lightDir, lightDir);
+gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);
+gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), 1.0, 1.0, 1.0);
+gl.uniform3f(gl.getUniformLocation(program, 'uMaterial'), 1.0, 0.5, 0.2);
+
+// ===== 그리기: 깊이 검사를 켜야 앞뒤가 올바르게 가려진다 =====
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 36);
+</script>
+</body></html>

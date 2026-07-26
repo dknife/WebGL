@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>ch08 예제 1 — 체커보드 텍스처 입히기 (완성 프로그램)</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+
+// ===== 셰이더: 텍스처 좌표를 보간해 넘기고, 텍스처를 샘플링 =====
+const vsSource = `#version 300 es
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+out vec2 vTexCoord;
+void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;           // 래스터화 과정에서 보간된다
+}`;
+
+const fsSource = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+uniform sampler2D uSampler;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uSampler, vTexCoord);   // 텍스처 조회
+}`;
+
+// ===== 셰이더 도우미 (2장의 도우미를 압축한 형태) =====
+function makeProgram(gl, vsSource, fsSource) {
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.log(gl.getShaderInfoLog(s));
+        return s;
+    }
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        console.log(gl.getProgramInfoLog(p));
+    return p;
+}
+const program = makeProgram(gl, vsSource, fsSource);
+gl.useProgram(program);
+
+// ===== 8x8 체커보드 텍스처를 절차 생성 =====
+const SIZE = 8;
+const pixels = new Uint8Array(SIZE * SIZE * 4);   // 텍셀당 RGBA 4바이트
+for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+        const c = (row + col) % 2 === 0 ? 230 : 40;  // 밝은 칸 / 어두운 칸
+        const i = (row * SIZE + col) * 4;
+        pixels[i] = c;      pixels[i + 1] = c;       // R, G
+        pixels[i + 2] = c;  pixels[i + 3] = 255;     // B, A(불투명)
+    }
+}
+
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);       // 행 정렬을 1바이트 단위로
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIZE, SIZE, 0,
+              gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+// ===== 사각형: 위치 + 텍스처 좌표 (TRIANGLE_STRIP 순서) =====
+const positions = new Float32Array([
+    -0.5, -0.75,    0.5, -0.75,    -0.5, 0.75,    0.5, 0.75,
+]);
+const texCoords = new Float32Array([
+     0.0, 0.0,      1.0, 0.0,       0.0, 1.0,     1.0, 1.0,
+]);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const posVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const uvVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+// ===== 텍스처를 0번 유닛에 연결하고 그리기 =====
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.uniform1i(gl.getUniformLocation(program, 'uSampler'), 0);
+
+gl.clearColor(0.1, 0.15, 0.25, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+</script>
+</body></html>

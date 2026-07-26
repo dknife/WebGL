@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>apxA 예제 1 — 표지 장면 전체 — 셰이더 레이 트레이서 + FBO 블룸</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;margin:0 auto}</style></head>
+<body>
+<canvas id="glCanvas" width="600" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<script>
+const canvas=document.getElementById('glCanvas');
+const gl=canvas.getContext('webgl2',{antialias:true});
+gl.getExtension('EXT_color_buffer_float');
+gl.getExtension('OES_texture_float_linear');
+const vs=`#version 300 es
+layout(location=0) in vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0);}`;
+//============================ 1) 장면 레이 트레이서 (선형 HDR 출력) ============================
+const fsScene=`#version 300 es
+precision highp float;
+out vec4 outColor; uniform vec2 uRes;
+const float IOR=1.5;
+const int N=20;
+int K[20]; int MT[20]; vec3 C[20]; vec3 S[20]; vec3 T[20];
+const int NL=3;
+vec3 LP[3]; vec3 LC[3];
+void setup(){
+ K[0]=0; MT[0]=0; C[0]=vec3(-1.45,0.95,0.20);  S[0]=vec3(0.95);          T[0]=vec3(1.0,0.04,0.16);
+ K[1]=0; MT[1]=0; C[1]=vec3(-0.30,0.58,1.15);  S[1]=vec3(0.58);          T[1]=vec3(0.05,1.0,0.28);
+ K[2]=4; MT[2]=0; C[2]=vec3(2.00,0.55,-0.50);  S[2]=vec3(0.72);          T[2]=vec3(0.16,0.46,0.95);
+ K[3]=3; MT[3]=0; C[3]=vec3(0.58,0.92,-0.20);  S[3]=vec3(0.92);          T[3]=vec3(1.0,0.55,0.0);
+ K[4]=0; MT[4]=0; C[4]=vec3(1.05,0.42,0.62);   S[4]=vec3(0.42);          T[4]=vec3(0.68,0.06,1.0);
+ K[5]=2; MT[5]=0; C[5]=vec3(-2.35,0.55,-0.55); S[5]=vec3(0.40,0.55,0.0); T[5]=vec3(0.0,0.78,1.0);
+ K[6] =0; MT[6] =1; C[6] =vec3(-3.00,0.36,2.00); S[6] =vec3(0.36); T[6] =vec3(1.0,0.08,0.10);
+ K[7] =0; MT[7] =1; C[7] =vec3( 0.35,0.34,2.35); S[7] =vec3(0.34); T[7] =vec3(1.0,0.85,0.08);
+ K[8] =0; MT[8] =1; C[8] =vec3( 1.70,0.28,2.95); S[8] =vec3(0.28); T[8] =vec3(0.08,0.95,0.20);
+ K[9] =0; MT[9] =1; C[9] =vec3(-0.80,0.32,3.40); S[9] =vec3(0.32); T[9] =vec3(0.10,0.35,1.0);
+ K[10]=0; MT[10]=1; C[10]=vec3( 3.20,0.40,1.70); S[10]=vec3(0.40); T[10]=vec3(0.0,0.85,0.82);
+ K[11]=0; MT[11]=1; C[11]=vec3(-2.50,0.34,3.20); S[11]=vec3(0.34); T[11]=vec3(1.0,0.08,0.72);
+ K[12]=0; MT[12]=3; C[12]=vec3(-1.50,0.60,2.15); S[12]=vec3(0.60); T[12]=vec3(0.2,0.4,0.6);
+ K[13]=1; MT[13]=2; C[13]=vec3(-1.20,0.60,-3.00); S[13]=vec3(0.60); T[13]=vec3(0.12,0.30,0.85);
+ K[14]=0; MT[14]=1; C[14]=vec3( 0.70,0.70,-3.40); S[14]=vec3(0.70); T[14]=vec3(1.0,0.82,0.15);
+ K[15]=1; MT[15]=1; C[15]=vec3( 2.40,0.58,-2.70); S[15]=vec3(0.58); T[15]=vec3(1.0,0.10,0.12);
+ K[16]=0; MT[16]=2; C[16]=vec3(-2.70,0.66,-2.50); S[16]=vec3(0.66); T[16]=vec3(0.15,0.80,0.28);
+ K[17]=1; MT[17]=2; C[17]=vec3( 1.20,0.52,-4.30); S[17]=vec3(0.52); T[17]=vec3(1.0,0.50,0.05);
+ K[18]=0; MT[18]=1; C[18]=vec3( 3.50,0.62,-3.60); S[18]=vec3(0.62); T[18]=vec3(0.60,0.10,1.0);
+ K[19]=1; MT[19]=1; C[19]=vec3(-3.60,0.60,-3.10); S[19]=vec3(0.60); T[19]=vec3(0.0,0.75,0.85);
+ LP[0]=vec3(5.0,7.5,4.0);   LC[0]=vec3(1.0,0.96,0.88)*1.15;
+ LP[1]=vec3(-5.0,5.5,1.5);  LC[1]=vec3(0.6,0.78,1.0)*0.9;
+ LP[2]=vec3(1.0,4.5,-5.0);  LC[2]=vec3(1.0,0.68,0.44)*0.85;
+}
+float objRad(int i){ if(K[i]==1) return max(max(S[i].x,S[i].y),S[i].z); return S[i].x; }
+float iPlane(vec3 ro,vec3 rd){ if(abs(rd.y)<1e-4)return -1.0; float t=-ro.y/rd.y; return t>1e-3?t:-1.0;}
+float iSphere(vec3 ro,vec3 rd,vec3 c,float r,out vec3 n){
+ vec3 oc=ro-c; float b=dot(oc,rd); float k=dot(oc,oc)-r*r; float h=b*b-k; if(h<0.0)return -1.0; h=sqrt(h);
+ float t=-b-h; if(t<1e-3)t=-b+h; if(t<1e-3)return -1.0; n=normalize((ro+rd*t)-c); return t;}
+float iBox(vec3 ro,vec3 rd,vec3 c,vec3 hs,out vec3 n){
+ vec3 m=1.0/rd,o=ro-c,q=m*o,k=abs(m)*hs; vec3 t1=-q-k,t2=-q+k;
+ float tN=max(max(t1.x,t1.y),t1.z),tF=min(min(t2.x,t2.y),t2.z); if(tN>tF||tF<0.0)return -1.0;
+ float t=tN>1e-3?tN:tF; if(t<1e-3)return -1.0; vec3 p=o+rd*t,d=abs(p)-hs;
+ n=normalize(sign(p)*step(d.yzx,d.xyz)*step(d.zxy,d.xyz)); return t;}
+float iCyl(vec3 ro,vec3 rd,vec3 c,float r,float hh,out vec3 n){
+ vec3 o=ro-c; float a=rd.x*rd.x+rd.z*rd.z; float b=o.x*rd.x+o.z*rd.z; float k=o.x*o.x+o.z*o.z-r*r;
+ float best=1e9; bool hit=false; vec3 bn=vec3(0,1,0);
+ float h=b*b-a*k; if(h>=0.0&&a>1e-6){ h=sqrt(h);
+   for(int s=0;s<2;s++){ float t=(-b+(s==0?-h:h))/a; if(t>1e-3){ float y=o.y+rd.y*t; if(abs(y)<=hh&&t<best){best=t;bn=normalize(vec3(o.x+rd.x*t,0.0,o.z+rd.z*t));hit=true;} } } }
+ for(int s=0;s<2;s++){ float cy=(s==0?-hh:hh); float t=(cy-o.y)/rd.y; if(t>1e-3&&t<best){ float x=o.x+rd.x*t,z=o.z+rd.z*t; if(x*x+z*z<=r*r){best=t;bn=vec3(0.0,cy>0.0?1.0:-1.0,0.0);hit=true;} } }
+ if(!hit)return -1.0; n=bn; return best;}
+float iOcta(vec3 ro,vec3 rd,vec3 c,float h,out vec3 n){
+ vec3 o=ro-c; float tN=-1e9,tF=1e9; vec3 nn=vec3(0,1,0);
+ for(int i=0;i<8;i++){
+   vec3 fn=vec3((i&1)==0?-1.0:1.0,(i&2)==0?-1.0:1.0,(i&4)==0?-1.0:1.0);
+   float dn=dot(fn,rd), dd=h-dot(fn,o);
+   if(abs(dn)<1e-6){ if(dd<0.0) return -1.0; }
+   else { float t=dd/dn; if(dn<0.0){ if(t>tN){tN=t;nn=normalize(fn);} } else { if(t<tF)tF=t; } }
+ }
+ if(tN>tF||tF<0.0) return -1.0; float t=tN>1e-3?tN:tF; if(t<1e-3) return -1.0; n=normalize(nn); return t;}
+float iGem(vec3 ro,vec3 rd,vec3 c,float s,out vec3 n){
+ vec3 o=ro-c; float tN=-1e9,tF=1e9; vec3 nEnter=vec3(0,1,0), nExit=vec3(0,1,0);
+ {
+   vec3 fn=vec3(0.0,1.0,0.0); float d=0.62*s;
+   float den=dot(fn,rd), num=d-dot(fn,o);
+   if(abs(den)<1e-7){ if(num<0.0) return -1.0; }
+   else{ float t=num/den; if(den<0.0){ if(t>tN){tN=t;nEnter=fn;} } else { if(t<tF){tF=t;nExit=fn;} } }
+ }
+ for(int i=0;i<8;i++){
+   float a=6.2831853*float(i)/8.0;
+   {
+     vec3 fn=normalize(vec3(cos(a),0.85,sin(a)));
+     float d=dot(fn,vec3(s*cos(a),0.0,s*sin(a)));
+     float den=dot(fn,rd), num=d-dot(fn,o);
+     if(abs(den)<1e-7){ if(num<0.0) return -1.0; }
+     else{ float t=num/den; if(den<0.0){ if(t>tN){tN=t;nEnter=fn;} } else { if(t<tF){tF=t;nExit=fn;} } }
+   }
+   {
+     float b=a+0.3926991;
+     vec3 fn=normalize(vec3(cos(b),-1.25,sin(b)));
+     float d=dot(fn,vec3(s*cos(b),0.0,s*sin(b)));
+     float den=dot(fn,rd), num=d-dot(fn,o);
+     if(abs(den)<1e-7){ if(num<0.0) return -1.0; }
+     else{ float t=num/den; if(den<0.0){ if(t>tN){tN=t;nEnter=fn;} } else { if(t<tF){tF=t;nExit=fn;} } }
+   }
+ }
+ if(tN>tF||tF<1e-3) return -1.0;
+ if(tN>1e-3){ n=nEnter; return tN; }
+ n=nExit; return tF;}
+float iObj(int i,vec3 ro,vec3 rd,out vec3 n){
+ if(K[i]==0)return iSphere(ro,rd,C[i],S[i].x,n);
+ if(K[i]==1)return iBox(ro,rd,C[i],S[i],n);
+ if(K[i]==3)return iOcta(ro,rd,C[i],S[i].x,n);
+ if(K[i]==4)return iGem(ro,rd,C[i],S[i].x,n);
+ return iCyl(ro,rd,C[i],S[i].x,S[i].y,n);}
+int scene(vec3 ro,vec3 rd,out float t,out vec3 n,out int oi){
+ t=1e9; int which=-1; oi=-1; vec3 nn;
+ float tp=iPlane(ro,rd); if(tp>0.0&&tp<t){t=tp;which=0;n=vec3(0,1,0);}
+ for(int i=0;i<N;i++){ float ti=iObj(i,ro,rd,nn); if(ti>0.0&&ti<t){t=ti;n=nn;which=1;oi=i;} }
+ return which;}
+float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+ float a=hash21(i),b=hash21(i+vec2(1,0)),c=hash21(i+vec2(0,1)),d=hash21(i+vec2(1,1));
+ return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }
+float fbm(vec2 p){ float v=0.0,a=0.55; for(int i=0;i<5;i++){ v+=a*vnoise(p); p=p*2.02+vec2(1.7,9.2); a*=0.5;} return v; }
+vec3 sky(vec3 rd){ float h=clamp(rd.y*0.5+0.5,0.0,1.0);
+ vec3 c=mix(vec3(0.09,0.17,0.36), vec3(0.002,0.02,0.12), pow(h,0.62));
+ if(rd.y>0.015){
+   vec2 cp=rd.xz/rd.y*1.15;
+   float f=fbm(cp*0.52+vec2(3.0,1.5));
+   float cov=smoothstep(0.46,0.86,f);
+   float fade=smoothstep(0.02,0.28,rd.y)*(1.0-0.30*h);
+   vec3 cloud=mix(vec3(0.20,0.25,0.38),vec3(0.48,0.52,0.62),smoothstep(0.4,0.95,f));
+   c=mix(c,cloud,clamp(cov*fade*0.85,0.0,1.0));
+ }
+ for(int i=0;i<NL;i++) c+=LC[i]*pow(max(dot(rd,normalize(LP[i])),0.0),160.0)*0.7;
+ return c;}
+vec3 texGlobe(vec3 nrm){
+ float u=atan(nrm.z,nrm.x); float vv=asin(clamp(nrm.y,-1.0,1.0));
+ vec2 uv=vec2(u,vv);
+ float f=fbm(uv*vec2(1.5,3.0)+vec2(2.0,0.0));
+ float land=smoothstep(0.53,0.585,f);
+ vec3 ocean=mix(vec3(0.03,0.20,0.52),vec3(0.06,0.34,0.62),smoothstep(0.3,0.53,f));
+ vec3 green=mix(vec3(0.13,0.42,0.16),vec3(0.48,0.40,0.20),smoothstep(0.60,0.85,f));
+ vec3 col=mix(ocean,green,land);
+ float ice=smoothstep(1.15,1.42,abs(vv)); col=mix(col,vec3(0.94,0.96,0.98),ice);
+ return col;}
+vec3 checkerCol(vec2 p){
+ vec2 w=fwidth(p)+1e-3;
+ vec2 i=2.0*(abs(fract((p-0.5*w)*0.5)-0.5)-abs(fract((p+0.5*w)*0.5)-0.5))/w;
+ float c=0.5-0.5*i.x*i.y;
+ return mix(vec3(0.04,0.06,0.14), vec3(0.55,0.58,0.66), c);
+}
+float shadowT(vec3 ro,vec3 rd,float maxt){ float s=1.0;
+ for(int i=0;i<N;i++){ vec3 nn; float ti=iObj(i,ro,rd,nn); if(ti>0.0&&ti<maxt){ s*=(MT[i]==0)?0.48:0.12; } } return s;}
+vec3 highlights(vec3 p,vec3 nf,vec3 v,float shin,float k){
+ vec3 sp=vec3(0.0);
+ for(int i=0;i<NL;i++){ vec3 L=normalize(LP[i]-p); vec3 hh=normalize(L+v);
+   sp += LC[i]*pow(max(dot(nf,hh),0.0),shin); }
+ return sp*k;
+}
+vec3 shadeDiffuse(vec3 p,vec3 nf,vec3 v,vec3 alb){
+ vec3 lit=vec3(0.10)+sky(nf)*0.10;
+ for(int i=0;i<NL;i++){ vec3 L=normalize(LP[i]-p); float df=max(dot(nf,L),0.0);
+   float sh=(i==0)?shadowT(p+nf*1e-3,L,length(LP[i]-p)):1.0; lit+=LC[i]*df*sh; }
+ return alb*lit + highlights(p,nf,v,45.0,0.28);
+}
+vec3 shadeFloor(vec3 p,vec3 rd){ vec3 n=vec3(0,1,0); vec3 base=checkerCol(p.xz); vec3 v=-rd;
+ vec3 lit=vec3(0.0);
+ for(int i=0;i<NL;i++){ vec3 L=normalize(LP[i]-p); float df=max(dot(n,L),0.0);
+   float sh=(i==0)?shadowT(p+n*1e-3,L,length(LP[i]-p)):1.0; lit+=LC[i]*df*sh; }
+ vec3 caus=vec3(0.0);
+ for(int i=0;i<N;i++){
+   if(MT[i]!=0) continue;
+   vec3 dir=C[i]-LP[0];
+   float s=LP[0].y/(LP[0].y-C[i].y);
+   vec2 sc=(LP[0]+s*dir).xz;
+   float R=objRad(i)*1.25;
+   float r=length(p.xz-sc);
+   float ring=exp(-pow((r-R*0.50)/(R*0.15),2.0));
+   float core=exp(-pow(r/(R*0.32),2.0));
+   caus += (T[i]*0.7+vec3(0.3)) * (ring*1.30+core*0.75);
+ }
+ vec3 col=base*(0.06+0.52*lit) + caus*(0.40+0.60*base)*1.5 + highlights(p,n,v,60.0,0.22);
+ return mix(col,sky(reflect(rd,n)),0.05);}
+void main(){
+ setup();
+ vec2 q=(gl_FragCoord.xy/uRes)*2.0-1.0;
+ float asp=uRes.x/uRes.y;
+ if(asp>=1.0) q.x*=asp; else q.y/=asp;
+ vec3 eye=vec3(3.1,1.85,4.9), ta=vec3(-0.05,0.80,-0.10);
+ vec3 f=normalize(ta-eye), rgt=normalize(cross(f,vec3(0,1,0))), up=cross(rgt,f);
+ vec3 rd=normalize(q.x*rgt+q.y*up+2.0*f), ro=eye;
+ vec3 col=vec3(0.0), thr=vec3(1.0);
+ for(int bounce=0;bounce<7;bounce++){
+   float t; vec3 n; int oi; int which=scene(ro,rd,t,n,oi);
+   if(which==-1){ col+=thr*sky(rd); break; }
+   if(which==0){ col+=thr*shadeFloor(ro+rd*t,rd); break; }
+   vec3 p=ro+rd*t; vec3 v=-rd;
+   if(MT[oi]==3){
+     vec3 nf=dot(rd,n)<0.0?n:-n;
+     col += thr*shadeDiffuse(p,nf,v,texGlobe(nf));
+     break;
+   }
+   if(MT[oi]==2){
+     vec3 nf=dot(rd,n)<0.0?n:-n;
+     col += thr*shadeDiffuse(p,nf,v,T[oi]);
+     break;
+   }
+   if(MT[oi]==1){
+     vec3 nf=dot(rd,n)<0.0?n:-n;
+     col += thr*highlights(p,nf,v,140.0,0.85);
+     float ci=max(dot(v,nf),0.0);
+     vec3 F=T[oi]+(1.0-T[oi])*pow(1.0-ci,5.0);
+     col += thr*T[oi]*0.05;
+     thr *= F;
+     rd=reflect(rd,nf); ro=p+rd*1e-3;
+     if(max(thr.r,max(thr.g,thr.b))<0.02) break;
+     continue;
+   }
+   bool entering=dot(rd,n)<0.0; vec3 nf=entering?n:-n;
+   float ior=(K[oi]==4)?2.42:IOR;
+   float ci=max(dot(v,nf),0.0); float fres=0.04+0.96*pow(1.0-ci,5.0);
+   col+=thr*highlights(p,nf,v,220.0,0.9);
+   if(K[oi]==4){
+     float edge=0.22+0.78*pow(1.0-ci,2.0);
+     float hue=fract(dot(nf,vec3(1.7,0.9,1.3))*0.5 + dot(nf,v)*0.6 + dot(p,vec3(2.1,1.4,1.7))*0.12);
+     vec3 fire=0.5+0.5*cos(6.2831853*(hue+vec3(0.0,0.33,0.67)));
+     col += thr*(1.0-fres)*edge*fire*0.95;
+   }
+   vec3 rr=reflect(rd,nf); float rt; vec3 rn; int roi; int rw=scene(p+nf*1e-3,rr,rt,rn,roi);
+   vec3 refl = rw==-1?sky(rr):(rw==0?shadeFloor(p+rr*rt,rr):(MT[roi]==0?T[roi]*0.8+0.2:T[roi]*0.72+0.12));
+   col+=thr*fres*refl;
+   float eta=entering?1.0/ior:ior;
+   vec3 rt2=refract(rd,nf,eta);
+   if(dot(rt2,rt2)<1e-5){ rd=reflect(rd,nf); ro=p+rd*1e-3; thr*=0.94; continue; }
+   thr*=(1.0-fres)*mix(vec3(1.0),T[oi],entering?(K[oi]==4?0.55:0.30):0.0);
+   rd=rt2; ro=p+rd*1e-3;
+   if(max(thr.r,max(thr.g,thr.b))<0.02) break;
+ }
+ col*=0.66;                                  // 노출
+ outColor=vec4(max(col,0.0),1.0);            // 선형 HDR → 후처리(블룸/톤맵)로 전달
+}`;
+//============================ 2) 밝은 부분 추출 (bright pass) ============================
+const fsBright=`#version 300 es
+precision highp float;
+out vec4 o; uniform sampler2D uTex; uniform vec2 uRes; uniform float uThreshold;
+void main(){
+ vec2 uv=gl_FragCoord.xy/uRes;
+ vec3 c=texture(uTex,uv).rgb;
+ float l=max(max(c.r,c.g),c.b);
+ float t=smoothstep(uThreshold,uThreshold+0.6,l);
+ o=vec4(c*t,1.0);
+}`;
+//============================ 3) 분리형 가우시안 블러 ============================
+const fsBlur=`#version 300 es
+precision highp float;
+out vec4 o; uniform sampler2D uTex; uniform vec2 uRes; uniform vec2 uTexel; uniform vec2 uDir;
+void main(){
+ vec2 uv=gl_FragCoord.xy/uRes;
+ vec2 d=uDir*uTexel*1.4;
+ float w0=0.227027,w1=0.1945946,w2=0.1216216,w3=0.054054,w4=0.016216;
+ vec3 s=texture(uTex,uv).rgb*w0;
+ s+=(texture(uTex,uv+d*1.0).rgb+texture(uTex,uv-d*1.0).rgb)*w1;
+ s+=(texture(uTex,uv+d*2.0).rgb+texture(uTex,uv-d*2.0).rgb)*w2;
+ s+=(texture(uTex,uv+d*3.0).rgb+texture(uTex,uv-d*3.0).rgb)*w3;
+ s+=(texture(uTex,uv+d*4.0).rgb+texture(uTex,uv-d*4.0).rgb)*w4;
+ o=vec4(s,1.0);
+}`;
+//============================ 4) 합성 + 톤맵 + 그레이딩 ============================
+const fsComp=`#version 300 es
+precision highp float;
+out vec4 o; uniform sampler2D uScene; uniform sampler2D uBloom; uniform vec2 uRes; uniform float uBloomInt;
+void main(){
+ vec2 uv=gl_FragCoord.xy/uRes;
+ vec3 scn=texture(uScene,uv).rgb;
+ vec3 blm=texture(uBloom,uv).rgb;
+ vec3 c=scn+blm*uBloomInt;                    // 블룸 합성 (어두운 장면은 그대로, 밝은 곳만 발광)
+ float dc=length(uv-0.5); c*=clamp(1.0-1.6*dc*dc,0.16,1.0);  // 비네트
+ c=pow(clamp(c,0.0,1.0),vec3(0.4545));         // 감마
+ c=clamp((c-0.5)*1.20+0.5,0.0,1.0);            // 대비
+ float lum=dot(c,vec3(0.299,0.587,0.114));
+ c=clamp(mix(vec3(lum),c,1.22),0.0,1.0);       // 채도
+ o=vec4(c,1.0);
+}`;
+//============================ 프로그램/FBO 구성 ============================
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+ if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){document.title='ERR';console.log(gl.getShaderInfoLog(o));}return o;}
+function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);
+ if(!gl.getProgramParameter(p,gl.LINK_STATUS)){document.title='LINKERR';console.log(gl.getProgramInfoLog(p));}return p;}
+const pScene=prog(vs,fsScene), pBright=prog(vs,fsBright), pBlur=prog(vs,fsBlur), pComp=prog(vs,fsComp);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+function mkTex(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;}
+function mkFBO(t){const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+ gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return f;}
+const W=canvas.width,H=canvas.height, hw=W>>1, hh=H>>1;
+const sceneT=mkTex(W,H), sceneF=mkFBO(sceneT);
+const bA=mkTex(hw,hh), bAF=mkFBO(bA);
+const bB=mkTex(hw,hh), bBF=mkFBO(bB);
+function U(p,n){return gl.getUniformLocation(p,n);}
+function draw(){gl.drawArrays(gl.TRIANGLES,0,3);}
+// ---- 패스 1: 장면 → sceneT (선형 HDR) ----
+gl.bindFramebuffer(gl.FRAMEBUFFER,sceneF); gl.viewport(0,0,W,H);
+gl.useProgram(pScene); gl.uniform2f(U(pScene,'uRes'),W,H); draw();
+// ---- 패스 2: 밝은 부분 추출 → bA (반해상도) ----
+gl.bindFramebuffer(gl.FRAMEBUFFER,bAF); gl.viewport(0,0,hw,hh);
+gl.useProgram(pBright);
+gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,sceneT); gl.uniform1i(U(pBright,'uTex'),0);
+gl.uniform2f(U(pBright,'uRes'),hw,hh); gl.uniform1f(U(pBright,'uThreshold'),0.62); draw();
+// ---- 패스 3: 분리형 가우시안 블러 (핑퐁 3회) ----
+gl.useProgram(pBlur); gl.uniform2f(U(pBlur,'uTexel'),1.0/hw,1.0/hh); gl.uniform2f(U(pBlur,'uRes'),hw,hh);
+gl.uniform1i(U(pBlur,'uTex'),0);
+for(let i=0;i<3;i++){
+ // 수평: bA → bB
+ gl.bindFramebuffer(gl.FRAMEBUFFER,bBF); gl.viewport(0,0,hw,hh);
+ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,bA); gl.uniform2f(U(pBlur,'uDir'),1.0,0.0); draw();
+ // 수직: bB → bA
+ gl.bindFramebuffer(gl.FRAMEBUFFER,bAF); gl.viewport(0,0,hw,hh);
+ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,bB); gl.uniform2f(U(pBlur,'uDir'),0.0,1.0); draw();
+}
+// ---- 패스 4: 합성 → 화면 ----
+gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H);
+gl.useProgram(pComp);
+gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,sceneT); gl.uniform1i(U(pComp,'uScene'),0);
+gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,bA); gl.uniform1i(U(pComp,'uBloom'),1);
+gl.uniform2f(U(pComp,'uRes'),W,H); gl.uniform1f(U(pComp,'uBloomInt'),1.1); draw();
+</script>
+</body></html>
