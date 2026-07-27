@@ -24,7 +24,7 @@
 <nav class="sidebar">
 <div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
 <div class="nav-ch current"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
-<div class="nav-secs"><a class="nav-sec" href="ch01.html#sec1">1.1 3차원 컴퓨터 그래픽스란</a><a class="nav-sec" href="ch01.html#sec2">1.2 컴퓨터 그래픽스의 역사</a><a class="nav-sec" href="ch01.html#sec3">1.3 WebGL이란</a><a class="nav-sec" href="ch01.html#sec4">1.4 첫 번째 WebGL 프로그램</a><a class="nav-sec" href="ch01.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch01.html#summary">1장 요약</a><a class="nav-sec" href="ch01.html#exercises">연습문제</a></div>
+<div class="nav-secs"><a class="nav-sec" href="ch01.html#sec1">1.1 3차원 컴퓨터 그래픽스란</a><a class="nav-sec" href="ch01.html#sec2">1.2 컴퓨터 그래픽스의 역사</a><a class="nav-sec" href="ch01.html#sec3">1.3 WebGL이란</a><a class="nav-sec" href="ch01.html#sec4">1.4 첫 번째 WebGL 프로그램</a><a class="nav-sec" href="ch01.html#labs">실습을 통한 개념 정리</a><a class="nav-sec" href="ch01.html#apiref">1장에서 만난 API</a><a class="nav-sec" href="ch01.html#summary">1장 요약</a><a class="nav-sec" href="ch01.html#exercises">연습문제</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
 </div>
@@ -227,6 +227,7 @@ if (!gl) {
 if (!gl) {
     alert('이 브라우저는 WebGL을 지원하지 않습니다.');
 }</code></pre></div></p>
+<details class="box apiref" id="apiref"><summary class="box-head">1장에서 만난 API</summary><div class="apiref-body"><p>1장에서는 WebGL 컨텍스트를 얻어 화면을 특정 색으로 지우는, 가장 기본적인 두세 개의 호출을 만났다. 각 항목 끝의 화살표(\(\hookrightarrow\))는 그 호출이 무엇을 돌려주는지 나타낸다.</p><div class="api-head">컨텍스트와 화면 지우기</div><div class="api-ent"><code class="api-sig">canvas.getContext(’webgl2’)</code><span class="api-desc"><code>&lt;canvas&gt;</code> 요소에서 WebGL 2.0 렌더링 컨텍스트(흔히 <code>gl</code>이라 부른다)를 얻는다. 이후 모든 그래픽 명령은 이 객체를 통해 이뤄진다.<span class="api-ret">&#8618; 반환: WebGL2RenderingContext 객체 (실패 시 null)</span></span></div><div class="api-ent"><code class="api-sig">gl.clearColor(r, g, b, a)</code><span class="api-desc">화면을 지울 때 채울 색을 지정한다. 각 성분은 0에서 1 사이의 값이다.<span class="api-ret">&#8618; 반환: 없음(void)</span></span></div><div class="api-ent"><code class="api-sig">gl.clear(mask)</code><span class="api-desc">지정한 버퍼를 앞서 정한 색 등으로 지운다. 색 버퍼는 <code>gl.COLOR_BUFFER_BIT</code>로 지정한다.<span class="api-ret">&#8618; 반환: 없음(void)</span></span></div></div></details>
 <details class="box summary" id="summary"><summary class="box-head">1장 요약</summary><div class="sum-body"><ul>
 <li><strong>3차원 컴퓨터 그래픽스</strong>는 물체·카메라·광원으로 구성된 3차원 장면을 2차원 이미지로 만들어 내는 기술이며, 이 과정을 <strong>렌더링</strong>이라고 한다.</li>
 <li>3차원 물체는 삼각형들을 이어 붙인 <strong>메시</strong>로 표현하며, 삼각형의 꼭짓점을 <strong>정점</strong>이라고 한다.</li>

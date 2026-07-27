@@ -49,7 +49,7 @@
 </div>
 <div class="nav-part">부록</div>
 <div class="nav-ch current"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
-<div class="nav-secs"><a class="nav-sec" href="apxa.html#sec1">전략 –- 화면을 덮는 삼각형 하나</a><a class="nav-sec" href="apxa.html#sec2">카메라와 광선 생성</a><a class="nav-sec" href="apxa.html#sec3">장면의 표현 –- 배열로 담은 물체들</a><a class="nav-sec" href="apxa.html#sec4">광선-물체 교차</a><a class="nav-sec" href="apxa.html#sec5">색을 결정하는 바운스 루프</a><a class="nav-sec" href="apxa.html#sec6">배경 –- 하늘, 구름, 바닥</a><a class="nav-sec" href="apxa.html#sec7">그림자와 caustic</a><a class="nav-sec" href="apxa.html#sec8">화면 밖에서 완성하기 –- FBO 블룸 후처리</a><a class="nav-sec" href="apxa.html#sec9">직접 해보기</a><a class="nav-sec" href="apxa.html#sec10">전체 코드</a></div>
+<div class="nav-secs"><a class="nav-sec" href="apxa.html#sec1">전략—화면을 덮는 삼각형 하나</a><a class="nav-sec" href="apxa.html#sec2">카메라와 광선 생성</a><a class="nav-sec" href="apxa.html#sec3">장면의 표현—배열로 담은 물체들</a><a class="nav-sec" href="apxa.html#sec4">광선-물체 교차</a><a class="nav-sec" href="apxa.html#sec5">색을 결정하는 바운스 루프</a><a class="nav-sec" href="apxa.html#sec6">배경—하늘, 구름, 바닥</a><a class="nav-sec" href="apxa.html#sec7">그림자와 caustic</a><a class="nav-sec" href="apxa.html#sec8">화면 밖에서 완성하기—FBO 블룸 후처리</a><a class="nav-sec" href="apxa.html#sec9">직접 해보기</a><a class="nav-sec" href="apxa.html#sec10">전체 코드</a></div>
 </div>
 <div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
 </div>
@@ -71,7 +71,7 @@
 <li>11장의 FBO(Render To Texture)로 구현한 블룸 후처리 4패스</li>
 </ul></p></div></details></div>
 <p>이 책의 표지에 놓인 유리와 금속 구, 크라운컷 다이아몬드, 지구본, 그리고 어스름한 하늘과 체커 바닥은 3D 모델링 도구로 만든 것이 아니다. 외부 메시도, 텍스처 이미지 파일도 없다. <strong>단 한 장의 삼각형과 한 편의 프래그먼트 셰이더</strong>가 픽셀마다 광선을 쏘아 그린 <strong class="term-ko">레이 트레이싱</strong><sup class="term">ray tracing</sup> 장면이며, 마지막에 11장에서 배운 <strong class="term-ko">프레임버퍼 오브젝트</strong><sup class="term">framebuffer object</sup>로 블룸을 입혔다. 이 부록은 그 코드를 처음부터 끝까지 따라가며, 이 책이 다룬 개념들이 어떻게 한 화면에 모이는지 보인다. 전체는 하나의 HTML 파일이고, 브라우저에서 그대로 열린다.</p>
-<h2 id="sec1">전략 --- 화면을 덮는 삼각형 하나</h2>
+<h2 id="sec1">전략 — 화면을 덮는 삼각형 하나</h2>
 <p>지금까지 우리는 물체를 이루는 삼각형 수백, 수천 개를 정점 버퍼에 담아 래스터화했다. 레이 트레이싱은 발상을 뒤집는다. 장면을 이루는 삼각형을 그리는 대신, <strong>화면 전체를 덮는 삼각형 딱 하나</strong>를 그린다. 그러면 프래그먼트 셰이더가 화면의 모든 픽셀에서 한 번씩 실행되는데, 바로 그 픽셀 하나하나에서 카메라로부터 광선을 쏘아 장면과의 충돌을 계산한다. 물체는 정점이 아니라 셰이더 안의 수식(구의 방정식, 평면의 방정식 등)으로 존재한다.</p>
 <p>화면을 덮는 데는 사각형(삼각형 2개) 대신 <strong>커다란 삼각형 하나</strong>를 쓰는 관용적 기법을 이용한다. 정점을 \((-1,-1),(3,-1),(-1,3)\)에 두면 이 삼각형은 클립 공간 \([-1,1]^2\)를 완전히 덮는다. 뼈대는 다음과 같다.</p>
 <pre class="line-numbers"><code class="language-javascript">const canvas = document.getElementById('glCanvas');
@@ -108,7 +108,7 @@ vec3 up  = cross(rgt, f);
 vec3 rd  = normalize(q.x*rgt + q.y*up + 2.0*f);  // 픽셀 광선 방향
 vec3 ro  = eye;                                   // 광선 시작점</code></pre>
 <p>계수 <code>2.0</code>은 초점 거리에 해당한다. 값이 클수록 화각이 좁아져 망원처럼, 작을수록 광각처럼 보인다.</p>
-<h2 id="sec3">장면의 표현 --- 배열로 담은 물체들</h2>
+<h2 id="sec3">장면의 표현 — 배열로 담은 물체들</h2>
 <p>장면의 모든 물체는 병렬 배열 몇 개로 표현한다. <code>K</code>는 <strong>모양</strong>(0 구, 1 정육면체, 2 원기둥, 3 팔면체, 4 다이아몬드), <code>MT</code>는 <strong>재질</strong>(0 유리, 1 메탈, 2 확산, 3 텍스처), <code>C</code>는 중심, <code>S</code>는 크기, <code>T</code>는 색(유리·메탈의 색조, 확산의 알베도)이다. 물체를 추가하거나 색을 바꾸려면 이 배열만 손대면 된다.</p>
 <pre class="line-numbers"><code class="language-glsl">const int N = 20;                 // 물체 개수
 int K[20]; int MT[20]; vec3 C[20]; vec3 S[20]; vec3 T[20];
@@ -210,7 +210,7 @@ col *= 0.66;   // 노출</code></pre>
   vec3  fire = 0.5 + 0.5*cos(6.2831853*(hue + vec3(0.0, 0.33, 0.67)));
   col += thr * (1.0-fres) * edge * fire * 0.95;
 }</code></pre>
-<h2 id="sec6">배경 --- 하늘, 구름, 바닥</h2>
+<h2 id="sec6">배경 — 하늘, 구름, 바닥</h2>
 <p>광선이 아무 물체도 맞히지 못하면 <strong>하늘</strong>이다. 시선의 높이에 따라 짙은 남색에서 지평선의 옅은 파랑으로 섞고, <code>fbm</code> 잡음을 하늘 평면에 투영해 구름을 얹는다.</p>
 <pre class="line-numbers"><code class="language-glsl">vec3 sky(vec3 rd){
   float h = clamp(rd.y*0.5 + 0.5, 0.0, 1.0);
@@ -233,9 +233,20 @@ col *= 0.66;   // 노출</code></pre>
   float c = 0.5 - 0.5*i.x*i.y;           // 경계에서 부드럽게 평균
   return mix(vec3(0.04,0.06,0.14), vec3(0.55,0.58,0.66), c);
 }</code></pre>
+<p>지금까지의 배경 요소  —  하늘·구름과 체커 바닥  —  만 따로 렌더하면 그림 A.1와 같다. 아직 어떤 물체도 놓지 않았고, 픽셀마다 쏜 광선이 하늘 함수와 바닥 평면에만 도달한 결과다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch14/ch14_img01.png" alt="figure"><br>
+   (가) 하늘과 구름만
+<img class="gfx" src="img/ch14/ch14_img02.png" alt="figure"><br>
+   (나) 무한 체커 바닥을 더함
+<p><figcaption>그림 A.1: 절차적 배경. 광선이 물체를 맞히지 못하면 하늘 함수가, 바닥에 닿으면 체커 평면이 색을 정한다. 멀어지는 격자는 <code>fwidth</code>로 안티에일리어싱했다.</figcaption></figure></p>
 <h2 id="sec7">그림자와 caustic</h2>
 <p>바닥의 각 점에서 광원으로 그림자 광선을 쏘아 물체가 가리면 어둡게 한다(<code>shadowT</code>). 유리는 완전히 막지 않고 빛을 조금 통과시키므로 그림자를 옅게, 불투명 물체는 짙게 감쇠한다. 여기에 <strong>굴절 caustic</strong>을 더한다. 광원에서 물체 중심을 지나 바닥에 맺히는 지점을 초점으로 삼아, 물체 색을 띤 밝은 링과 핫스팟을 부드러운 그림자 안쪽에 얹어, 유리가 빛을 모아 만든 밝은 무늬를 흉내 낸다.</p>
-<h2 id="sec8">화면 밖에서 완성하기 --- FBO 블룸 후처리</h2>
+<p>이제 배열에 담은 물체와 세 광원을 모두 켜고, 유리의 반사·굴절, 메탈의 반사, 다이아몬드의 색분산, 그리고 그림자와 caustic까지 계산하면 그림 A.2의 장면이 만들어진다. 이것이 레이 트레이서가 내놓는 원본(블룸 전) 결과다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch14/ch14_img03.png" alt="figure">
+<p><figcaption>그림 A.2: 모든 물체·재질·조명을 켠 레이 트레이서의 원본 출력. 유리 구의 굴절, 메탈 공의 반사, 크라운컷 다이아몬드의 색분산, 지구본 텍스처, 바닥의 그림자와 caustic이 한 번의 셰이더 실행으로 계산된다. 아직 블룸 후처리는 적용하지 않았다.</figcaption></figure></p>
+<h2 id="sec8">화면 밖에서 완성하기 — FBO 블룸 후처리</h2>
 <p>여기까지가 장면을 한 번 그리는 과정이다. 마지막으로 11장에서 배운 <strong class="term-ko">프레임버퍼 오브젝트</strong><sup class="term">framebuffer object</sup>(FBO)를 써서 <strong>블룸</strong>(bloom)을 입힌다. 블룸은 밝은 부분의 빛이 번져 나오는 효과로, 보석의 하이라이트와 색분산, caustic을 은은하게 발광시켜 장면을 극적으로 만든다. 구조는 화면이 아니라 텍스처에 그린 뒤 그 텍스처를 다시 입력으로 쓰는 <strong>2패스(여기서는 4패스) 포스트 프로세싱</strong>이다.</p>
 <ol>
 <li><strong>장면 패스</strong>: 레이 트레이서를 화면이 아니라 부동소수점 텍스처(<code>RGBA16F</code>)에 그린다. 밝기가 1을 넘는 하이라이트를 손실 없이 보존하기 위해서다.</li>
@@ -319,7 +330,13 @@ for (let i = 0; i &lt; 3; i++){
 gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0,0,W,H);
 gl.useProgram(pComp); /* uScene=sceneT, uBloom=bA, uBloomInt=1.1 */
 gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre>
-<p>이 네 번의 그리기가 끝나면, 어두운 무대 위에서 보석들이 은은히 발광하는 표지 장면이 완성된다. 화면 대신 텍스처를 목적지로 삼아 결과를 되먹이는  —  11장에서 배운 바로 그 되먹임이  —  표지를 완성한 것이다.</p>
+<p>이 네 번의 그리기가 끝나면, 어두운 무대 위에서 보석들이 은은히 발광하는 표지 장면이 완성된다. 화면 대신 텍스처를 목적지로 삼아 결과를 되먹이는  —  11장에서 배운 바로 그 되먹임이  —  표지를 완성한 것이다. 블룸을 넣기 전과 후의 차이는 그림 A.3에서 뚜렷이 드러난다.</p>
+<figure class="fig">
+<img class="gfx" src="img/ch14/ch14_img04.png" alt="figure"><br>
+   (가) 블룸 전  —  장면 패스 원본
+<img class="gfx" src="img/ch14/ch14_img05.png" alt="figure"><br>
+   (나) 블룸 후  —  최종 표지
+<p><figcaption>그림 A.3: FBO 블룸 후처리 전후 비교. 밝은 부분을 추출해 가우시안으로 번지게 한 뒤 원본에 더하면, 보석의 하이라이트와 색분산·caustic이 은은히 발광하며 장면이 극적으로 살아난다. 오른쪽이 이 책의 표지 장면이다.</figcaption></figure></p>
 <h2 id="sec9">직접 해보기</h2>
 <p>전체 코드는 하나의 HTML 파일이므로, 브라우저에서 열어 곧바로 값을 바꿔 볼 수 있다.</p>
 <ul>

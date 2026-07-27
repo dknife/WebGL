@@ -367,6 +367,54 @@ details.box.summary > summary:focus-visible {
 }
 .sum-body { margin-top: 0.85rem; }
 .sum-body > :last-child { margin-bottom: 0; }
+/* 이 장에서 만난 API — 접이식 레퍼런스 카드 */
+.box.apiref { background: var(--white); border: 1.5px solid var(--border); }
+details.box.apiref > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 0.55rem;
+  margin-bottom: 0; transition: color 0.3s ease;
+}
+details.box.apiref > summary::-webkit-details-marker { display: none; }
+details.box.apiref > summary::after {
+  content: ''; width: 0.42em; height: 0.42em; margin-left: auto;
+  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg) translate(-0.12em, -0.12em);
+  transition: transform 0.3s var(--ease);
+}
+details.box.apiref[open] > summary::after {
+  transform: rotate(225deg) translate(-0.12em, -0.12em);
+}
+details.box.apiref > summary:hover { color: var(--accent); }
+details.box.apiref > summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px;
+}
+.box.apiref .box-head::before {
+  content: ''; display: inline-block; width: 10px; height: 10px;
+  background: var(--accent); border-radius: 50%; margin-right: 0.5rem;
+}
+.apiref-body { margin-top: 0.85rem; }
+.apiref-body > :last-child { margin-bottom: 0; }
+.api-head {
+  font-weight: 800; color: var(--accent);
+  font-size: 0.8rem; letter-spacing: 0.02em;
+  margin: 1.1rem 0 0.55rem;
+}
+.apiref-body > .api-head:first-child { margin-top: 0.3rem; }
+.api-ent { margin: 0 0 0.7rem; }
+.api-sig {
+  display: block; background: none; padding: 0;
+  font-family: 'D2Coding', Consolas, 'JetBrains Mono', monospace;
+  font-weight: 700; color: #12467a; font-size: 0.85rem;
+  line-height: 1.4; word-break: break-word;
+}
+.api-desc {
+  display: block; margin-top: 0.15rem; padding-left: 1.1rem;
+  color: var(--text-2); font-size: 0.9rem; line-height: 1.6;
+}
+.api-ret {
+  color: var(--text-light); font-size: 0.86rem;
+  margin-left: 0.35rem;
+}
 .box .box-head {
   font-weight: 800; color: var(--text); font-size: 1.08rem;
   margin-bottom: 0.8rem; letter-spacing: -0.01em;
