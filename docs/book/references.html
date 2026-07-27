@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>참고문헌 — WebGL 3D 그래픽스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="book.css">
+<style>
+  .reflist{list-style:none;counter-reset:ref;padding:0;margin:0 0 30px}
+  .reflist li{position:relative;counter-increment:ref;padding:9px 0 9px 40px;
+    border-bottom:1px solid #eef1f5;line-height:1.6;font-size:.94rem;color:#33424f}
+  .reflist li::before{content:counter(ref);position:absolute;left:0;top:9px;
+    width:26px;text-align:right;color:#c86932;font-weight:700;font-variant-numeric:tabular-nums}
+  .reflist .ref-au{font-weight:600;color:#163864}
+  .reflist .ref-ti{color:#1c2430}
+  .reflist a{color:#c86932;text-decoration:none;word-break:break-all}
+  .reflist a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="home" href="../index.html">&#8962; 홈</a>
+  <span class="book-title">WebGL 3D 그래픽스</span>
+  <span class="ch-indicator">참고문헌</span>
+  <button class="nav-toggle" onclick="document.body.classList.toggle('nav-open')">목차</button>
+</header>
+<div class="layout">
+<nav class="sidebar">
+<div class="nav-ch"><a class="nav-ch-link" href="front.html"><span class="nav-num">&#128214;</span> 표지·머릿말</a></div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch01.html"><span class="nav-num">01</span> 3차원 그래픽스와 WebGL 소개</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch02.html"><span class="nav-num">02</span> 첫 번째 삼각형 그리기</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch03.html"><span class="nav-num">03</span> 셰이더와 GLSL</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch04.html"><span class="nav-num">04</span> 그래픽스를 위한 벡터와 행렬</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch05.html"><span class="nav-num">05</span> 기하 변환</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch06.html"><span class="nav-num">06</span> 카메라와 투영</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch07.html"><span class="nav-num">07</span> 조명과 셰이딩</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch08.html"><span class="nav-num">08</span> 텍스처 매핑</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch09.html"><span class="nav-num">09</span> 3차원 메시와 모델</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch10.html"><span class="nav-num">10</span> 애니메이션과 상호작용</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch11.html"><span class="nav-num">11</span> 고급 렌더링 기법</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch12.html"><span class="nav-num">12</span> Three.js와 실전 프로젝트</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="ch13.html"><span class="nav-num">13</span> 물리 기반 렌더링과 미래</a>
+</div>
+<div class="nav-part">부록</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxa.html"><span class="nav-num">A</span> 표지는 어떻게 만들어졌나 — 셰이더 레이 트레이서</a>
+</div>
+<div class="nav-ch"><a class="nav-ch-link" href="apxb.html"><span class="nav-num">B</span> WebGL 2.0 고급 기능</a>
+</div>
+<div class="nav-part">부가 자료</div>
+<div class="nav-ch current"><a class="nav-ch-link" href="references.html"><span class="nav-num">&#128218;</span> 참고문헌</a></div>
+<div class="nav-ch"><a class="nav-ch-link" href="../examples/index.html"><span class="nav-num">&#11015;</span> 예제 코드 다운로드</a></div>
+</nav>
+<main class="content">
+<div class="chapter-head">
+  <div class="ch-label">REFERENCES</div>
+  <h1>참고문헌</h1>
+</div>
+<p>이 책을 집필하며 참고하고 인용한 문헌을 주제별로 정리하였습니다. 그래픽스의 고전 논문부터 물리 기반 렌더링, 실시간 렌더링, 그리고 WebGL·WebGPU 표준 문서까지 폭넓게 담았습니다.</p>
+<h2>개론서와 교재</h2>
+<ol class="reflist">
+  <li><span class="ref-au">Tomas Akenine-Möller, Eric Haines and Naty Hoffman</span> (2018). <span class="ref-ti">Real-Time Rendering</span>. <em>CRC Press</em> (4판).</li>
+  <li><span class="ref-au">Edward Angel and Dave Shreiner</span> (2020). <span class="ref-ti">Interactive Computer Graphics: A Top-Down Approach with WebGL</span>. <em>Pearson</em> (8판).</li>
+  <li><span class="ref-au">John F. Hughes, Andries van Dam, Morgan McGuire, David F. Sklar, James D. Foley, Steven K. Feiner and Kurt Akeley</span> (2013). <span class="ref-ti">Computer Graphics: Principles and Practice</span>. <em>Addison-Wesley</em> (3판).</li>
+  <li><span class="ref-au">Steve Marschner and Peter Shirley</span> (2021). <span class="ref-ti">Fundamentals of Computer Graphics</span>. <em>CRC Press</em> (5판).</li>
+  <li><span class="ref-au">Kouichi Matsuda and Rodger Lea</span> (2013). <span class="ref-ti">WebGL Programming Guide: Interactive 3D Graphics Programming with WebGL</span>. <em>Addison-Wesley</em>.</li>
+  <li><span class="ref-au">Matt Pharr, Wenzel Jakob and Greg Humphreys</span> (2023). <span class="ref-ti">Physically Based Rendering: From Theory to Implementation</span>. <em>MIT Press</em> (4판).</li>
+  <li><span class="ref-au">Peter Shirley, Trevor David Black and Steve Hollasch</span> (2020). <span class="ref-ti">Ray Tracing in One Weekend</span>. <a href="https://raytracing.github.io/" target="_blank" rel="noopener">https://raytracing.github.io/</a></li>
+</ol>
+<h2>그래픽스의 고전</h2>
+<ol class="reflist">
+  <li><span class="ref-au">James F. Blinn</span> (1977). <span class="ref-ti">Models of Light Reflection for Computer Synthesized Pictures</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 11(2), 192–198.</li>
+  <li><span class="ref-au">Edwin Catmull</span> (1974). <span class="ref-ti">A Subdivision Algorithm for Computer Display of Curved Surfaces</span>. University of Utah.</li>
+  <li><span class="ref-au">Henri Gouraud</span> (1971). <span class="ref-ti">Continuous Shading of Curved Surfaces</span>. <em>IEEE Transactions on Computers</em>, C-20(6), 623–629.</li>
+  <li><span class="ref-au">James T. Kajiya</span> (1986). <span class="ref-ti">The Rendering Equation</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 20(4), 143–150.</li>
+  <li><span class="ref-au">Bui Tuong Phong</span> (1975). <span class="ref-ti">Illumination for Computer Generated Pictures</span>. <em>Communications of the ACM</em>, 18(6), 311–317.</li>
+  <li><span class="ref-au">Ivan E. Sutherland</span> (1963). <span class="ref-ti">Sketchpad: A Man-Machine Graphical Communication System</span>. In <em>Proceedings of the Spring Joint Computer Conference (AFIPS)</em>, 329–346.</li>
+  <li><span class="ref-au">Turner Whitted</span> (1980). <span class="ref-ti">An Improved Illumination Model for Shaded Display</span>. <em>Communications of the ACM</em>, 23(6), 343–349.</li>
+</ol>
+<h2>셰이딩 · 텍스처 · 그림자 · 색</h2>
+<ol class="reflist">
+  <li><span class="ref-au">James F. Blinn and Martin E. Newell</span> (1976). <span class="ref-ti">Texture and Reflection in Computer Generated Images</span>. <em>Communications of the ACM</em>, 19(10), 542–547.</li>
+  <li><span class="ref-au">James F. Blinn</span> (1978). <span class="ref-ti">Simulation of Wrinkled Surfaces</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 12(3), 286–292.</li>
+  <li><span class="ref-au">Ned Greene</span> (1986). <span class="ref-ti">Environment Mapping and Other Applications of World Projections</span>. <em>IEEE Computer Graphics and Applications</em>, 6(11), 21–29.</li>
+  <li><span class="ref-au">Ken Perlin</span> (1985). <span class="ref-ti">An Image Synthesizer</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 19(3), 287–296.</li>
+  <li><span class="ref-au">Ken Perlin</span> (2002). <span class="ref-ti">Improving Noise</span>. <em>ACM Transactions on Graphics</em>, 21(3), 681–682.</li>
+  <li><span class="ref-au">Thomas Porter and Tom Duff</span> (1984). <span class="ref-ti">Compositing Digital Images</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 18(3), 253–259.</li>
+  <li><span class="ref-au">William T. Reeves, David H. Salesin and Robert L. Cook</span> (1987). <span class="ref-ti">Rendering Antialiased Shadows with Depth Maps</span>. In <em>Proceedings of SIGGRAPH '87</em>, 283–291.</li>
+  <li><span class="ref-au">Erik Reinhard, Michael Stark, Peter Shirley and James Ferwerda</span> (2002). <span class="ref-ti">Photographic Tone Reproduction for Digital Images</span>. <em>ACM Transactions on Graphics</em>, 21(3), 267–276.</li>
+  <li><span class="ref-au">Lance Williams</span> (1978). <span class="ref-ti">Casting Curved Shadows on Curved Surfaces</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 12(3), 270–274.</li>
+  <li><span class="ref-au">Lance Williams</span> (1983). <span class="ref-ti">Pyramidal Parametrics</span>. <em>ACM SIGGRAPH Computer Graphics</em>, 17(3), 1–11.</li>
+</ol>
+<h2>물리 기반 렌더링과 이미지 기반 조명</h2>
+<ol class="reflist">
+  <li><span class="ref-au">Brent Burley</span> (2012). <span class="ref-ti">Physically-Based Shading at Disney</span>. In <em>SIGGRAPH Course: Practical Physically-Based Shading in Film and Game Production</em>.</li>
+  <li><span class="ref-au">Robert L. Cook and Kenneth E. Torrance</span> (1982). <span class="ref-ti">A Reflectance Model for Computer Graphics</span>. <em>ACM Transactions on Graphics</em>, 1(1), 7–24.</li>
+  <li><span class="ref-au">Paul Debevec</span> (1998). <span class="ref-ti">Rendering Synthetic Objects into Real Scenes: Bridging Traditional and Image-Based Graphics with Global Illumination and High Dynamic Range Photography</span>. In <em>Proceedings of SIGGRAPH '98</em>, 189–198.</li>
+  <li><span class="ref-au">Brian Karis</span> (2013). <span class="ref-ti">Real Shading in Unreal Engine 4</span>. In <em>SIGGRAPH Course: Physically Based Shading in Theory and Practice</em>.</li>
+  <li><span class="ref-au">Sébastien Lagarde and Charles de Rousiers</span> (2014). <span class="ref-ti">Moving Frostbite to Physically Based Rendering</span>. In <em>SIGGRAPH Course: Physically Based Shading in Theory and Practice</em>.</li>
+  <li><span class="ref-au">Ravi Ramamoorthi and Pat Hanrahan</span> (2001). <span class="ref-ti">An Efficient Representation for Irradiance Environment Maps</span>. In <em>Proceedings of SIGGRAPH '01</em>, 497–500.</li>
+  <li><span class="ref-au">Christophe Schlick</span> (1994). <span class="ref-ti">An Inexpensive BRDF Model for Physically-Based Rendering</span>. <em>Computer Graphics Forum</em>, 13(3), 233–246.</li>
+  <li><span class="ref-au">Bruce G. Smith</span> (1967). <span class="ref-ti">Geometrical Shadowing of a Random Rough Surface</span>. <em>IEEE Transactions on Antennas and Propagation</em>, 15(5), 668–671.</li>
+  <li><span class="ref-au">Kenneth E. Torrance and Ephraim M. Sparrow</span> (1967). <span class="ref-ti">Theory for Off-Specular Reflection from Roughened Surfaces</span>. <em>Journal of the Optical Society of America</em>, 57(9), 1105–1114.</li>
+  <li><span class="ref-au">T. S. Trowbridge and K. P. Reitz</span> (1975). <span class="ref-ti">Average Irregularity Representation of a Rough Surface for Ray Reflection</span>. <em>Journal of the Optical Society of America</em>, 65(5), 531–536.</li>
+  <li><span class="ref-au">Bruce Walter, Stephen R. Marschner, Hongsong Li and Kenneth E. Torrance</span> (2007). <span class="ref-ti">Microfacet Models for Refraction through Rough Surfaces</span>. In <em>Proceedings of the Eurographics Symposium on Rendering</em>, 195–206.</li>
+</ol>
+<h2>실시간 렌더링과 상호작용</h2>
+<ol class="reflist">
+  <li><span class="ref-au">Bernhard Kerbl, Georgios Kopanas, Thomas Leimkühler and George Drettakis</span> (2023). <span class="ref-ti">3D Gaussian Splatting for Real-Time Radiance Field Rendering</span>. <em>ACM Transactions on Graphics</em>, 42(4).</li>
+  <li><span class="ref-au">Timothy Lottes</span> (2009). <span class="ref-ti">FXAA</span>. NVIDIA.</li>
+  <li><span class="ref-au">Morgan McGuire and Louis Bavoil</span> (2013). <span class="ref-ti">Weighted Blended Order-Independent Transparency</span>. <em>Journal of Computer Graphics Techniques</em>, 2(2), 122–141.</li>
+  <li><span class="ref-au">Martin Mittring</span> (2007). <span class="ref-ti">Finding Next Gen: CryEngine 2</span>. In <em>SIGGRAPH Course: Advanced Real-Time Rendering in 3D Graphics and Games</em>.</li>
+  <li><span class="ref-au">William T. Reeves</span> (1983). <span class="ref-ti">Particle Systems—A Technique for Modeling a Class of Fuzzy Objects</span>. <em>ACM Transactions on Graphics</em>, 2(2), 91–108.</li>
+  <li><span class="ref-au">Takafumi Saito and Tokiichiro Takahashi</span> (1990). <span class="ref-ti">Comprehensible Rendering of 3-D Shapes</span>. In <em>Proceedings of SIGGRAPH '90</em>, 197–206.</li>
+  <li><span class="ref-au">Ken Shoemake</span> (1992). <span class="ref-ti">ARCBALL: A User Interface for Specifying Three-Dimensional Orientation Using a Mouse</span>. In <em>Proceedings of Graphics Interface '92</em>, 151–156.</li>
+</ol>
+<h2>표준 · 도구 · 웹 기술</h2>
+<ol class="reflist">
+  <li><span class="ref-au">Brandon Jones and Colin MacKenzie IV</span> (2023). <span class="ref-ti">glMatrix: JavaScript Matrix and Vector Library for High Performance WebGL Apps</span>. <a href="https://glmatrix.net/" target="_blank" rel="noopener">https://glmatrix.net/</a></li>
+  <li><span class="ref-au">Khronos Group</span> (2017). <span class="ref-ti">WebGL 2.0 Specification</span>. <a href="https://registry.khronos.org/webgl/specs/latest/2.0/" target="_blank" rel="noopener">https://registry.khronos.org/webgl/specs/latest/2.0/</a></li>
+  <li><span class="ref-au">Khronos Group</span> (2019). <span class="ref-ti">The OpenGL ES Shading Language, Version 3.00</span>. <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf" target="_blank" rel="noopener">https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf</a></li>
+  <li><span class="ref-au">MDN Web Docs</span> (2026). <span class="ref-ti">WebGL: 2D and 3D Graphics for the Web</span>. <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API</a></li>
+  <li><span class="ref-au">Three.js</span> (2026). <span class="ref-ti">Three.js Documentation</span>. <a href="https://threejs.org/docs/" target="_blank" rel="noopener">https://threejs.org/docs/</a></li>
+  <li><span class="ref-au">W3C GPU for the Web Community Group</span> (2024). <span class="ref-ti">WebGPU</span>. <a href="https://www.w3.org/TR/webgpu/" target="_blank" rel="noopener">https://www.w3.org/TR/webgpu/</a></li>
+  <li><span class="ref-au">W3C GPU for the Web Community Group</span> (2024). <span class="ref-ti">WebGPU Shading Language (WGSL)</span>. <a href="https://www.w3.org/TR/WGSL/" target="_blank" rel="noopener">https://www.w3.org/TR/WGSL/</a></li>
+  <li><span class="ref-au">Wavefront Technologies</span> (1991). <span class="ref-ti">Object Files (.obj): Wavefront OBJ File Format Specification</span>. <a href="https://www.fileformat.info/format/wavefrontobj/egff.htm" target="_blank" rel="noopener">https://www.fileformat.info/format/wavefrontobj/egff.htm</a></li>
+</ol>
+<div class="pager-row"><a class="pager prev" href="apxb.html">&larr; 부록 B</a><span></span></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

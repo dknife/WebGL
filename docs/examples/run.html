@@ -2,50 +2,63 @@
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>예제 실행 · WebGL 3D 그래픽스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-  :root{--nav:#163864;--acc:#c86932;--bg:#f3f5f8;--card:#fff;--line:#dbe1ea;--code:#0f1420;}
+  :root{--bg:#F8F8F8;--bg2:#EDEDED;--white:#fff;--text:#222;--text2:#313131;
+    --light:#767676;--accent:#FA5D29;--border:#E4E4E4;--btn:#222;--btnh:#383838;--r:8px}
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
-  body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
-    background:var(--bg);color:#1c2430;display:flex;flex-direction:column}
-  header{background:var(--nav);color:#fff;padding:12px 18px;display:flex;
-    align-items:center;gap:14px;flex-wrap:wrap}
-  header b{font-size:1.08rem} header .sub{color:#c7d3e4;font-size:.85rem}
-  header a{margin-left:auto;color:#ffd9c4;text-decoration:none;font-size:.9rem}
-  header a:hover{text-decoration:underline}
+  body{font-family:'Inter Tight','Pretendard','Noto Sans KR',sans-serif;
+    background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+  .top{background:rgba(248,248,248,.96);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:14px;padding:11px 20px}
+  .top .logo{font-weight:800;color:var(--text);text-decoration:none;font-size:1.02rem}
+  .top .logo em{color:var(--accent);font-style:normal}
+  .top nav{margin-left:auto;display:flex;gap:4px;align-items:center}
+  .top nav a{color:var(--text2);text-decoration:none;font-size:.86rem;padding:6px 11px;border-radius:var(--r)}
+  .top nav a:hover{color:var(--accent)}
+  .top nav a.home{background:var(--btn);color:#fff}
+  .top nav a.home:hover{background:var(--btnh);color:#fff}
   .wrap{flex:1;display:flex;min-height:0}
-  aside{width:290px;background:var(--card);border-right:1px solid var(--line);
+  aside{width:290px;background:var(--white);border-right:1px solid var(--border);
     overflow:auto;padding:8px 0}
-  aside .grp{font-size:.78rem;font-weight:700;color:var(--nav);padding:10px 16px 4px}
+  aside .grp{font-size:.76rem;font-weight:700;color:var(--text2);padding:12px 16px 4px}
   aside button{display:block;width:100%;text-align:left;border:0;background:none;
-    padding:7px 16px;font-size:.86rem;color:#33424f;cursor:pointer;line-height:1.35}
-  aside button:hover{background:#eef3f9}
-  aside button.on{background:#e7eefb;color:var(--nav);font-weight:700;
-    box-shadow:inset 3px 0 0 var(--acc)}
-  aside .three{font-size:.68rem;color:#2c6b2c;margin-left:4px}
+    padding:7px 16px;font-size:.85rem;color:var(--text2);cursor:pointer;line-height:1.35;font-family:inherit}
+  aside button:hover{background:var(--bg2)}
+  aside button.on{background:#fdece4;color:var(--text);font-weight:700;
+    box-shadow:inset 3px 0 0 var(--accent)}
+  aside .three{font-size:.66rem;color:#128a4c;margin-left:4px}
   main{flex:1;display:flex;flex-direction:column;min-width:0}
   .bar{display:flex;align-items:center;gap:8px;padding:8px 12px;
-    border-bottom:1px solid var(--line);background:var(--card)}
-  .bar .title{font-weight:700;color:var(--nav);font-size:.92rem;overflow:hidden;
+    border-bottom:1px solid var(--border);background:var(--white)}
+  .bar .title{font-weight:700;color:var(--text);font-size:.9rem;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
   .bar .sp{flex:1}
-  .btn{border:0;border-radius:7px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:.85rem}
-  .btn.run{background:var(--acc);color:#fff} .btn.run:hover{filter:brightness(1.07)}
-  .btn.ghost{background:#e9eef4;color:#33424f}
+  .btn{border:0;border-radius:var(--r);padding:7px 14px;font-weight:700;cursor:pointer;font-size:.85rem;font-family:inherit}
+  .btn.run{background:var(--accent);color:#fff} .btn.run:hover{filter:brightness(1.06)}
+  .btn.ghost{background:var(--bg2);color:var(--text2)}
   .split{flex:1;display:flex;min-height:0}
   textarea{flex:1;width:50%;border:0;resize:none;padding:12px 14px;font-size:12.5px;
     line-height:1.5;font-family:'D2Coding','SF Mono',Menlo,Consolas,monospace;
-    background:var(--code);color:#e6edf3;tab-size:2;white-space:pre;overflow:auto}
-  .view{width:50%;border-left:1px solid var(--line);background:#111;display:flex;flex-direction:column}
+    background:#1b1f2a;color:#e6edf3;tab-size:2;white-space:pre;overflow:auto}
+  .view{width:50%;border-left:1px solid var(--border);background:#111;display:flex;flex-direction:column}
   iframe{flex:1;width:100%;border:0;background:#111}
-  .hint{padding:26px;color:#7b8794;font-size:.9rem;text-align:center}
+  .hint{padding:26px;color:var(--light);font-size:.9rem;text-align:center}
   @media(max-width:820px){.split{flex-direction:column}textarea,.view{width:100%}
     aside{width:220px}}
 </style></head>
 <body>
-<header>
-  <b>예제 실행 <span class="sub">WebGL 3D 그래픽스</span></b>
-  <a href="index.html">예제 다운로드 &rarr;</a>
+<header class="top">
+  <a class="logo" href="../index.html">WebGL <em>3D 그래픽스</em></a>
+  <nav>
+    <a class="home" href="../index.html">&#8962; 홈</a>
+    <a href="../book/front.html">책 읽기</a>
+    <a href="index.html">예제 다운로드</a>
+    <a href="https://github.com/dknife/WebGL" target="_blank" rel="noopener">GitHub</a>
+  </nav>
 </header>
 <div class="wrap">
   <aside id="list"></aside>

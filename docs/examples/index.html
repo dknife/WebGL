@@ -2,46 +2,53 @@
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>예제 코드 다운로드 · WebGL 3D 그래픽스</title>
-<style>
-  :root{--nav:#163864;--acc:#c86932;--bg:#f7f8fa;--card:#fff;--line:#e4e8ee;}
-  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,'Apple SD Gothic Neo',
-    'Malgun Gothic',sans-serif;background:var(--bg);color:#1c2430;line-height:1.6}
-  header{background:var(--nav);color:#fff;padding:32px 24px}
-  header .wrap{max-width:920px;margin:0 auto}
-  header h1{margin:0 0 6px;font-size:1.7rem}
-  header p{margin:0;color:#cdd8e6}
-  .dl{display:inline-block;margin-top:16px;background:var(--acc);color:#fff;
-    text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:700}
-  .dl:hover{filter:brightness(1.07)}
-  main{max-width:920px;margin:0 auto;padding:24px}
-  .note{background:#eef3f9;border-left:3px solid var(--nav);padding:10px 14px;
-    border-radius:0 6px 6px 0;color:#3a4756;font-size:.94rem;margin-bottom:20px}
-  section{background:var(--card);border:1px solid var(--line);border-radius:10px;
-    padding:14px 18px;margin-bottom:14px}
-  h2{font-size:1.15rem;color:var(--nav);margin:.2em 0 .5em}
-  h2 small{color:#8a97a6;font-weight:500;font-size:.8rem}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>:root{--bg:#F8F8F8;--bg2:#EDEDED;--white:#fff;--text:#222;--text2:#313131;--light:#767676;--accent:#FA5D29;--border:#E4E4E4;--btn:#222;--btnh:#383838;--r:8px}*{box-sizing:border-box}body{margin:0;font-family:'Inter Tight','Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}.top{position:sticky;top:0;background:rgba(248,248,248,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:12px 22px;z-index:20}.top .logo{font-weight:800;color:var(--text);text-decoration:none}.top .logo em{color:var(--accent);font-style:normal}.top nav{margin-left:auto;display:flex;gap:4px;align-items:center}.top nav a{color:var(--text2);text-decoration:none;font-size:.88rem;padding:6px 11px;border-radius:var(--r)}.top nav a:hover{color:var(--accent)}.top nav a.home{background:var(--btn);color:#fff}.top nav a.home:hover{background:var(--btnh);color:#fff}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px}
+  .hero{padding:40px 0 6px}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:700}
+  .hero h1{margin:.3rem 0 .5rem;font-size:2rem}
+  .hero p{margin:0 0 18px;color:var(--light)}
+  .btns{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{display:inline-block;text-decoration:none;padding:11px 18px;border-radius:var(--r);
+    font-weight:600;font-size:.95rem}
+  .btn.p{background:var(--btn);color:#fff} .btn.p:hover{background:var(--btnh)}
+  .btn.a{background:var(--accent);color:#fff} .btn.a:hover{filter:brightness(1.06)}
+  main{padding:14px 0 64px}
+  .note{background:var(--bg2);border-left:3px solid var(--accent);padding:11px 15px;
+    border-radius:0 var(--r) var(--r) 0;color:var(--text2);font-size:.92rem;margin:18px 0 22px}
+  section{background:var(--white);border:1px solid var(--border);border-radius:var(--r);
+    padding:14px 18px;margin-bottom:13px}
+  h2{font-size:1.1rem;margin:.2em 0 .5em}
+  h2 small{color:var(--light);font-weight:500;font-size:.78rem}
   ul{list-style:none;margin:0;padding:0}
-  li{padding:7px 0;border-top:1px solid var(--line);display:flex;
-    align-items:center;justify-content:space-between;gap:10px}
+  li{padding:8px 0;border-top:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;gap:10px}
   li:first-child{border-top:none}
-  a{color:var(--nav);text-decoration:none;font-weight:600}
-  a:hover{text-decoration:underline}
-  .b{font-size:.72rem;padding:2px 8px;border-radius:20px;white-space:nowrap}
-  .b.run{background:#e8f0e8;color:#2c6b2c} .b.file{background:#eee;color:#666}
-  footer{max-width:920px;margin:0 auto;padding:20px 24px 40px;color:#8a97a6;font-size:.85rem}
-  a.back{color:var(--acc)}
+  li a{color:var(--text);text-decoration:none;font-weight:600}
+  li a:hover{color:var(--accent)}
+  .b{font-size:.7rem;padding:2px 9px;border-radius:20px;white-space:nowrap;font-weight:600}
+  .b.run{background:#eafaf1;color:#128a4c} .b.file{background:var(--bg2);color:var(--light)}
 </style></head>
 <body>
-<header><div class="wrap">
-  <h1>예제 코드 다운로드</h1>
-  <p>『WebGL 3D 그래픽스』 본문 실행 예제 67개 · 장별 정리</p>
-  <a class="dl" href="run.html">▶ 브라우저에서 실행 (플레이그라운드)</a>
-  <a class="dl" href="examples.zip" download style="background:#163864">⬇ 전체 예제 내려받기 (zip)</a>
-</div></header>
-<main>
-  <div class="note">각 <b>.html</b>은 <code>glCanvas</code> 캔버스와 glMatrix(12장은 Three.js)를
-    사전 로드한 <b>독립 실행 파일</b>입니다. 내려받아 브라우저에서 열거나, 제목을 눌러 바로 실행해 보세요.</div>
-  <section><h2>1장 3차원 그래픽스와 WebGL 소개 <small>2개</small></h2><ul><li><a href="ch01/first.html">first.html</a> <span class="b file">파일</span></li><li><a href="ch01/ch01-예제01-WebGL-컨텍스트를-얻고-화면을-지우는-첫-프로그램-first-js.html" target="_blank" rel="noopener">WebGL 컨텍스트를 얻고 화면을 지우는 첫 프로그램 (first.js)</a> <span class="b run">▶ 실행</span></li></ul></section>
+<header class="top"><a class="logo" href="../index.html">WebGL <em>3D 그래픽스</em></a><nav><a class="home" href="../index.html">&#8962; 홈</a><a href="../book/front.html">책 읽기</a><a href="run.html">예제 실행</a><a href="https://github.com/dknife/WebGL" target="_blank" rel="noopener">GitHub</a></nav></header>
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Examples</div>
+    <h1>예제 코드 다운로드</h1>
+    <p>『WebGL 3D 그래픽스』 본문 실행 예제 67개 · 장별 정리</p>
+    <div class="btns">
+      <a class="btn a" href="run.html">▶ 브라우저에서 실행 (플레이그라운드)</a>
+      <a class="btn p" href="examples.zip" download>⬇ 전체 예제 내려받기 (zip)</a>
+    </div>
+  </div>
+  <main>
+    <div class="note">각 <b>.html</b>은 <code>glCanvas</code> 캔버스와 glMatrix(12장은 Three.js)를
+      사전 로드한 <b>독립 실행 파일</b>입니다. 내려받아 브라우저에서 열거나, 제목을 눌러 바로 실행해 보세요.</div>
+    <section><h2>1장 3차원 그래픽스와 WebGL 소개 <small>2개</small></h2><ul><li><a href="ch01/first.html">first.html</a> <span class="b file">파일</span></li><li><a href="ch01/ch01-예제01-WebGL-컨텍스트를-얻고-화면을-지우는-첫-프로그램-first-js.html" target="_blank" rel="noopener">WebGL 컨텍스트를 얻고 화면을 지우는 첫 프로그램 (first.js)</a> <span class="b run">▶ 실행</span></li></ul></section>
 <section><h2>2장 첫 번째 삼각형 그리기 <small>4개</small></h2><ul><li><a href="ch02/ch02-예제01-첫-번째-삼각형-그리기-완성-프로그램.html" target="_blank" rel="noopener">첫 번째 삼각형 그리기 (완성 프로그램)</a> <span class="b run">▶ 실행</span></li><li><a href="ch02/ch02-예제02-정점-6개로-삼각형-2개-그리기-프리미티브-실험.html" target="_blank" rel="noopener">정점 6개로 삼각형 2개 그리기 — 프리미티브 실험</a> <span class="b run">▶ 실행</span></li><li><a href="ch02/ch02-예제03-정사각형-그리기.html" target="_blank" rel="noopener">정사각형 그리기</a> <span class="b run">▶ 실행</span></li><li><a href="ch02/ch02-예제04-클릭한-자리에-꺾은선-그리기.html" target="_blank" rel="noopener">클릭한 자리에 꺾은선 그리기</a> <span class="b run">▶ 실행</span></li></ul></section>
 <section><h2>3장 셰이더와 GLSL <small>5개</small></h2><ul><li><a href="ch03/ch03-예제01-uniform-변수로-삼각형-색-지정하기.html" target="_blank" rel="noopener">uniform 변수로 삼각형 색 지정하기</a> <span class="b run">▶ 실행</span></li><li><a href="ch03/ch03-예제02-정점마다-다른-색-보간되는-삼각형.html" target="_blank" rel="noopener">정점마다 다른 색 — 보간되는 삼각형</a> <span class="b run">▶ 실행</span></li><li><a href="ch03/ch03-예제03-네-모서리-색이-보간되는-사각형.html" target="_blank" rel="noopener">네 모서리 색이 보간되는 사각형</a> <span class="b run">▶ 실행</span></li><li><a href="ch03/ch03-예제04-슬라이더로-RGB-색-조절.html" target="_blank" rel="noopener">슬라이더로 RGB 색 조절</a> <span class="b run">▶ 실행</span></li><li><a href="ch03/ch03-예제05-프래그먼트-좌표로-계산한-그라데이션-삼각형.html" target="_blank" rel="noopener">프래그먼트 좌표로 계산한 그라데이션 삼각형</a> <span class="b run">▶ 실행</span></li></ul></section>
 <section><h2>4장 그래픽스를 위한 벡터와 행렬 <small>4개</small></h2><ul><li><a href="ch04/ch04-예제01-glMatrix로-벡터-연산-확인하기.html" target="_blank" rel="noopener">glMatrix로 벡터 연산 확인하기</a> <span class="b run">▶ 실행</span></li><li><a href="ch04/ch04-예제02-두-점-사이-거리와-방향-벡터.html" target="_blank" rel="noopener">두 점 사이 거리와 방향 벡터</a> <span class="b run">▶ 실행</span></li><li><a href="ch04/ch04-예제03-내적으로-두-벡터의-사잇각-구하기.html" target="_blank" rel="noopener">내적으로 두 벡터의 사잇각 구하기</a> <span class="b run">▶ 실행</span></li><li><a href="ch04/ch04-예제04-벡터-덧셈의-평행사변형-법칙.html" target="_blank" rel="noopener">벡터 덧셈의 평행사변형 법칙</a> <span class="b run">▶ 실행</span></li></ul></section>
@@ -56,6 +63,6 @@
 <section><h2>13장 물리 기반 렌더링과 미래 <small>1개</small></h2><ul><li><a href="ch13/ch13-예제01-금속성-거칠기-PBR-구-격자.html" target="_blank" rel="noopener">금속성·거칠기 PBR 구 격자</a> <span class="b run">▶ 실행</span></li></ul></section>
 <section><h2>부록 A 표지 셰이더 레이 트레이서 <small>1개</small></h2><ul><li><a href="apxa/apxA-예제01-표지-장면-전체-셰이더-레이-트레이서-FBO-블룸.html" target="_blank" rel="noopener">표지 장면 전체 — 셰이더 레이 트레이서 + FBO 블룸</a> <span class="b run">▶ 실행</span></li></ul></section>
 <section><h2>부록 B WebGL 2.0 고급 기능 <small>1개</small></h2><ul><li><a href="apxb/apxB-예제01-트랜스폼-피드백-GPU-파티클-전체.html" target="_blank" rel="noopener">트랜스폼 피드백 GPU 파티클 전체</a> <span class="b run">▶ 실행</span></li></ul></section>
-</main>
-<footer><a class="back" href="../book/front.html">&larr; 책으로 돌아가기</a></footer>
+  </main>
+</div>
 </body></html>
